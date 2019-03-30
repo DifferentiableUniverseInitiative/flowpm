@@ -1,5 +1,5 @@
 # flowpm
-Particle Mesh simulation in TensorFlow
+Particle Mesh Simulation in TensorFlow, based on [fastpm-python](https://github.com/rainwoodman/fastpm-python) simulations 
 
 Minimal working example is in flowpm.py. The steps are as follows - 
 - create a config object which has details of simulation, such as box size, number of mesh points, number of steps
