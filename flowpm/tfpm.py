@@ -13,7 +13,7 @@ PerturbationGrowth = lambda cosmo, *args, **kwargs: fastpm.background.MatterDomi
                                                                                       *args, **kwargs)
 
 from .utils import white_noise, c2r3d, r2c3d, cic_paint, cic_readout
-from .kernels import fftk, laplace_kernel, gradient_kernel
+from .kernels import fftk, laplace_kernel, gradient_kernel, longrange_kernel
 
 def linear_field(nc, boxsize, pk, batch_size=1,
                  kvec=None, seed=None, name=None, dtype=tf.float32):
@@ -126,7 +126,7 @@ def lpt2_source(dlin_k, boxsize, kvec=None, name=None):
     source = tf.multiply(source, 3.0/7.)
     return r2c3d(source, norm=nc**3)
 
-def lpt_init(linear, boxsize, a0, order=2, cosmology=Planck15, name=None):
+def lpt_init(linear, boxsize, a0, order=2, cosmology=Planck15, kvec=None, name=None):
   """ Estimate the initial LPT displacement given an input linear (real) field
 
   Parameters:
@@ -162,8 +162,45 @@ def lpt_init(linear, boxsize, a0, order=2, cosmology=Planck15, name=None):
     X = tf.add(DX, Q)
     return tf.stack((X, P, F), axis=0)
 
+def apply_longrange(x, delta_k, boxsize, split=0, factor=1, kvec=None, name=None):
+  """ like long range, but x is a list of positions
+  TODO: Better documentation, also better name?
+  """
+  # use the four point kernel to suppresse artificial growth of noise like terms
+  with tf.name_scope(name, "ApplyLongrange", [x, delta_k]):
+    shape = delta_k.get_shape()
+    batch_size, nc = shape[1], shape[2].value
+
+    if kvec is None:
+      kvec = fftk((nc, nc, nc), boxsize, symmetric=False)
+
+    ndim = 3
+    norm = nc**3
+    lap = laplace_kernel(kvec)
+    fknlrange = longrange_kernel(kvec, split)
+    kweight = lap * fknlrange
+    pot_k = tf.multiply(delta_k, kweight)
+
+    f = []
+    for d in range(ndim):
+      force_dc = tf.multiply(pot_k, gradient_kernel(kvec, d, boxsize))
+      forced = c2r3d(force_dc, norm=norm)
+      force = cic_readout(forced, x)
+      f.append(force)
+
+    f = tf.stack(f, axis=2)
+    f = tf.multiply(f, factor)
+    return f
+
 def kick(state, ai, ac, af, cosmology=Planck15, dtype=np.float32, name=None):
   """Kick the particles given the state
+
+  Parameters
+  ----------
+  state: tensor
+    Input state tensor of shape (3, batch_size, npart, 3)
+
+  ai, ac, af: float
   """
   with tf.name_scope(name, "Kick", [state]):
     pt = PerturbationGrowth(cosmology, a=[ai, ac, af], a_normalize=1.0)
@@ -176,10 +213,18 @@ def kick(state, ai, ac, af, cosmology=Planck15, dtype=np.float32, name=None):
     return state
 
 def drift(state, ai, ac, af, cosmology=Planck15, dtype=np.float32, name=None):
-  """Drift the particles given the state"""
+  """Drift the particles given the state
+
+  Parameters
+  ----------
+  state: tensor
+    Input state tensor of shape (3, batch_size, npart, 3)
+
+  ai, ac, af: float
+  """
   with tf.name_scope(name, "Drift", [state]):
     pt = PerturbationGrowth(cosmology, a=[ai, ac, af], a_normalize=1.0)
-    fac = 1 / (ac ** 3 * pt.E(ac)) * (pt.Gp(af) - pt.Gp(ai)) / pt.gp(ac)
+    fac = 1. / (ac ** 3 * pt.E(ac)) * (pt.Gp(af) - pt.Gp(ai)) / pt.gp(ac)
     indices = tf.constant([[0]])
     update = tf.expand_dims(tf.multiply(dtype(fac), state[1]), axis=0)
     shape = state.shape
@@ -187,16 +232,17 @@ def drift(state, ai, ac, af, cosmology=Planck15, dtype=np.float32, name=None):
     state = tf.add(state, update)
     return state
 
-def force(state, boxsize, cosmology=Planck15, pm_nc_factor=1, dtype=tf.float32):
+def force(state, nc, boxsize, cosmology=Planck15, pm_nc_factor=1, kvec=None,
+          dtype=np.float32, name=None):
   """
   Estimate force on the particles given a state.
 
   Parameters:
   -----------
   state: tensor
-    Input state tensor of shape (batch_size, nc, nc, nc)
+    Input state tensor of shape (3, batch_size, npart, 3)
 
-  box_size: float
+  boxsize: float
     Size of the simulation volume (Mpc/h) TODO: check units
 
   cosmology: astropy.cosmology
@@ -206,16 +252,19 @@ def force(state, boxsize, cosmology=Planck15, pm_nc_factor=1, dtype=tf.float32):
     TODO: @modichirag please add doc
   """
   with tf.name_scope(name, "Force", [state]):
-        
+    shape = state.get_shape()
+    batch_size = shape[1]
+    ncf = nc * pm_nc_factor
+
     rho = tf.zeros((batch_size, ncf, ncf, ncf))
-    wts = tf.ones(nc**3)
+    wts = tf.ones((batch_size, nc**3))
     nbar = nc**3/ncf**3
 
-    rho = cic_paint(rho, tf.multiply(state[0], ncf/bs), wts)
-    rho = tf.multiply(rho, 1/nbar)  ###I am not sure why this is not needed here
+    rho = cic_paint(rho, tf.multiply(state[0], ncf/boxsize), wts)
+    rho = tf.multiply(rho, 1./nbar)  ###I am not sure why this is not needed here
     delta_k = r2c3d(rho, norm=ncf**3)
-    fac = dtype(1.5 * config['cosmology'].Om0)
-    update = longrange(config['f_config'], tf.multiply(state[0], ncf/bs), delta_k, split=0, factor=fac)
+    fac = dtype(1.5 * cosmology.Om0)
+    update = apply_longrange(tf.multiply(state[0], ncf/boxsize), delta_k, boxsize, split=0, factor=fac)
 
     update = tf.expand_dims(update, axis=0)
 

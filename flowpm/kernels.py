@@ -94,25 +94,3 @@ def longrange_kernel(kvec, r_split):
     return np.exp(-kk * r_split**2)
   else:
     return 1.
-
-def longrange(config, x, delta_k, r_split=0, factor=1):
-  """ like long range, but x is a list of positions """
-  # use the four point kernel to suppresse artificial growth of noise like terms
-
-  ndim = 3
-  norm = config['nc']**3
-  lap = laplace_kernel(kvec)
-  fknlrange = longrange_kernel(kvec, r_split)
-  kweight = lap * fknlrange
-  pot_k = tf.multiply(delta_k, kweight)
-
-  f = []
-  for d in range(ndim):
-    force_dc = tf.multiply(pot_k, gradient(config, d))
-    forced = c2r3d(force_dc, norm=norm)
-    force = cic_readout(forced, x)
-    f.append(force)
-
-  f = tf.stack(f, axis=1)
-  f = tf.multiply(f, factor)
-  return f
