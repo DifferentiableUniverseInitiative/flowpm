@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 from numpy.testing import assert_allclose
 
-from flowpm.tfpm import cic_paint, cic_readout
+from flowpm.utils import cic_paint, cic_readout, r2c3d, c2r3d
 from pmesh.pm import ParticleMesh
 np.random.seed(0)
 
@@ -44,3 +44,17 @@ def test_cic_readout():
     tfread = sess.run(mesh)
 
   assert_allclose(pmread, tfread[0], rtol=1e-06)
+
+def test_r2c2r():
+  bs = 50
+  nc = 16
+  batch_size = 3
+  base = 100*np.random.randn(batch_size, nc, nc, nc).astype(np.float64)
+
+  with tf.Session() as sess:
+    cfield = r2c3d(tf.constant(base, dtype=tf.float64), dtype=tf.complex128)
+    rfield = c2r3d(cfield, dtype=tf.float64)
+    sess.run(tf.global_variables_initializer())
+    rec = sess.run(rfield)
+
+  assert_allclose(base, rec, rtol=1e-09)
