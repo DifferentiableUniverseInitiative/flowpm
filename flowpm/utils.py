@@ -149,25 +149,15 @@ def c2r3d(cfield, norm=None, dtype=tf.float32, name=None):
     rfield = tf.multiply(tf.cast(tf.spectral.ifft3d(cfield), dtype), norm, name=name)
     return rfield
 
-def longrange(config, x, delta_k, split=0, factor=1):
-    """ like long range, but x is a list of positions """
-    # use the four point kernel to suppresse artificial growth of noise like terms
-
-    ndim = 3
-    norm = config['nc']**3
-    lap = laplace(config)
-    fknlrange = kernellongrange(config, split)
-    kweight = lap * fknlrange
-    pot_k = tf.multiply(delta_k, kweight)
-
-    f = []
-    for d in range(ndim):
-        force_dc = tf.multiply(pot_k, gradient(config, d))
-        #forced = tf.multiply(tf.spectral.irfft3d(force_dc), config['nc']**3)
-        forced = c2r3d(force_dc, norm=norm)
-        force = cic_readout(forced, x)
-        f.append(force)
-
-    f = tf.stack(f, axis=1)
-    f = tf.multiply(f, factor)
-    return f
+def white_noise(nc, batch_size=1, seed=None, type='complex', name=None):
+  """
+  Samples a 3D cube of white noise of desired size
+  """
+  with tf.name_scope(name, "WhiteNoise"):
+    assert batch_size >= 1
+    white = tf.random_normal(shape=(batch_size, nc, nc, nc),
+                             mean=0, stddev=nc**1.5, seed=seed)
+    if type == 'real': return white
+    elif type == 'complex':
+        whitec = r2c3d(white, norm=nc**3)
+        return whitec

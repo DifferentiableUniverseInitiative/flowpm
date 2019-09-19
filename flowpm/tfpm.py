@@ -7,33 +7,44 @@ import numpy as np
 import tensorflow as tf
 from astropy.cosmology import Planck15
 
+from .utils import white_noise, c2r3d
+from .kernels import fftk
 
-def white_noise(nc, batch_size=1, seed=None, type='complex'):
+def linear_field(nc, boxsize, pk,
+                 batch_size=1,
+                 kvec=None,
+                 seed=None,
+                 name=None, dtype=tf.float32):
+  """Generates a linear field with a given linear power spectrum
+
+  Parameters:
+  -----------
+  nc: int
+    Number of cells in the field
+
+  boxsize: float
+    Physical size of the cube, in Mpc/h TODO: confirm units
+
+  pk: interpolator
+    Power spectrum to use for the field
+
+  kvec: array
+    k_vector corresponding to the cube, optional
+
+  Returns
+  ------
+  linfield: tensor (batch_size, nc, nc, nc)
+    Realization of the linear field with requested power spectrum
   """
-  Samples a 3D cube of white noise of desired size
-  """
-  with tf.name_scope(name, "WhiteNoise"):
-    assert batch_size >= 1
-    white = tf.random_normal(shape=(batch_size, nc, nc, nc),
-                             mean=0, stddev=nc**1.5, seed=seed)
-    if type == 'real': return white
-    elif type == 'complex':
-        whitec = r2c3d(white, norm=nc**3)
-        return whitec
+  with tf.name_scope(name, "LinearField"):
+    if kvec is None:
+      kvec = fftk((nc, nc, nc), boxsize, symmetric=False)
+    kmesh = sum(kk**2 for kk in kvec)**0.5
+    pkmesh = pk(kmesh)
 
-def linfield(config, seed=100, name='linfield'):
-    '''generate a linear field with a given linear power spectrum'''
-
-    bs, nc = config['boxsize'], config['nc']
-    kmesh = sum(kk**2 for kk in config['kvec'])**0.5
-    pkmesh = config['ipklin'](kmesh)
-
-    #white = tf.random_normal(shape=(nc, nc, nc), mean=0, stddev=nc**1.5, seed=seed)
-    #whitec = tf.multiply(tf.spectral.fft3d(tf.cast(white, tf.complex64)), 1/nc**1.5)
-    #whitec = r2c3d(white, norm=nc**3)
-    whitec = genwhitenoise(nc, seed, type='complex')
-    lineark = tf.multiply(whitec, (pkmesh/bs**3)**0.5)
-    linear = c2r3d(lineark, norm=nc**3, name=name)
+    whitec = white_noise(nc, batch_size=batch_size, seed=seed, type='complex')
+    lineark = tf.multiply(whitec, (pkmesh/boxsize**3)**0.5)
+    linear = c2r3d(lineark, norm=nc**3, name=name, dtype=dtype)
     return linear
 
 def lpt1(dlin_k, pos, config):
