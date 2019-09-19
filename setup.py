@@ -8,4 +8,4 @@ setup(name='flowpm',
       author_email='modichirag@berkeley.edu',
       license='MIT',
       packages=['flowpm'],
-      zip_safe=False)
+      install_requires=['fastpm', 'astropy', 'tensorflow'])

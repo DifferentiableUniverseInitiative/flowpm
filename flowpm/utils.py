@@ -3,7 +3,6 @@ import numpy as np
 import numpy
 import tensorflow as tf
 
-
 def cic_readout(mesh, part, cube_size=None, boxsize=None):
   """
       - mesh is a cube
