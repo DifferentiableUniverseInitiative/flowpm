@@ -187,7 +187,7 @@ def drift(state, ai, ac, af, cosmology=Planck15, dtype=np.float32, name=None):
     state = tf.add(state, update)
     return state
 
-def Force(state, boxsize, cosmology=Planck15, pm_nc_factor=1, dtype=tf.float32):
+def force(state, boxsize, cosmology=Planck15, pm_nc_factor=1, dtype=tf.float32):
   """
   Estimate force on the particles given a state.
 
@@ -205,25 +205,27 @@ def Force(state, boxsize, cosmology=Planck15, pm_nc_factor=1, dtype=tf.float32):
   pm_nc_factor: int
     TODO: @modichirag please add doc
   """
-  rho = tf.zeros((ncf, ncf, ncf))
-  wts = tf.ones(nc**3)
-  nbar = nc**3/ncf**3
+  with tf.name_scope(name, "Force", [state]):
+        
+    rho = tf.zeros((batch_size, ncf, ncf, ncf))
+    wts = tf.ones(nc**3)
+    nbar = nc**3/ncf**3
 
-  rho = cic_paint(rho, tf.multiply(state[0], ncf/bs), wts)
-  rho = tf.multiply(rho, 1/nbar)  ###I am not sure why this is not needed here
-  delta_k = r2c3d(rho, norm=ncf**3)
-  fac = dtype(1.5 * config['cosmology'].Om0)
-  update = longrange(config['f_config'], tf.multiply(state[0], ncf/bs), delta_k, split=0, factor=fac)
+    rho = cic_paint(rho, tf.multiply(state[0], ncf/bs), wts)
+    rho = tf.multiply(rho, 1/nbar)  ###I am not sure why this is not needed here
+    delta_k = r2c3d(rho, norm=ncf**3)
+    fac = dtype(1.5 * config['cosmology'].Om0)
+    update = longrange(config['f_config'], tf.multiply(state[0], ncf/bs), delta_k, split=0, factor=fac)
 
-  update = tf.expand_dims(update, axis=0)
+    update = tf.expand_dims(update, axis=0)
 
-  indices = tf.constant([[2]])
-  shape = state.shape
-  update = tf.scatter_nd(indices, update, shape)
-  mask = tf.stack((tf.ones_like(state[0]), tf.ones_like(state[0]), tf.zeros_like(state[0])), axis=0)
-  state = tf.multiply(state, mask)
-  state = tf.add(state, update)
-  return state
+    indices = tf.constant([[2]])
+    shape = state.shape
+    update = tf.scatter_nd(indices, update, shape)
+    mask = tf.stack((tf.ones_like(state[0]), tf.ones_like(state[0]), tf.zeros_like(state[0])), axis=0)
+    state = tf.multiply(state, mask)
+    state = tf.add(state, update)
+    return state
 
 
 def leapfrog(stages):
