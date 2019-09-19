@@ -149,56 +149,6 @@ def c2r3d(cfield, norm=None, dtype=tf.float32, name=None):
     rfield = tf.multiply(tf.cast(tf.spectral.ifft3d(cfield), dtype), norm, name=name)
     return rfield
 
-
-def fftk(shape, boxsize, symmetric=True, finite=False, dtype=np.float64):
-    """ return k_vector given a shape (nc, nc, nc) and boxsize
-    """
-    k = []
-    for d in range(len(shape)):
-        kd = numpy.fft.fftfreq(shape[d])
-        kd *= 2 * numpy.pi / boxsize * shape[d]
-        kdshape = numpy.ones(len(shape), dtype='int')
-        if symmetric and d == len(shape) -1:
-            kd = kd[:shape[d]//2 + 1]
-        kdshape[d] = len(kd)
-        kd = kd.reshape(kdshape)
-
-        k.append(kd.astype(dtype))
-    del kd, kdshape
-    return k
-
-
-def laplace(config):
-    kvec = config['kvec']
-    kk = sum(ki**2 for ki in kvec)
-    mask = (kk == 0).nonzero()
-    kk[mask] = 1
-    wts = 1/kk
-    imask = (~(kk==0)).astype(int)
-    wts *= imask
-    return wts
-
-
-
-def gradient(config, dir):
-    kvec = config['kvec']
-    bs, nc = config['boxsize'], config['nc']
-    cellsize = bs/nc
-    w = kvec[dir] * cellsize
-    a = 1 / (6.0 * cellsize) * (8 * numpy.sin(w) - numpy.sin(2 * w))
-    wts = a*1j
-    return wts
-
-
-
-def kernellongrange(config, r_split):
-    if r_split != 0:
-        kk = sum(ki ** 2 for ki in config['kvec'])
-        return numpy.exp(-kk * r_split**2)
-    else:
-        return 1.
-
-
 def longrange(config, x, delta_k, split=0, factor=1):
     """ like long range, but x is a list of positions """
     # use the four point kernel to suppresse artificial growth of noise like terms
