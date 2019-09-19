@@ -1,4 +1,4 @@
-# flowpm [![Build Status](https://travis-ci.org/EiffL/flowpm.svg?branch=master)](https://travis-ci.org/EiffL/flowpm)
+# flowpm [![Build Status](https://travis-ci.org/modichirag/flowpm.svg?branch=master)](https://travis-ci.org/modichirag/flowpm)
 Particle Mesh Simulation in TensorFlow, based on [fastpm-python](https://github.com/rainwoodman/fastpm-python) simulations
 
 Minimal working example is in flowpm.py. The steps are as follows -
