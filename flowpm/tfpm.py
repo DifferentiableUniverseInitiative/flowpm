@@ -5,6 +5,7 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
+from astropy.cosmology import Planck15
 
 def cic_paint(mesh, part, weight=None, name=None):
   """
@@ -22,7 +23,7 @@ def cic_paint(mesh, part, weight=None, name=None):
   weight: tensor (batch_size, npart)
     List of weights  for each particle
   """
-  with tf.name_scope(name, "CICpaint", [mesh, part, weight]):
+  with tf.name_scope(name, "CiCPaint", [mesh, part, weight]):
     shape = tf.shape(mesh)
     batch_size, nc = shape[0], shape[1]
 
@@ -43,7 +44,7 @@ def cic_paint(mesh, part, weight=None, name=None):
 
     neighboor_coords = tf.cast(neighboor_coords, tf.int32)
     neighboor_coords = tf.mod(neighboor_coords , nc)
-    
+
     # Adding batch dimension to the neighboor coordinates
     batch_idx = tf.range(0, batch_size)
     batch_idx = tf.reshape(batch_idx, (batch_size, 1, 1, 1))
@@ -55,6 +56,47 @@ def cic_paint(mesh, part, weight=None, name=None):
                            [batch_size, nc, nc, nc])
     mesh = mesh + update
     return mesh
+
+def cic_readout(mesh, part, name=None):
+  """
+  Reads out particles from mesh.
+
+  Parameters:
+  -----------
+  mesh: tensor (batch_size, nc, nc, nc)
+    Input 3D mesh tensor
+
+  part: tensor (batch_size, npart, 3)
+    List of 3D particle coordinates, assumed to be in mesh units if
+    boxsize is None
+
+  Return:
+  -------
+  value: tensor (batch_size, npart)
+    Value of the field sampled at the particle locations
+  """
+  with tf.name_scope(name, "CiCReadout", [mesh, part]):
+    shape = tf.shape(mesh)
+    batch_size, nc = shape[0], shape[1]
+
+    # Extract the indices of all the mesh points affected by each particles
+    part = tf.expand_dims(part, 2)
+    floor = tf.floor(part)
+    connection = tf.expand_dims(tf.constant([[[0, 0, 0], [1., 0, 0],[0., 1, 0],
+                                              [0., 0, 1],[1., 1, 0],[1., 0, 1],
+                                              [0., 1, 1],[1., 1, 1]]]), 0)
+
+    neighboor_coords = tf.add(floor, connection)
+    kernel = 1. - tf.abs(part - neighboor_coords)
+    kernel = kernel[..., 0] * kernel[..., 1] * kernel[..., 2]
+
+    neighboor_coords = tf.cast(neighboor_coords, tf.int32)
+    neighboor_coords = tf.mod(neighboor_coords , nc)
+
+    meshvals = tf.gather_nd(mesh, neighboor_coords, batch_dims=1)
+    weightedvals = tf.multiply(meshvals, kernel)
+    value = tf.reduce_sum(weightedvals, axis=-1)
+    return value
 
 def genwhitenoise(nc, seed, type='complex'):
     white = tf.random_normal(shape=(nc, nc, nc), mean=0, stddev=nc**1.5, seed=seed)

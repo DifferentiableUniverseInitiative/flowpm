@@ -1,7 +1,7 @@
-# flowpm
-Particle Mesh Simulation in TensorFlow, based on [fastpm-python](https://github.com/rainwoodman/fastpm-python) simulations 
+# flowpm [![Build Status](https://travis-ci.org/EiffL/flowpm.svg?branch=master)](https://travis-ci.org/EiffL/flowpm)
+Particle Mesh Simulation in TensorFlow, based on [fastpm-python](https://github.com/rainwoodman/fastpm-python) simulations
 
-Minimal working example is in flowpm.py. The steps are as follows - 
+Minimal working example is in flowpm.py. The steps are as follows -
 - create a config object which has details of simulation, such as box size, number of mesh points, number of steps
 - define a graph to do PM. This function takes in the config object and is hence can be reused i.e. it can be used inside, as a part of a bigger graph
 - do sess.run() using the graph to evaluate the variables one is interested in.
