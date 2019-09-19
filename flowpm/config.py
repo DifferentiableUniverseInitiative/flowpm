@@ -1,7 +1,7 @@
 import numpy as np
 import numpy, os
 from scipy.interpolate import InterpolatedUnivariateSpline as iuspline
-from  astropy.cosmology import Planck15
+from astropy.cosmology import Planck15
 from background import MatterDominated, RadiationDominated
 from tfpmfuncs import fftk
 

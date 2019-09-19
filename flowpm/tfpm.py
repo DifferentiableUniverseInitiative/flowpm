@@ -5,9 +5,6 @@ import tensorflow as tf
 from tfpmfuncs import *
 from background import *
 
-
-
-
 def genwhitenoise(nc, seed, type='complex'):
     white = tf.random_normal(shape=(nc, nc, nc), mean=0, stddev=nc**1.5, seed=seed)
     if type == 'real': return white
@@ -15,15 +12,14 @@ def genwhitenoise(nc, seed, type='complex'):
     elif type == 'complex':
         whitec = r2c3d(white, norm=nc**3)
         return whitec
-    
-    
+
 def linfieldwhite(config, white, name='linfield'):
     '''generate a linear field with a given linear power spectrum'''
 
     bs, nc = config['boxsize'], config['nc']
     kmesh = sum(kk**2 for kk in config['kvec'])**0.5
     pkmesh = config['ipklin'](kmesh)
-    
+
     whitec = r2c3d(white, norm=nc**3)
     lineark = tf.multiply(whitec, (pkmesh/bs**3)**0.5)
     linear = c2r3d(lineark, norm=nc**3, name=name)
@@ -36,7 +32,7 @@ def linfield(config, seed=100, name='linfield'):
     bs, nc = config['boxsize'], config['nc']
     kmesh = sum(kk**2 for kk in config['kvec'])**0.5
     pkmesh = config['ipklin'](kmesh)
-    
+
     #white = tf.random_normal(shape=(nc, nc, nc), mean=0, stddev=nc**1.5, seed=seed)
     #whitec = tf.multiply(tf.spectral.fft3d(tf.cast(white, tf.complex64)), 1/nc**1.5)
     #whitec = r2c3d(white, norm=nc**3)
@@ -51,10 +47,10 @@ def lpt1(dlin_k, pos, config):
     """ Run first order LPT on linear density field, returns displacements of particles
         reading out at q. The result has the same dtype as q.
     """
-    bs, nc = config['boxsize'], config['nc']    
+    bs, nc = config['boxsize'], config['nc']
     #ones = tf.ones_like(dlin_k)
     lap = tf.cast(laplace(config), tf.complex64)
-    
+
     displacement = tf.zeros_like(pos)
     displacement = []
     for d in range(3):
@@ -65,15 +61,12 @@ def lpt1(dlin_k, pos, config):
 
     return tf.stack(displacement, axis=1)
 
-
-
-
 def lpt2source(dlin_k, config):
     """ Generate the second order LPT source term.  """
 
     bs, nc = config['boxsize'], config['nc']
     source = tf.zeros((nc, nc, nc))
-    
+
     D1 = [1, 2, 0]
     D2 = [2, 0, 1]
 
@@ -81,9 +74,9 @@ def lpt2source(dlin_k, config):
 
     # diagnoal terms
     lap = laplace(config)
-    
+
     for d in range(3):
-        grad = gradient(config, d) 
+        grad = gradient(config, d)
         kweight = grad * grad * lap
         phic = tf.multiply(kweight, dlin_k)
         phi_ii.append(c2r3d(phic, norm=nc**3))
@@ -91,7 +84,7 @@ def lpt2source(dlin_k, config):
 
     for d in range(3):
         source = tf.add(source, tf.multiply(phi_ii[D1[d]], phi_ii[D2[d]]))
-    
+
 #     return source
     # free memory
     phi_ii = []
@@ -112,13 +105,13 @@ def lptz0(lineark, config, a=1, order=2):
     '''one step 2 LPT displacement to z=0'''
     bs, nc = config['boxsize'], config['nc']
     pos = config['grid']
-    
+
     DX1 = 1 * lpt1(lineark, pos, config)
     if order == 2: DX2 = 1 * lpt1(lpt2source(lineark, config), pos, config)
     else: DX2 = 0
     return tf.add(DX1 , DX2)
-    
-    
+
+
 ###############################################################################################
 # NBODY
 
@@ -129,7 +122,7 @@ def lptinit(linear, config, a0=None, order=2, name=None, lineark=None):
 
     bs, nc = config['boxsize'], config['nc']
     Q = config['grid']
-    pos = Q 
+    pos = Q
     dtype = np.float32
     if a0 is None: a0 = config['stages'][0]
     a = a0
@@ -137,7 +130,7 @@ def lptinit(linear, config, a0=None, order=2, name=None, lineark=None):
     if linear is not None: lineark = r2c3d(linear, norm=nc**3)
     else: lineark = lineark
     pt = PerturbationGrowth(config['cosmology'], a=[a], a_normalize=1.0)
-    DX = tf.multiply(dtype(pt.D1(a)) , lpt1(lineark, pos, config)) 
+    DX = tf.multiply(dtype(pt.D1(a)) , lpt1(lineark, pos, config))
     P = tf.multiply(dtype(a ** 2 * pt.f1(a) * pt.E(a)) , DX)
     F = tf.multiply(dtype(a ** 2 * pt.E(a) * pt.gf(a) / pt.D1(a)) , DX)
     if order == 2:
@@ -150,7 +143,6 @@ def lptinit(linear, config, a0=None, order=2, name=None, lineark=None):
 
     X = tf.add(DX, Q)
     return tf.stack((X, P, F), axis=0, name=name)
-
 
 def Kick(state, ai, ac, af, config, dtype=np.float32):
     '''Kick the particles given the state'''
@@ -183,7 +175,7 @@ def Force2(state, ai, ac, af, config, dtype=np.float32):
     config2 = config['config2']
     bs, nc= config2['boxsize'], config2['nc']
     wts = tf.ones(state.shape[1])
-    
+
     rho = tf.zeros((nc, nc, nc))
     nbar = ncp**3/nc**3
 
@@ -194,7 +186,7 @@ def Force2(state, ai, ac, af, config, dtype=np.float32):
     print(delta_k.shape)
     fac = dtype(1.5 * config2['cosmology'].Om0)
     update = longrange(config2, tf.multiply(state[0], nc/bs), delta_k, split=0, factor=fac)
-    
+
     update = tf.expand_dims(update, axis=0)
     print(update.shape)
 
@@ -205,7 +197,7 @@ def Force2(state, ai, ac, af, config, dtype=np.float32):
     state = tf.multiply(state, mask)
     state = tf.add(state, update)
     return state
-    
+
 
 
 def Force(state, ai, ac, af, config, dtype=np.float32):
@@ -220,7 +212,7 @@ def Force(state, ai, ac, af, config, dtype=np.float32):
     rho = tf.multiply(rho, 1/nbar)  ###I am not sure why this is not needed here
     delta_k = r2c3d(rho, norm=ncf**3)
     fac = dtype(1.5 * config['cosmology'].Om0)
-    update = longrange(config['f_config'], tf.multiply(state[0], ncf/bs), delta_k, split=0, factor=fac)  
+    update = longrange(config['f_config'], tf.multiply(state[0], ncf/bs), delta_k, split=0, factor=fac)
 
     update = tf.expand_dims(update, axis=0)
 
@@ -275,5 +267,3 @@ def nbody(state, config, verbose=False, name=None, B=1):
     if name is not None:
         state = tf.identity(state, name=name)
     return state
-
-
