@@ -42,7 +42,7 @@ def cic_paint(mesh, part, weight=None, name=None):
     if weight is not None: kernel = tf.multiply(tf.expand_dims(weight, axis=-1) , kernel)
 
     neighboor_coords = tf.cast(neighboor_coords, tf.int32)
-    neighboor_coords = tf.mod(neighboor_coords , nc)
+    neighboor_coords = tf.math.mod(neighboor_coords , nc)
 
     # Adding batch dimension to the neighboor coordinates
     batch_idx = tf.range(0, batch_size)
@@ -90,7 +90,7 @@ def cic_readout(mesh, part, name=None):
     kernel = kernel[..., 0] * kernel[..., 1] * kernel[..., 2]
 
     neighboor_coords = tf.cast(neighboor_coords, tf.int32)
-    neighboor_coords = tf.mod(neighboor_coords , nc)
+    neighboor_coords = tf.math.mod(neighboor_coords , nc)
 
     meshvals = tf.gather_nd(mesh, neighboor_coords, batch_dims=1)
     weightedvals = tf.multiply(meshvals, kernel)
