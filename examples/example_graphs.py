@@ -5,14 +5,9 @@ import os, sys
 import tensorflow as tf
 import tensorflow_hub as hub
 
-#from background import *
-import tfpm 
+import tfpm
 import tfpmfuncs as tfpf
 from tfpmconfig import Config
-
-
-
-
 
 def graphpm(config, verbose=True, initlin=False):
     '''return graph to do pm simulation
@@ -70,7 +65,7 @@ def graphlintomodel(config, modpath, pad=False, ny=1):
 
         linmesh = tf.placeholder(tf.float32, (nc, nc, nc), name='linmesh')
         datamesh = tf.placeholder(tf.float32, (nc, nc, nc, ny), name='datamesh')
-        
+
         #PM
         linear = tf.Variable(0.)
         linear = tf.assign(linear, linmesh, validate_shape=False, name='linear')
@@ -91,13 +86,11 @@ def graphlintomodel(config, modpath, pad=False, ny=1):
         samples = tf.identity(samples, name='samples')
         loglik = module(dict(features=xx, labels=yy), as_dict=True)['loglikelihood']
         loglik = tf.identity(loglik, name='loglik')
-                
+
         tf.add_to_collection('inits', [linmesh, datamesh])
         tf.add_to_collection('reconpm', [linear, final, fnstate, samples, loglik])
 
     return g
-
-
 
 def genlintomodel(config, modpath, linmesh, datamesh, pad=False):
     '''do pm sim to generate final matter field'''
@@ -106,7 +99,7 @@ def genlintomodel(config, modpath, linmesh, datamesh, pad=False):
     ny = datamesh.shape[-1]
     g = graphlintomodel(config, modpath, pad=pad, ny=ny)
     print('\nGraph constructed\n')
-    
+
     with tf.Session(graph=g) as session:
         session.run(tf.global_variables_initializer())
         linmesh_t = g.get_tensor_by_name('linmesh:0')
@@ -117,6 +110,5 @@ def genlintomodel(config, modpath, linmesh, datamesh, pad=False):
         loglik_t = g.get_tensor_by_name('loglik:0')
         linear, final, data, loglik = session.run([linear_t, final_t, samples_t,loglik_t],
                                              {linmesh_t:linmesh, datamesh_t:datamesh})
-                         
-    return linear, final, data
 
+    return linear, final, data

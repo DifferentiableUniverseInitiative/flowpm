@@ -1,0 +1,35 @@
+language: python
+
+python:
+- '3.7'
+
+cache:
+  directories:
+  - "$HOME/.cache/pip"
+  - "$HOME/.conda"
+
+env:
+  global:
+  - NUMPY_VERSION=1.16
+  - PYTHON_VERSION=3.7
+  - OMP_NUM_THREADS=1
+
+before_install:
+    - if [ $TRAVIS_OS_NAME == "linux" ]; then wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh; fi
+    - if [ $TRAVIS_OS_NAME == "osx" ]; then wget http://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O miniconda.sh; fi
+    - chmod +x miniconda.sh
+    - "./miniconda.sh -b -p $HOME/miniconda"
+    - export PATH=$HOME/miniconda/bin:$PATH
+    - conda update --yes conda
+    - conda create --yes -n test python=$PYTHON_VERSION
+    - source activate test
+    - conda install --yes numpy=$NUMPY_VERSION
+    - conda install --yes -c bccp nbodykit runtests
+    - conda list
+
+install:
+- pip install gast==0.2.2
+- pip install .
+
+script:
+- pytest
