@@ -1,60 +1,9 @@
-""" Module storing a few tensorflow function to implement FastPM """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
+# Module storing a few tensorflow function to implement FastPM
 import numpy as np
+import numpy
 import tensorflow as tf
-
-def cic_paint(mesh, part, weight=None, name=None):
-  """
-  Paints particules on a 3D mesh.
-
-  Parameters:
-  -----------
-  mesh: tensor (batch_size, nc, nc, nc)
-    Input 3D mesh tensor
-
-  part: tensor (batch_size, npart, 3)
-    List of 3D particle coordinates, assumed to be in mesh units if
-    boxsize is None
-
-  weight: tensor (batch_size, npart)
-    List of weights  for each particle
-  """
-  with tf.name_scope(name, "CICpaint", [mesh, part, weight]):
-    shape = tf.shape(mesh)
-    batch_size, nc = shape[0], shape[1]
-
-    # Extract the indices of all the mesh points affected by each particles
-    part = tf.expand_dims(part, 2)
-    floor = tf.floor(part)
-    connection = tf.expand_dims(tf.constant([[[0, 0, 0], [1., 0, 0],[0., 1, 0],
-                                              [0., 0, 1],[1., 1, 0],[1., 0, 1],
-                                              [0., 1, 1],[1., 1, 1]]]), 0)
-
-    neighboor_coords = floor + connection
-    kernel = 1. - tf.abs(part - neighboor_coords)
-    # Replacing the reduce_prod op by manual multiplication
-    # TODO: figure out why reduce_prod was crashing the Hessian computation
-    kernel = kernel[..., 0] * kernel[..., 1] * kernel[..., 2]
-
-    if weight is not None: kernel = tf.multiply(tf.expand_dims(weight, axis=-1) , kernel)
-
-    neighboor_coords = tf.cast(neighboor_coords, tf.int32)
-    neighboor_coords = tf.mod(neighboor_coords , nc)
-    
-    # Adding batch dimension to the neighboor coordinates
-    batch_idx = tf.range(0, batch_size)
-    batch_idx = tf.reshape(batch_idx, (batch_size, 1, 1, 1))
-    b = tf.tile(batch_idx, [1] + list(neighboor_coords.get_shape()[1:-1]) + [1])
-    neighboor_coords = tf.concat([b, neighboor_coords], axis=-1)
-
-    update = tf.scatter_nd(tf.reshape(neighboor_coords, (-1, 8,4)),
-                           tf.reshape(kernel, (-1, 8)),
-                           [batch_size, nc, nc, nc])
-    mesh = mesh + update
-    return mesh
+from tfpmfuncs import *
+from background import *
 
 def genwhitenoise(nc, seed, type='complex'):
     white = tf.random_normal(shape=(nc, nc, nc), mean=0, stddev=nc**1.5, seed=seed)
@@ -76,7 +25,6 @@ def linfieldwhite(config, white, name='linfield'):
     linear = c2r3d(lineark, norm=nc**3, name=name)
     return linear
 
-
 def linfield(config, seed=100, name='linfield'):
     '''generate a linear field with a given linear power spectrum'''
 
@@ -91,8 +39,6 @@ def linfield(config, seed=100, name='linfield'):
     lineark = tf.multiply(whitec, (pkmesh/bs**3)**0.5)
     linear = c2r3d(lineark, norm=nc**3, name=name)
     return linear
-
-
 
 def lpt1(dlin_k, pos, config):
     """ Run first order LPT on linear density field, returns displacements of particles
@@ -132,7 +78,6 @@ def lpt2source(dlin_k, config):
         phic = tf.multiply(kweight, dlin_k)
         phi_ii.append(c2r3d(phic, norm=nc**3))
 
-
     for d in range(3):
         source = tf.add(source, tf.multiply(phi_ii[D1[d]], phi_ii[D2[d]]))
 
@@ -162,11 +107,8 @@ def lptz0(lineark, config, a=1, order=2):
     else: DX2 = 0
     return tf.add(DX1 , DX2)
 
-
 ###############################################################################################
 # NBODY
-
-
 def lptinit(linear, config, a0=None, order=2, name=None, lineark=None):
     """ Estimate the initial LPT displacement given an input linear (real) field """
     assert order in (1, 2)
@@ -249,46 +191,29 @@ def Force2(state, ai, ac, af, config, dtype=np.float32):
     state = tf.add(state, update)
     return state
 
+def Force(state, box_size, nc, cosmology, dtype=np.float32):
+    '''Estimate new force on the particles given a state'''
+    bs, nc = config['boxsize'], config['nc']
+    ncf = config['f_config']['nc']
+    rho = tf.zeros((ncf, ncf, ncf))
+    wts = tf.ones(nc**3)
+    nbar = nc**3/ncf**3
 
+    rho = cic_paint(rho, tf.multiply(state[0], ncf/bs), wts)
+    rho = tf.multiply(rho, 1/nbar)  ###I am not sure why this is not needed here
+    delta_k = r2c3d(rho, norm=ncf**3)
+    fac = dtype(1.5 * config['cosmology'].Om0)
+    update = longrange(config['f_config'], tf.multiply(state[0], ncf/bs), delta_k, split=0, factor=fac)
 
-def Force(state, box_size, cosmology=Planck15, pm_nc_factor=1, dtype=tf.float32):
-  """
-  Estimate force on the particles given a state.
+    update = tf.expand_dims(update, axis=0)
 
-  Parameters:
-  -----------
-  state: tensor
-    Input state tensor of shape (batch_size, nc, nc, nc)
-
-  box_size: float
-    Size of the simulation volume (Mpc/h) TODO: check units
-
-  cosmology: astropy.cosmology
-    Cosmology object
-
-  pm_nc_factor: int
-    TODO: @modichirag please add doc
-  """
-  rho = tf.zeros((ncf, ncf, ncf))
-  wts = tf.ones(nc**3)
-  nbar = nc**3/ncf**3
-
-  rho = cic_paint(rho, tf.multiply(state[0], ncf/bs), wts)
-  rho = tf.multiply(rho, 1/nbar)  ###I am not sure why this is not needed here
-  delta_k = r2c3d(rho, norm=ncf**3)
-  fac = dtype(1.5 * config['cosmology'].Om0)
-  update = longrange(config['f_config'], tf.multiply(state[0], ncf/bs), delta_k, split=0, factor=fac)
-
-  update = tf.expand_dims(update, axis=0)
-
-  indices = tf.constant([[2]])
-  shape = state.shape
-  update = tf.scatter_nd(indices, update, shape)
-  mask = tf.stack((tf.ones_like(state[0]), tf.ones_like(state[0]), tf.zeros_like(state[0])), axis=0)
-  state = tf.multiply(state, mask)
-  state = tf.add(state, update)
-  return state
-
+    indices = tf.constant([[2]])
+    shape = state.shape
+    update = tf.scatter_nd(indices, update, shape)
+    mask = tf.stack((tf.ones_like(state[0]), tf.ones_like(state[0]), tf.zeros_like(state[0])), axis=0)
+    state = tf.multiply(state, mask)
+    state = tf.add(state, update)
+    return state
 
 def leapfrog(stages):
     """ Generate a leap frog stepping scheme.
@@ -302,28 +227,26 @@ def leapfrog(stages):
 
     ai = stages[0]
     # first force calculation for jump starting
-    yield 'F', ai, ai, ai
+    yield Force, ai, ai, ai
     x, p, f = ai, ai, ai
 
     for i in range(len(stages) - 1):
         a0 = stages[i]
         a1 = stages[i + 1]
         ah = (a0 * a1) ** 0.5
-        yield 'K', p, f, ah
+        yield Kick, p, f, ah
         p = ah
-        yield 'D', x, p, a1
+        yield Drift, x, p, a1
         x = a1
-        yield 'F', f, x, a1
+        yield Force, f, x, a1
         f = a1
-        yield 'K', p, f, a1
+        yield Kick, p, f, a1
         p = a1
 
 
-def nbody(state, config, verbose=False, name=None, B=1):
+def nbody(state, config, verbose=False, name=None):
     '''Do the nbody evolution'''
     stepping = leapfrog(config['stages'])
-    #if B==1: actions = {'F':Force, 'K':Kick, 'D':Drift}
-    #elif B==2: actions = {'F':Force2, 'K':Kick, 'D':Drift}
     actions = {'F':Force, 'K':Kick, 'D':Drift}
 
     for action, ai, ac, af in stepping:
