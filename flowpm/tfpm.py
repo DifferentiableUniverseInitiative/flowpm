@@ -192,7 +192,8 @@ def apply_longrange(x, delta_k, boxsize, split=0, factor=1, kvec=None, name=None
     f = tf.multiply(f, factor)
     return f
 
-def kick(state, ai, ac, af, cosmology=Planck15, dtype=np.float32, name=None):
+def kick(state, ai, ac, af, cosmology=Planck15, dtype=np.float32, name=None,
+         **kwargs):
   """Kick the particles given the state
 
   Parameters
@@ -212,7 +213,8 @@ def kick(state, ai, ac, af, cosmology=Planck15, dtype=np.float32, name=None):
     state = tf.add(state, update)
     return state
 
-def drift(state, ai, ac, af, cosmology=Planck15, dtype=np.float32, name=None):
+def drift(state, ai, ac, af, cosmology=Planck15, dtype=np.float32,
+          name=None, **kwargs):
   """Drift the particles given the state
 
   Parameters
@@ -233,7 +235,7 @@ def drift(state, ai, ac, af, cosmology=Planck15, dtype=np.float32, name=None):
     return state
 
 def force(state, nc, boxsize, cosmology=Planck15, pm_nc_factor=1, kvec=None,
-          dtype=np.float32, name=None):
+          dtype=np.float32, name=None, **kwargs):
   """
   Estimate force on the particles given a state.
 
@@ -277,45 +279,68 @@ def force(state, nc, boxsize, cosmology=Planck15, pm_nc_factor=1, kvec=None,
     return state
 
 
-def leapfrog(stages):
-    """ Generate a leap frog stepping scheme.
-        Parameters
-        ----------
-        stages : array_like
-            Time (a) where force computing stage is requested.
-    """
-    if len(stages) == 0:
-        return
+def _leapfrog(stages):
+  """ Generate a leap frog stepping scheme.
 
-    ai = stages[0]
-    # first force calculation for jump starting
-    yield 'F', ai, ai, ai
-    x, p, f = ai, ai, ai
+      Parameters
+      ----------
+      stages : array_like
+          Time (a) where force computing stage is requested.
+  """
+  if len(stages) == 0:
+      return
 
-    for i in range(len(stages) - 1):
-        a0 = stages[i]
-        a1 = stages[i + 1]
-        ah = (a0 * a1) ** 0.5
-        yield 'K', p, f, ah
-        p = ah
-        yield 'D', x, p, a1
-        x = a1
-        yield 'F', f, x, a1
-        f = a1
-        yield 'K', p, f, a1
-        p = a1
+  ai = stages[0]
+  # first force calculation for jump starting
+  yield 'F', ai, ai, ai
+  x, p, f = ai, ai, ai
 
+  for i in range(len(stages) - 1):
+      a0 = stages[i]
+      a1 = stages[i + 1]
+      ah = (a0 * a1) ** 0.5
+      yield 'K', p, f, ah
+      p = ah
+      yield 'D', x, p, a1
+      x = a1
+      yield 'F', f, x, a1
+      f = a1
+      yield 'K', p, f, a1
+      p = a1
 
-def nbody(state, config, verbose=False, name=None, B=1):
-    '''Do the nbody evolution'''
-    stepping = leapfrog(config['stages'])
-    #if B==1: actions = {'F':Force, 'K':Kick, 'D':Drift}
-    #elif B==2: actions = {'F':Force2, 'K':Kick, 'D':Drift}
-    actions = {'F':Force, 'K':Kick, 'D':Drift}
+def nbody(state, stages, nc, boxsize,
+          cosmology=Planck15, pm_nc_factor=1, name=None):
+  """
+  Integrate the evolution of the state across the givent stages
+
+  Parameters:
+  -----------
+  state: tensor (3, batch_size, npart, 3)
+    Input state
+
+  stages: array
+    Array of scale factors
+
+  nc: int
+    Number of cells
+
+  pm_nc_factor: int
+    Upsampling factor for computing
+
+  Returns
+  -------
+  state: tensor (3, batch_size, npart, 3)
+    Integrated state to final condition
+  """
+  with tf.name_scope(name, "NBody", [state]):
+    shape = state.get_shape()
+
+    # Generates the sequence of steps
+    stepping = _leapfrog(stages)
+    actions = {'F': lambda state, ai, ac, af, **kwargs:  force(state, nc, boxsize, **kwargs),
+               'K': kick, 'D': drift}
 
     for action, ai, ac, af in stepping:
-        if verbose: print(action, ai, ac, af)
-        state = actions[action](state, ai, ac, af, config)
-    if name is not None:
-        state = tf.identity(state, name=name)
+      state = actions[action](state, ai, ac, af, pm_nc_factor=pm_nc_factor, cosmology=cosmology)
+
     return state
