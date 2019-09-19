@@ -8,7 +8,7 @@ import tensorflow as tf
 from astropy.cosmology import Planck15
 
 from .utils import white_noise, c2r3d
-from .kernels import fftk
+from .kernels import fftk, laplace_kernel, gradient_kernel
 
 def linear_field(nc, boxsize, pk,
                  batch_size=1,
@@ -47,23 +47,32 @@ def linear_field(nc, boxsize, pk,
     linear = c2r3d(lineark, norm=nc**3, name=name, dtype=dtype)
     return linear
 
-def lpt1(dlin_k, pos, config):
-    """ Run first order LPT on linear density field, returns displacements of particles
-        reading out at q. The result has the same dtype as q.
-    """
-    bs, nc = config['boxsize'], config['nc']
-    #ones = tf.ones_like(dlin_k)
-    lap = tf.cast(laplace(config), tf.complex64)
+def lpt1(dlin_k, pos, kvec, boxsize):
+  """ Run first order LPT on linear density field, returns displacements of particles
+      reading out at q. The result has the same dtype as q.
+
+  Parameters:
+  -----------
+  dlin_k: TODO: @modichirag add documentation
+
+  Returns:
+  --------
+
+  """
+  with tf.name_scope(name, "LPT1", [dlin_k, pos]):
+    shape = tf.shape(dlin_k)
+    batch_size, nc = shape[0], shape[1]
+
+    lap = tf.cast(laplace_kernel(kvec), tf.complex64)
 
     displacement = tf.zeros_like(pos)
     displacement = []
     for d in range(3):
-        kweight = gradient(config, d) * lap
-        dispc = tf.multiply(kweight, dlin_k)
-        disp = c2r3d(dispc, norm=nc**3)
-        displacement.append(cic_readout(disp, pos, boxsize=bs))
-
-    return tf.stack(displacement, axis=1)
+      kweight = gradient_kernel(kvec, d, boxsize) * lap
+      dispc = tf.multiply(kweight, dlin_k)
+      disp = c2r3d(dispc, norm=nc**3)
+      displacement.append(cic_readout(disp, pos))
+    return tf.stack(displacement, axis=2)
 
 def lpt2source(dlin_k, config):
     """ Generate the second order LPT source term.  """
