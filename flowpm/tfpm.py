@@ -17,6 +17,19 @@ def genwhitenoise(nc, seed, type='complex'):
         return whitec
     
     
+def linfieldwhite(config, white, name='linfield'):
+    '''generate a linear field with a given linear power spectrum'''
+
+    bs, nc = config['boxsize'], config['nc']
+    kmesh = sum(kk**2 for kk in config['kvec'])**0.5
+    pkmesh = config['ipklin'](kmesh)
+    
+    whitec = r2c3d(white, norm=nc**3)
+    lineark = tf.multiply(whitec, (pkmesh/bs**3)**0.5)
+    linear = c2r3d(lineark, norm=nc**3, name=name)
+    return linear
+
+
 def linfield(config, seed=100, name='linfield'):
     '''generate a linear field with a given linear power spectrum'''
 
@@ -40,7 +53,7 @@ def lpt1(dlin_k, pos, config):
     """
     bs, nc = config['boxsize'], config['nc']    
     #ones = tf.ones_like(dlin_k)
-    lap = laplace(config)
+    lap = tf.cast(laplace(config), tf.complex64)
     
     displacement = tf.zeros_like(pos)
     displacement = []
@@ -110,7 +123,7 @@ def lptz0(lineark, config, a=1, order=2):
 # NBODY
 
 
-def lptinit(linear, config, a0=None, order=2, name=None):
+def lptinit(linear, config, a0=None, order=2, name=None, lineark=None):
     """ Estimate the initial LPT displacement given an input linear (real) field """
     assert order in (1, 2)
 
@@ -121,7 +134,8 @@ def lptinit(linear, config, a0=None, order=2, name=None):
     if a0 is None: a0 = config['stages'][0]
     a = a0
 
-    lineark = r2c3d(linear, norm=nc**3)
+    if linear is not None: lineark = r2c3d(linear, norm=nc**3)
+    else: lineark = lineark
     pt = PerturbationGrowth(config['cosmology'], a=[a], a_normalize=1.0)
     DX = tf.multiply(dtype(pt.D1(a)) , lpt1(lineark, pos, config)) 
     P = tf.multiply(dtype(a ** 2 * pt.f1(a) * pt.E(a)) , DX)
