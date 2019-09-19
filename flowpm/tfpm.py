@@ -98,6 +98,7 @@ def cic_readout(mesh, part, name=None):
     value = tf.reduce_sum(weightedvals, axis=-1)
     return value
 
+
 def genwhitenoise(nc, seed, type='complex'):
     white = tf.random_normal(shape=(nc, nc, nc), mean=0, stddev=nc**1.5, seed=seed)
     if type == 'real': return white
@@ -133,8 +134,6 @@ def linfield(config, seed=100, name='linfield'):
     lineark = tf.multiply(whitec, (pkmesh/bs**3)**0.5)
     linear = c2r3d(lineark, norm=nc**3, name=name)
     return linear
-
-
 
 def lpt1(dlin_k, pos, config):
     """ Run first order LPT on linear density field, returns displacements of particles
