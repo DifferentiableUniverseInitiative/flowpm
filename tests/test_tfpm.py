@@ -25,7 +25,6 @@ def test_linear_field_shape():
 
   assert tfread.shape == (5, 16, 16, 16)
 
-
 def test_lpt_init():
   bs = 50
   nc = 16
