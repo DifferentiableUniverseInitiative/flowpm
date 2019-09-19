@@ -1,8 +1,4 @@
 language: python
-addons:
-  apt:
-    packages:
-    - cython
 
 python:
 - '3.6'
@@ -12,10 +8,3 @@ install:
 - pip install .
 script:
 - pytest
-deploy:
-  provider: pypi
-  user: __token__
-  password:
-    secure: vuAzLPr/6Nxp4dYH4M4DdBXbwEPlmHMIRPoy2hZhv7f3DWiKwG4xAS+yO34xiJwQuoYdGnDsUxY/pGBQriRsqdKarWBQgPhrRdYXqEFLslWxJXY6K77oCwFhVlqqKCn17ezWDhP2YcR4wQkx+EquWPv3uob9OmEBkiyO/8CWMKsRQ8v1916AFwzNaYGu6j6vfYUTr+3BWdT20py1jcBYNohfz79uOR4vMqScQ+pt9BYj0SVRTeCGby447Y/IHrSz5+lVEYR5JZiDlUlp3L3n4hAGGZKV5rZPF8opkANjR+JZ89n6TWUZFl/s6jLbId/SWsPRqhzGZSxS01t/Y+FwOsInFuvAJm8XdQSKFr378zwK4SIZ4k9+jrLruI8Ug1DopAFifCgJFt+72IxfHta8fdiiDJiXqsNAGuNcpXSIy4UPNdxrBZ38mjEcxAQYZ2AFChDPLUzUV6SljVqB55pCmcutZDNK/i19CzSuqKMp3e9ayRBtIsvuf6B3pZh/iYJg2ISjwJ8eCSf8No6YiADcJv3cvgx7tOw6Q+P+Yh91cpkEk01BK4ZUiRIJtKHCCMd2xOivp5xV7wUEV0bDmf209q1SGcpnFRR0H001WNjm+kJj4pJe2usEjO/SNkidG/SVkr664zWK+fvlcGeYaqaSj1Mpf/GAgHFfoxikOm3prAg=
-  on:
-    tags: true
