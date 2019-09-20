@@ -7,13 +7,17 @@ import numpy as np
 import tensorflow as tf
 from astropy.cosmology import Planck15
 import fastpm
-PerturbationGrowth = lambda cosmo, *args, **kwargs: fastpm.background.MatterDominated(Omega0_lambda = cosmo.Ode0,
-                                                                                      Omega0_m = cosmo.Om0,
-                                                                                      Omega0_k = cosmo.Ok0,
-                                                                                      *args, **kwargs)
 
 from .utils import white_noise, c2r3d, r2c3d, cic_paint, cic_readout
 from .kernels import fftk, laplace_kernel, gradient_kernel, longrange_kernel
+from .background import MatterDominated
+
+__all__ = ['linear_field', 'lpt_init', 'nbody']
+
+PerturbationGrowth = lambda cosmo, *args, **kwargs: MatterDominated(Omega0_lambda = cosmo.Ode0,
+                                                                    Omega0_m = cosmo.Om0,
+                                                                    Omega0_k = cosmo.Ok0,
+                                                                    *args, **kwargs)
 
 def linear_field(nc, boxsize, pk, batch_size=1,
                  kvec=None, seed=None, name=None, dtype=tf.float32):
