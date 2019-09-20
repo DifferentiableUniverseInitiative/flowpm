@@ -11,5 +11,5 @@ setup(name='flowpm',
       install_requires=['astropy', 'scipy', 'tensorflow'],
       tests_require=['fastpm'],
       extras_require={
-        'testing':  ["fastpm>=1.2"],
+        'testing':  ["fastpm"],
       })
