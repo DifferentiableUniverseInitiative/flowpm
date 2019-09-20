@@ -40,7 +40,7 @@ def laplace_kernel(kvec):
   kk = sum(ki**2 for ki in kvec)
   mask = (kk == 0).nonzero()
   kk[mask] = 1
-  wts = 1/kk
+  wts = 1./kk
   imask = (~(kk==0)).astype(int)
   wts *= imask
   return wts
@@ -63,7 +63,11 @@ def gradient_kernel(kvec, direction, order=0):
     Complex kernel
   """
   if order == 0:
-    return 1j * kvec[direction]
+    mask = np.ones_like(kvec[direction])
+    mask = mask.squeeze()
+    mask[len(mask) // 2] = 0 # Set nyquist to 0 to ensure real field
+    mask = mask.reshape(kvec[direction].shape)
+    return 1j * kvec[direction] * mask
   else:
     nc = len(kvec[0])
     w = kvec[direction]

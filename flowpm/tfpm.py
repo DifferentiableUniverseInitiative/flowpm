@@ -101,11 +101,11 @@ def lpt2_source(dlin_k, kvec=None, name=None):
 
     phi_ii = []
     # diagnoal terms
-    lap = laplace_kernel(kvec)
+    lap = tf.cast(laplace_kernel(kvec), tf.complex64)
 
     for d in range(3):
         grad = gradient_kernel(kvec, d)
-        kweight = grad * grad * lap
+        kweight = lap * grad * grad
         phic = tf.multiply(dlin_k, kweight)
         phi_ii.append(c2r3d(phic, norm=nc**3))
 
@@ -114,11 +114,12 @@ def lpt2_source(dlin_k, kvec=None, name=None):
 
     # free memory
     phi_ii = []
+
     # off-diag terms
     for d in range(3):
         gradi = gradient_kernel(kvec, D1[d])
         gradj = gradient_kernel(kvec, D2[d])
-        kweight = gradi * gradj * lap
+        kweight = lap * gradi * gradj
         phic = tf.multiply(dlin_k, kweight)
         phi = c2r3d(phic, norm=nc**3)
         source = tf.subtract(source, tf.multiply(phi, phi))
@@ -176,7 +177,7 @@ def apply_longrange(x, delta_k, split=0, factor=1, kvec=None, name=None):
 
     ndim = 3
     norm = nc**3
-    lap = laplace_kernel(kvec)
+    lap = tf.cast(laplace_kernel(kvec), tf.complex64)
     fknlrange = longrange_kernel(kvec, split)
     kweight = lap * fknlrange
     pot_k = tf.multiply(delta_k, kweight)

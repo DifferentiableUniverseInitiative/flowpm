@@ -3,11 +3,11 @@ import numpy as np
 from numpy.testing import assert_allclose
 from scipy.interpolate import InterpolatedUnivariateSpline as iuspline
 
-
 from nbodykit.cosmology import Cosmology, EHPower, Planck15
 from pmesh.pm import ParticleMesh
 from fastpm.core import Solver as Solver
 import fastpm.force.lpt as fpmops
+from fastpm.core import leapfrog
 
 import flowpm.tfpm as tfpm
 import flowpm.utils as pmutils
@@ -32,7 +32,9 @@ def test_linear_field_shape():
   assert tfread.shape == (5, 16, 16, 16)
 
 def test_lpt_init():
-
+  """
+  Checking lpt init
+  """
   a0 = 0.1
 
   pm = ParticleMesh(BoxSize=bs, Nmesh = [nc, nc, nc], dtype='f4')
@@ -71,3 +73,49 @@ def test_lpt1():
     tfread = sess.run(state)
 
   assert_allclose(lpt, tfread[0]*bs/nc, atol=1e-5)
+
+def test_lpt2():
+  """ Checking lpt2_source, this also checks the laplace and gradient kernels
+  """
+  pm = ParticleMesh(BoxSize=bs, Nmesh = [nc, nc, nc], dtype='f4')
+  grid = pm.generate_uniform_particle_grid(shift=0).astype(np.float32)
+
+  whitec = pm.generate_whitenoise(100, mode='complex', unitary=False)
+  lineark = whitec.apply(lambda k, v:Planck15.get_pklin(sum(ki ** 2 for ki in k)**0.5, 0) ** 0.5 * v / v.BoxSize.prod() ** 0.5)
+
+  # Compute lpt1 from fastpm with matching kernel order
+  source = fpmops.lpt2source(lineark).c2r()
+
+  # Same thing from tensorflow
+  with tf.Session() as sess:
+    tfsource = tfpm.lpt2_source(pmutils.r2c3d(tf.expand_dims(tf.constant(lineark.c2r()), axis=0)))
+    tfread = sess.run(pmutils.c2r3d(tfsource))
+
+  assert_allclose(source, tfread[0], atol=1e-5)
+
+def test_nody():
+  """ Checking end to end nbody
+  """
+  a0 = 0.1
+
+  pm = ParticleMesh(BoxSize=bs, Nmesh = [nc, nc, nc], dtype='f4')
+  grid = pm.generate_uniform_particle_grid(shift=0).astype(np.float32)
+  solver = Solver(pm, Planck15, B=1)
+  stages = np.linspace(0.1, 1.0, 10, endpoint=True)
+
+  # Generate initial state with fastpm
+  whitec = pm.generate_whitenoise(100, mode='complex', unitary=False)
+  lineark = whitec.apply(lambda k, v:Planck15.get_pklin(sum(ki ** 2 for ki in k)**0.5, 0) ** 0.5 * v / v.BoxSize.prod() ** 0.5)
+  statelpt = solver.lpt(lineark, grid, a0, order=1)
+  finalstate = solver.nbody(statelpt, leapfrog(stages))
+  final_cube = pm.paint(finalstate.X)
+
+  # Same thing with flowpm
+  with tf.Session() as sess:
+    tlinear = tf.expand_dims(tf.constant(lineark.c2r()), 0)
+    state = tfpm.lpt_init(tlinear, a0, order=1)
+    state = tfpm.nbody(state, stages, nc)
+    field = pmutils.cic_paint(tf.zeros_like(tlinear), state[0])
+    tfread = sess.run(field)
+
+  assert_allclose(final_cube, tfread[0], atol=1.2)
