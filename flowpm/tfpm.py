@@ -6,7 +6,6 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 from astropy.cosmology import Planck15
-import fastpm
 
 from .utils import white_noise, c2r3d, r2c3d, cic_paint, cic_readout
 from .kernels import fftk, laplace_kernel, gradient_kernel, longrange_kernel
