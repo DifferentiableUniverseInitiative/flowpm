@@ -40,8 +40,8 @@ def linear_field(nc, boxsize, pk, batch_size=1,
   """
   with tf.name_scope(name, "LinearField"):
     if kvec is None:
-      kvec = fftk((nc, nc, nc), boxsize, symmetric=False)
-    kmesh = sum(kk**2 for kk in kvec)**0.5
+      kvec = fftk((nc, nc, nc), symmetric=False)
+    kmesh = sum((kk / boxsize * nc)**2 for kk in kvec)**0.5
     pkmesh = pk(kmesh)
 
     whitec = white_noise(nc, batch_size=batch_size, seed=seed, type='complex')
@@ -49,7 +49,7 @@ def linear_field(nc, boxsize, pk, batch_size=1,
     linear = c2r3d(lineark, norm=nc**3, name=name, dtype=dtype)
     return linear
 
-def lpt1(dlin_k, pos, boxsize, kvec=None, name=None):
+def lpt1(dlin_k, pos, kvec=None, name=None):
   """ Run first order LPT on linear density field, returns displacements of particles
       reading out at q. The result has the same dtype as q.
 
@@ -66,19 +66,19 @@ def lpt1(dlin_k, pos, boxsize, kvec=None, name=None):
     shape = dlin_k.get_shape()
     batch_size, nc = shape[0], shape[1].value
     if kvec is None:
-      kvec = fftk((nc, nc, nc), boxsize, symmetric=False)
+      kvec = fftk((nc, nc, nc), symmetric=False)
 
     lap = tf.cast(laplace_kernel(kvec), tf.complex64)
 
     displacement = []
     for d in range(3):
-      kweight = gradient_kernel(kvec, d, boxsize) * lap
+      kweight = gradient_kernel(kvec, d) * lap
       dispc = tf.multiply(dlin_k, kweight)
       disp = c2r3d(dispc, norm=nc**3)
       displacement.append(cic_readout(disp, pos))
-    return tf.stack(displacement, axis=2) * nc/boxsize # Return displacement in units of 
+    return tf.stack(displacement, axis=2)
 
-def lpt2_source(dlin_k, boxsize, kvec=None, name=None):
+def lpt2_source(dlin_k, kvec=None, name=None):
   """ Generate the second order LPT source term.
 
   Parameters:
@@ -94,7 +94,7 @@ def lpt2_source(dlin_k, boxsize, kvec=None, name=None):
     shape = dlin_k.get_shape()
     batch_size, nc = shape[0], shape[1].value
     if kvec is None:
-      kvec = fftk((nc, nc, nc), boxsize, symmetric=False)
+      kvec = fftk((nc, nc, nc), symmetric=False)
     source = tf.zeros(tf.shape(dlin_k))
     D1 = [1, 2, 0]
     D2 = [2, 0, 1]
@@ -104,7 +104,7 @@ def lpt2_source(dlin_k, boxsize, kvec=None, name=None):
     lap = laplace_kernel(kvec)
 
     for d in range(3):
-        grad = gradient_kernel(kvec, d, boxsize)
+        grad = gradient_kernel(kvec, d)
         kweight = grad * grad * lap
         phic = tf.multiply(dlin_k, kweight)
         phi_ii.append(c2r3d(phic, norm=nc**3))
@@ -116,8 +116,8 @@ def lpt2_source(dlin_k, boxsize, kvec=None, name=None):
     phi_ii = []
     # off-diag terms
     for d in range(3):
-        gradi = gradient_kernel(kvec, D1[d], boxsize)
-        gradj = gradient_kernel(kvec, D2[d], boxsize)
+        gradi = gradient_kernel(kvec, D1[d])
+        gradj = gradient_kernel(kvec, D2[d])
         kweight = gradi * gradj * lap
         phic = tf.multiply(dlin_k, kweight)
         phi = c2r3d(phic, norm=nc**3)
@@ -126,7 +126,7 @@ def lpt2_source(dlin_k, boxsize, kvec=None, name=None):
     source = tf.multiply(source, 3.0/7.)
     return r2c3d(source, norm=nc**3)
 
-def lpt_init(linear, boxsize, a0, order=2, cosmology=Planck15, kvec=None, name=None):
+def lpt_init(linear, a0, order=2, cosmology=Planck15, kvec=None, name=None):
   """ Estimate the initial LPT displacement given an input linear (real) field
 
   Parameters:
@@ -148,11 +148,11 @@ def lpt_init(linear, boxsize, a0, order=2, cosmology=Planck15, kvec=None, name=N
     lineark = r2c3d(linear, norm=nc**3)
 
     pt = PerturbationGrowth(cosmology, a=[a], a_normalize=1.0)
-    DX = tf.multiply(dtype(pt.D1(a)) , lpt1(lineark, pos, boxsize))
+    DX = tf.multiply(dtype(pt.D1(a)) , lpt1(lineark, pos))
     P = tf.multiply(dtype(a ** 2 * pt.f1(a) * pt.E(a)) , DX)
     F = tf.multiply(dtype(a ** 2 * pt.E(a) * pt.gf(a) / pt.D1(a)) , DX)
     if order == 2:
-      DX2 = tf.multiply(dtype(pt.D2(a)) , lpt1(lpt2_source(lineark, boxsize), pos, boxsize))
+      DX2 = tf.multiply(dtype(pt.D2(a)) , lpt1(lpt2_source(lineark), pos))
       P2 = tf.multiply(dtype(a ** 2 * pt.f2(a) * pt.E(a)) , DX2)
       F2 = tf.multiply(dtype(a ** 2 * pt.E(a) * pt.gf2(a) / pt.D2(a)) , DX2)
       DX = tf.add(DX, DX2)
@@ -162,7 +162,7 @@ def lpt_init(linear, boxsize, a0, order=2, cosmology=Planck15, kvec=None, name=N
     X = tf.add(DX, Q)
     return tf.stack((X, P, F), axis=0)
 
-def apply_longrange(x, delta_k, boxsize, split=0, factor=1, kvec=None, name=None):
+def apply_longrange(x, delta_k, split=0, factor=1, kvec=None, name=None):
   """ like long range, but x is a list of positions
   TODO: Better documentation, also better name?
   """
@@ -172,7 +172,7 @@ def apply_longrange(x, delta_k, boxsize, split=0, factor=1, kvec=None, name=None
     batch_size, nc = shape[1], shape[2].value
 
     if kvec is None:
-      kvec = fftk((nc, nc, nc), boxsize, symmetric=False)
+      kvec = fftk((nc, nc, nc), symmetric=False)
 
     ndim = 3
     norm = nc**3
@@ -183,7 +183,7 @@ def apply_longrange(x, delta_k, boxsize, split=0, factor=1, kvec=None, name=None
 
     f = []
     for d in range(ndim):
-      force_dc = tf.multiply(pot_k, gradient_kernel(kvec, d, boxsize))
+      force_dc = tf.multiply(pot_k, gradient_kernel(kvec, d))
       forced = c2r3d(force_dc, norm=norm)
       force = cic_readout(forced, x)
       f.append(force)
@@ -234,7 +234,7 @@ def drift(state, ai, ac, af, cosmology=Planck15, dtype=np.float32,
     state = tf.add(state, update)
     return state
 
-def force(state, nc, boxsize, cosmology=Planck15, pm_nc_factor=1, kvec=None,
+def force(state, nc, cosmology=Planck15, pm_nc_factor=1, kvec=None,
           dtype=np.float32, name=None, **kwargs):
   """
   Estimate force on the particles given a state.
@@ -262,11 +262,11 @@ def force(state, nc, boxsize, cosmology=Planck15, pm_nc_factor=1, kvec=None,
     wts = tf.ones((batch_size, nc**3))
     nbar = nc**3/ncf**3
 
-    rho = cic_paint(rho, tf.multiply(state[0], ncf/boxsize), wts)
+    rho = cic_paint(rho, tf.multiply(state[0], pm_nc_factor), wts)
     rho = tf.multiply(rho, 1./nbar)  ###I am not sure why this is not needed here
     delta_k = r2c3d(rho, norm=ncf**3)
     fac = dtype(1.5 * cosmology.Om0)
-    update = apply_longrange(tf.multiply(state[0], ncf/boxsize), delta_k, boxsize, split=0, factor=fac)
+    update = apply_longrange(tf.multiply(state[0], pm_nc_factor), delta_k, split=0, factor=fac)
 
     update = tf.expand_dims(update, axis=0)
 
@@ -308,8 +308,7 @@ def _leapfrog(stages):
       yield 'K', p, f, a1
       p = a1
 
-def nbody(state, stages, nc, boxsize,
-          cosmology=Planck15, pm_nc_factor=1, name=None):
+def nbody(state, stages, nc, cosmology=Planck15, pm_nc_factor=1, name=None):
   """
   Integrate the evolution of the state across the givent stages
 
@@ -337,7 +336,7 @@ def nbody(state, stages, nc, boxsize,
 
     # Generates the sequence of steps
     stepping = _leapfrog(stages)
-    actions = {'F': lambda state, ai, ac, af, **kwargs:  force(state, nc, boxsize, **kwargs),
+    actions = {'F': lambda state, ai, ac, af, **kwargs:  force(state, nc, **kwargs),
                'K': kick, 'D': drift}
 
     for action, ai, ac, af in stepping:

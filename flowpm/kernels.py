@@ -6,13 +6,13 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
-def fftk(shape, boxsize, symmetric=True, finite=False, dtype=np.float64):
+def fftk(shape, symmetric=True, finite=False, dtype=np.float64):
   """ Return k_vector given a shape (nc, nc, nc) and box_size
   """
   k = []
   for d in range(len(shape)):
     kd = np.fft.fftfreq(shape[d])
-    kd *= 2 * np.pi / boxsize * shape[d]
+    kd *= 2 * np.pi
     kdshape = np.ones(len(shape), dtype='int')
     if symmetric and d == len(shape) -1:
         kd = kd[:shape[d]//2 + 1]
@@ -45,7 +45,7 @@ def laplace_kernel(kvec):
   wts *= imask
   return wts
 
-def gradient_kernel(kvec, direction, boxsize, order=0):
+def gradient_kernel(kvec, direction, order=0):
   """
   Computes the gradient kernel in the requested direction
 
@@ -57,9 +57,6 @@ def gradient_kernel(kvec, direction, boxsize, order=0):
   direction: int
     Index of the direction in which to take the gradient
 
-  boxsize: float
-    Size of a cell in the 3D mesh, in Mpc/h TODO; confirm unit
-
   Returns:
   --------
   wts: array
@@ -69,9 +66,8 @@ def gradient_kernel(kvec, direction, boxsize, order=0):
     return 1j * kvec[direction]
   else:
     nc = len(kvec[0])
-    cellsize = boxsize/nc
-    w = kvec[direction] * cellsize
-    a = 1 / (6.0 * cellsize) * (8 * np.sin(w) - np.sin(2 * w))
+    w = kvec[direction]
+    a = 1 / 6.0  * (8 * np.sin(w) - np.sin(2 * w))
     wts = a*1j
     return wts
 

@@ -47,7 +47,7 @@ def test_lpt_init():
   # Same thing with flowpm
   with tf.Session() as sess:
     tlinear = tf.expand_dims(tf.constant(lineark.c2r()), 0)
-    tflptic = tfpm.lpt_init(tlinear, bs, a0, order=1)
+    tflptic = tfpm.lpt_init(tlinear, a0, order=1)
 
     tfread = sess.run(tflptic)
 
@@ -67,7 +67,7 @@ def test_lpt1():
 
   # Same thing from tensorflow
   with tf.Session() as sess:
-    state = tfpm.lpt1(pmutils.r2c3d(tf.expand_dims(tf.constant(lineark.c2r()), axis=0)), grid.reshape((1, -1, 3))*nc/bs, bs)
+    state = tfpm.lpt1(pmutils.r2c3d(tf.expand_dims(tf.constant(lineark.c2r()), axis=0)), grid.reshape((1, -1, 3))*nc/bs)
     tfread = sess.run(state)
 
   assert_allclose(lpt, tfread[0]*bs/nc, atol=1e-5)
