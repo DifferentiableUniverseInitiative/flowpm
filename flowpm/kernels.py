@@ -45,7 +45,7 @@ def laplace_kernel(kvec):
   wts *= imask
   return wts
 
-def gradient_kernel(kvec, direction, boxsize):
+def gradient_kernel(kvec, direction, boxsize, order=0):
   """
   Computes the gradient kernel in the requested direction
 
@@ -65,12 +65,15 @@ def gradient_kernel(kvec, direction, boxsize):
   wts: array
     Complex kernel
   """
-  nc = len(kvec[0])
-  cellsize = boxsize/nc
-  w = kvec[direction] * cellsize
-  a = 1 / (6.0 * cellsize) * (8 * np.sin(w) - np.sin(2 * w))
-  wts = a*1j
-  return wts
+  if order == 0:
+    return 1j * kvec[direction]
+  else:
+    nc = len(kvec[0])
+    cellsize = boxsize/nc
+    w = kvec[direction] * cellsize
+    a = 1 / (6.0 * cellsize) * (8 * np.sin(w) - np.sin(2 * w))
+    wts = a*1j
+    return wts
 
 def longrange_kernel(kvec, r_split):
   """

@@ -76,7 +76,7 @@ def lpt1(dlin_k, pos, boxsize, kvec=None, name=None):
       dispc = tf.multiply(dlin_k, kweight)
       disp = c2r3d(dispc, norm=nc**3)
       displacement.append(cic_readout(disp, pos))
-    return tf.stack(displacement, axis=2)
+    return tf.stack(displacement, axis=2) * nc/boxsize # Return displacement in units of 
 
 def lpt2_source(dlin_k, boxsize, kvec=None, name=None):
   """ Generate the second order LPT source term.
@@ -139,7 +139,7 @@ def lpt_init(linear, boxsize, a0, order=2, cosmology=Planck15, kvec=None, name=N
     batch_size, nc = shape[0], shape[1].value
 
     dtype = np.float32
-    Q = boxsize/nc*np.indices((nc, nc, nc)).reshape(3, -1).T.astype(dtype)
+    Q = np.indices((nc, nc, nc)).reshape(3, -1).T.astype(dtype)
     Q = np.repeat(Q.reshape((1, -1, 3)), batch_size, axis=0)
     pos = Q
 

@@ -18,6 +18,8 @@ bs = 50
 nc = 16
 
 def test_linear_field_shape():
+  """ Testing just the shape of the sampled linear field
+  """
   klin = np.loadtxt('flowpm/data/Planck15_a1p00.txt').T[0]
   plin = np.loadtxt('flowpm/data/Planck15_a1p00.txt').T[1]
   ipklin = iuspline(klin, plin)
@@ -30,6 +32,7 @@ def test_linear_field_shape():
   assert tfread.shape == (5, 16, 16, 16)
 
 def test_lpt_init():
+
   a0 = 0.1
 
   pm = ParticleMesh(BoxSize=bs, Nmesh = [nc, nc, nc], dtype='f4')
@@ -39,30 +42,32 @@ def test_lpt_init():
   # Generate initial state with fastpm
   whitec = pm.generate_whitenoise(100, mode='complex', unitary=False)
   lineark = whitec.apply(lambda k, v:Planck15.get_pklin(sum(ki ** 2 for ki in k)**0.5, 0) ** 0.5 * v / v.BoxSize.prod() ** 0.5)
-  statelpt = solver.lpt(lineark, grid, a0, order=2)
+  statelpt = solver.lpt(lineark, grid, a0, order=1)
 
   # Same thing with flowpm
   with tf.Session() as sess:
     tlinear = tf.expand_dims(tf.constant(lineark.c2r()), 0)
-    tflptic = tfpm.lpt_init(tlinear, bs, a0, order=2)
+    tflptic = tfpm.lpt_init(tlinear, bs, a0, order=1)
 
     tfread = sess.run(tflptic)
 
-  assert_allclose(statelpt.X, tfread[0,0], rtol=1e-7)
+  assert_allclose(statelpt.X, tfread[0,0]*bs/nc, rtol=1e-2)
 
 def test_lpt1():
+  """ Checking lpt1, this also checks the laplace and gradient kernels
+  """
   pm = ParticleMesh(BoxSize=bs, Nmesh = [nc, nc, nc], dtype='f4')
   grid = pm.generate_uniform_particle_grid(shift=0).astype(np.float32)
 
   whitec = pm.generate_whitenoise(100, mode='complex', unitary=False)
   lineark = whitec.apply(lambda k, v:Planck15.get_pklin(sum(ki ** 2 for ki in k)**0.5, 0) ** 0.5 * v / v.BoxSize.prod() ** 0.5)
 
-  # Compute lpt1 from fastpm
+  # Compute lpt1 from fastpm with matching kernel order
   lpt = fpmops.lpt1(lineark, grid)
 
   # Same thing from tensorflow
   with tf.Session() as sess:
-    state = tfpm.lpt1(pmutils.r2c3d(tf.expand_dims(tf.constant(lineark.c2r()), axis=0)), grid.reshape((1, -1, 3)), bs)
+    state = tfpm.lpt1(pmutils.r2c3d(tf.expand_dims(tf.constant(lineark.c2r()), axis=0)), grid.reshape((1, -1, 3))*nc/bs, bs)
     tfread = sess.run(state)
 
-  assert_allclose(lpt, tfread[0], rtol=1e-7)
+  assert_allclose(lpt, tfread[0]*bs/nc, atol=1e-5)
