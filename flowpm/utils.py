@@ -97,6 +97,18 @@ def cic_readout(mesh, part, name=None):
     value = tf.reduce_sum(weightedvals, axis=-1)
     return value
 
+def tpu_fft3d(x):
+  x = tf.transpose(tf.signal.fft(x), perm=[0, 3, 2, 1])
+  x = tf.transpose(tf.signal.fft(x), perm=[0, 3, 2, 1])
+  x = tf.transpose(tf.signal.fft(x), perm=[0, 3, 2, 1])
+  return x
+
+def tpu_ifft3d(x):
+  x = tf.transpose(tf.signal.ifft(x), perm=[0, 3, 2, 1])
+  x = tf.transpose(tf.signal.ifft(x), perm=[0, 3, 2, 1])
+  x = tf.transpose(tf.signal.ifft(x), perm=[0, 3, 2, 1])
+  return x
+
 def r2c3d(rfield, norm=None, dtype=tf.complex64, name=None):
   """
   Converts a real field to its complex Fourier Transform
@@ -120,7 +132,7 @@ def r2c3d(rfield, norm=None, dtype=tf.complex64, name=None):
   with tf.name_scope(name, "R2C3D", [rfield]):
     if norm is None: norm = tf.cast(tf.reduce_prod(rfield.get_shape()[1:]), dtype)
     else: norm = tf.cast(norm, dtype)
-    cfield = tf.multiply(tf.signal.fft3d(tf.cast(rfield, dtype)), 1/norm, name=name)
+    cfield = tf.multiply(tpu_fft3d(tf.cast(rfield, dtype)), 1/norm, name=name)
     return cfield
 
 def c2r3d(cfield, norm=None, dtype=tf.float32, name=None):
@@ -146,7 +158,7 @@ def c2r3d(cfield, norm=None, dtype=tf.float32, name=None):
   with tf.name_scope(name, "C2R3D", [cfield]):
     if norm is None: norm = tf.cast(tf.reduce_prod(cfield.get_shape()[1:]), dtype)
     else: norm = tf.cast(norm, dtype)
-    rfield = tf.multiply(tf.cast(tf.signal.ifft3d(cfield), dtype), norm, name=name)
+    rfield = tf.multiply(tf.cast(tpu_ifft3d(cfield), dtype), norm, name=name)
     return rfield
 
 def white_noise(nc, batch_size=1, seed=None, type='complex', name=None):
