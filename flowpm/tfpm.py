@@ -282,36 +282,6 @@ def force(state, nc, cosmology=Planck15, pm_nc_factor=1, kvec=None,
     state = tf.add(state, update)
     return state
 
-
-def _leapfrog(stages):
-  """ Generate a leap frog stepping scheme.
-
-      Parameters
-      ----------
-      stages : array_like
-          Time (a) where force computing stage is requested.
-  """
-  if len(stages) == 0:
-      return
-
-  ai = stages[0]
-  # first force calculation for jump starting
-  yield 'F', ai, ai, ai
-  x, p, f = ai, ai, ai
-
-  for i in range(len(stages) - 1):
-      a0 = stages[i]
-      a1 = stages[i + 1]
-      ah = (a0 * a1) ** 0.5
-      yield 'K', p, f, ah
-      p = ah
-      yield 'D', x, p, a1
-      x = a1
-      yield 'F', f, x, a1
-      f = a1
-      yield 'K', p, f, a1
-      p = a1
-
 def nbody(state, stages, nc, cosmology=Planck15, pm_nc_factor=1, name=None):
   """
   Integrate the evolution of the state across the givent stages
@@ -338,12 +308,36 @@ def nbody(state, stages, nc, cosmology=Planck15, pm_nc_factor=1, name=None):
   with tf.name_scope(name, "NBody", [state]):
     shape = state.get_shape()
 
-    # Generates the sequence of steps
-    stepping = _leapfrog(stages)
-    actions = {'F': lambda state, ai, ac, af, **kwargs:  force(state, nc, **kwargs),
-               'K': kick, 'D': drift}
+    # Unrolling leapfrog integration to make tf Autograph happy
+    if len(stages) == 0:
+      return state
 
-    for action, ai, ac, af in stepping:
-      state = actions[action](state, ai, ac, af, pm_nc_factor=pm_nc_factor, cosmology=cosmology)
+    ai = stages[0]
+
+    # first force calculation for jump starting
+    state = force(state, nc, pm_nc_factor=pm_nc_factor, cosmology=cosmology)
+
+    x, p, f = ai, ai, ai
+    # Loop through the stages
+    for i in range(len(stages) - 1):
+        a0 = stages[i]
+        a1 = stages[i + 1]
+        ah = (a0 * a1) ** 0.5
+
+        # Kick step
+        state = kick(state, p, f, ah, cosmology=cosmology)
+        p = ah
+
+        # Drift step
+        state = drift(state, x, p, a1, cosmology=cosmology)
+        x = a1
+
+        # Force
+        state = force(state, nc, pm_nc_factor=pm_nc_factor, cosmology=cosmology)
+        f = a1
+
+        # Kick again
+        state = kick(state, p, f, a1, cosmology=cosmology)
+        p = a1
 
     return state
