@@ -98,15 +98,15 @@ def cic_readout(mesh, part, name=None):
     return value
 
 def tpu_fft3d(x):
-  x = tf.transpose(tf.signal.fft(x), perm=[0, 3, 2, 1])
-  x = tf.transpose(tf.signal.fft(x), perm=[0, 3, 2, 1])
-  x = tf.transpose(tf.signal.fft(x), perm=[0, 3, 2, 1])
+  x = tf.transpose(tf.signal.fft(x), perm=[0, 3, 1, 2])
+  x = tf.transpose(tf.signal.fft(x), perm=[0, 3, 1, 2])
+  x = tf.transpose(tf.signal.fft(x), perm=[0, 3, 1, 2])
   return x
 
 def tpu_ifft3d(x):
-  x = tf.transpose(tf.signal.ifft(x), perm=[0, 3, 2, 1])
-  x = tf.transpose(tf.signal.ifft(x), perm=[0, 3, 2, 1])
-  x = tf.transpose(tf.signal.ifft(x), perm=[0, 3, 2, 1])
+  x = tf.transpose(tf.signal.ifft(x), perm=[0, 3, 1, 2])
+  x = tf.transpose(tf.signal.ifft(x), perm=[0, 3, 1, 2])
+  x = tf.transpose(tf.signal.ifft(x), perm=[0, 3, 1, 2])
   return x
 
 def r2c3d(rfield, norm=None, dtype=tf.complex64, name=None):
