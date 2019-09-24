@@ -67,7 +67,8 @@ def gradient_kernel(kvec, direction, order=0):
     mask = mask.squeeze()
     mask[len(mask) // 2] = 0 # Set nyquist to 0 to ensure real field
     mask = mask.reshape(kvec[direction].shape)
-    return 1j * kvec[direction] * mask
+    wts = 1j * kvec[direction] * mask
+    return wts[:]
   else:
     nc = len(kvec[0])
     w = kvec[direction]

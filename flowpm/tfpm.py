@@ -79,8 +79,9 @@ def lpt1(dlin_k, pos, kvec=None, name=None):
       dispc = tf.multiply(dlin_k, kweight)
       disp = c2r3d(dispc, norm=nc**3)
       displacement.append(cic_readout(disp, pos))
-    return tf.stack(displacement, axis=2)
-
+    displacement = tf.stack(displacement, axis=2)
+    return displacement
+#    
 def lpt2_source(dlin_k, kvec=None, name=None):
   """ Generate the second order LPT source term.
 
