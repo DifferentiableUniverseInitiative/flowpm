@@ -74,6 +74,27 @@ def test_lpt1():
 
   assert_allclose(lpt, tfread[0]*bs/nc, atol=1e-5)
 
+def test_lpt1_64():
+  """ Checking lpt1, this also checks the laplace and gradient kernels
+  This variant of the test checks that it works for cubes of size 64
+  """
+  nc = 64
+  pm = ParticleMesh(BoxSize=bs, Nmesh = [nc, nc, nc], dtype='f4')
+  grid = pm.generate_uniform_particle_grid(shift=0).astype(np.float32)
+
+  whitec = pm.generate_whitenoise(100, mode='complex', unitary=False)
+  lineark = whitec.apply(lambda k, v:Planck15.get_pklin(sum(ki ** 2 for ki in k)**0.5, 0) ** 0.5 * v / v.BoxSize.prod() ** 0.5)
+
+  # Compute lpt1 from fastpm with matching kernel order
+  lpt = fpmops.lpt1(lineark, grid)
+
+  # Same thing from tensorflow
+  with tf.Session() as sess:
+    state = tfpm.lpt1(pmutils.r2c3d(tf.expand_dims(tf.constant(lineark.c2r()), axis=0)), grid.reshape((1, -1, 3))*nc/bs)
+    tfread = sess.run(state)
+
+  assert_allclose(lpt, tfread[0]*bs/nc, atol=1e-5)
+
 def test_lpt2():
   """ Checking lpt2_source, this also checks the laplace and gradient kernels
   """
