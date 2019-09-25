@@ -93,7 +93,7 @@ def test_lpt1_64():
     state = tfpm.lpt1(pmutils.r2c3d(tf.expand_dims(tf.constant(lineark.c2r()), axis=0)), grid.reshape((1, -1, 3))*nc/bs)
     tfread = sess.run(state)
 
-  assert_allclose(lpt, tfread[0]*bs/nc, atol=1e-5)
+  assert_allclose(lpt, tfread[0]*bs/nc, atol=5e-5)
 
 def test_lpt2():
   """ Checking lpt2_source, this also checks the laplace and gradient kernels
