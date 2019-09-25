@@ -63,12 +63,11 @@ def gradient_kernel(kvec, direction, order=0):
     Complex kernel
   """
   if order == 0:
-    mask = np.ones_like(kvec[direction])
-    mask = mask.squeeze()
-    mask[len(mask) // 2] = 0 # Set nyquist to 0 to ensure real field
-    mask = mask.reshape(kvec[direction].shape)
-    wts = 1j * kvec[direction] * mask
-    return wts[:]
+    wts = 1j * kvec[direction] 
+    wts = np.squeeze(wts)
+    wts[len(wts) //2] = 0
+    wts = wts.reshape(kvec[direction].shape)
+    return wts
   else:
     nc = len(kvec[0])
     w = kvec[direction]
