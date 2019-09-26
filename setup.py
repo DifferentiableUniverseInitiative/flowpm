@@ -18,6 +18,15 @@ setup(name='flowpm',
       tests_require=['fastpm'],
       extras_require={
         'testing':  ["fastpm"],
+        },
       use_scm_version=True,
       setup_requires=['setuptools_scm'],
-      })
+      classifiers=[
+        'Development Status :: 3 - Alpha',
+        'Intended Audience :: Developers',
+        'Intended Audience :: Science/Research',
+        'License :: OSI Approved :: MIT License',
+        'Topic :: Scientific/Engineering :: Artificial Intelligence',
+        'Topic :: Scientific/Engineering :: Physics'
+        ],
+      keywords='cosmology machine learning')
