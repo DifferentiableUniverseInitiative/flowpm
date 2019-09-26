@@ -1,8 +1,14 @@
 from setuptools import setup
+from io import open
+
+# read the contents of the README file
+with open('README.md', encoding="utf-8") as f:
+    long_description = f.read()
 
 setup(name='flowpm',
-      version='0.1',
       description='Particle Mesh Simulation in TensorFlow',
+      long_description=long_description,
+      long_description_content_type='text/markdown',
       url='https://github.com/modichirag/flowpm',
       author='Chirag Modi',
       author_email='modichirag@berkeley.edu',
@@ -12,4 +18,6 @@ setup(name='flowpm',
       tests_require=['fastpm'],
       extras_require={
         'testing':  ["fastpm"],
+      use_scm_version=True,
+      setup_requires=['setuptools_scm'],
       })
