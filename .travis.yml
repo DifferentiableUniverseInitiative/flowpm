@@ -1,35 +1,38 @@
 language: python
-
 python:
 - '3.7'
-
 cache:
   directories:
   - "$HOME/.cache/pip"
   - "$HOME/.conda"
-
 env:
   global:
   - NUMPY_VERSION=1.16
   - PYTHON_VERSION=3.7
   - OMP_NUM_THREADS=1
-
 before_install:
-    - if [ $TRAVIS_OS_NAME == "linux" ]; then wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh; fi
-    - if [ $TRAVIS_OS_NAME == "osx" ]; then wget http://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O miniconda.sh; fi
-    - chmod +x miniconda.sh
-    - "./miniconda.sh -b -p $HOME/miniconda"
-    - export PATH=$HOME/miniconda/bin:$PATH
-    - conda update --yes conda
-    - conda create --yes -n test python=$PYTHON_VERSION
-    - source activate test
-    - conda install --yes numpy=$NUMPY_VERSION
-    - conda install --yes -c bccp nbodykit runtests
-    - conda list
-
+- if [ $TRAVIS_OS_NAME == "linux" ]; then wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+  -O miniconda.sh; fi
+- if [ $TRAVIS_OS_NAME == "osx" ]; then wget http://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh
+  -O miniconda.sh; fi
+- chmod +x miniconda.sh
+- "./miniconda.sh -b -p $HOME/miniconda"
+- export PATH=$HOME/miniconda/bin:$PATH
+- conda update --yes conda
+- conda create --yes -n test python=$PYTHON_VERSION
+- source activate test
+- conda install --yes numpy=$NUMPY_VERSION
+- conda install --yes -c bccp nbodykit runtests
+- conda list
 install:
 - pip install gast==0.2.2
 - pip install .[testing]
-
 script:
 - pytest
+deploy:
+  provider: pypi
+  user: __token__
+  password:
+    secure: WEJ1h+Y2xXuMgLVSijINtaIg4q9KmiX9AdP3AKVJ3zobH4W4UzMcL6fg6/EIeTJOrgGREOP2dpAlj75ucJdAhNnxHQKuXwJ/jG1uafrlH+h3ubRp5zPR9XBz0q1t5Y+X1qXEJrbtp7FLsBSYq05EYXLIT2rcWjY1EUiaLDy/9Y9ZFOW8L7OdawYYPRzU70h04ZlvoAmx4ppvZc+jKCcIX21kkBkp6eWyGa1mimZ5muR+7o53eS1dKGxgGFwyso2/pU8ckk9/UsmfzoPd2tOC7yquUQMMQz4I76XDjumpXAnrE16ucHhEztJwQb2vcFl0jiPi/eqaCUirMas/QpIEFT65IMzD37fh7x0gZVJpb+00S67aYJCf5BqPVx6gWtCyNoBX+5tKjEPFY3aC8yLwNNle0HHygqyf+/36mJvBKehsYaqkcE8OneuRWmsGi7qigm0/n4saoNiE6Aj62M0UyvFJHZwPAil3Qj/y5OcuM7igXFe67FG9rU8pgfn+YH0pu3X6LoAtSwjBiPQ895I58YbWSY4Dl2e9+h4O/nI/nYJg8209oY6YPXRGMKbVNTIU2kOP9Y5AkoHps4jEU46DziLqju4c+sc1mkwgwgNdstYl/DBzRqyvYCnUtI0SzONdtb9T4wZqI5lUuO+gRdPR02K818Eyx+cDM1k1JR9qBCk=
+  on:
+    tags: true
