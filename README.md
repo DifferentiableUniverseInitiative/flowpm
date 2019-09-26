@@ -1,4 +1,4 @@
-# flowpm [![Build Status](https://travis-ci.org/modichirag/flowpm.svg?branch=master)](https://travis-ci.org/modichirag/flowpm)
+# flowpm [![Build Status](https://travis-ci.org/modichirag/flowpm.svg?branch=master)](https://travis-ci.org/modichirag/flowpm)[![PyPI version](https://badge.fury.io/py/flowpm.svg)](https://badge.fury.io/py/flowpm)
 Particle Mesh Simulation in TensorFlow, based on [fastpm-python](https://github.com/rainwoodman/fastpm-python) simulations
 
 To install:
