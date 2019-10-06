@@ -24,7 +24,12 @@ def cic_paint(mesh, part, weight=None, name=None):
   """
   with tf.name_scope(name, "CiCPaint", [mesh, part, weight]):
     shape = tf.shape(mesh)
-    batch_size, nc = shape[0], shape[1]
+    batch_size, nx, ny, nz = shape[0], shape[1], shape[2], shape[3]
+    nc = nz
+
+    # Flatten part if it's not already done
+    if len(part.shape) > 3:
+      part = tf.reshape(part, (batch_size, -1, 3))
 
     # Extract the indices of all the mesh points affected by each particles
     part = tf.expand_dims(part, 2)
@@ -52,7 +57,7 @@ def cic_paint(mesh, part, weight=None, name=None):
 
     update = tf.scatter_nd(tf.reshape(neighboor_coords, (-1, 8,4)),
                            tf.reshape(kernel, (-1, 8)),
-                           [batch_size, nc, nc, nc])
+                           [batch_size, nx, ny, nz])
     mesh = mesh + update
     return mesh
 
@@ -76,7 +81,12 @@ def cic_readout(mesh, part, name=None):
   """
   with tf.name_scope(name, "CiCReadout", [mesh, part]):
     shape = tf.shape(mesh)
-    batch_size, nc = shape[0], shape[1]
+    batch_size, nx, ny, nz = shape[0], shape[1], shape[2], shape[3]
+    nc = nz
+
+    # Flatten part if it's not already done
+    if len(part.shape) > 3:
+      part = tf.reshape(part, (batch_size, -1, 3))
 
     # Extract the indices of all the mesh points affected by each particles
     part = tf.expand_dims(part, 2)
