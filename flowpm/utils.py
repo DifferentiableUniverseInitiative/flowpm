@@ -6,7 +6,7 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
-def cic_paint(mesh, part, weight=None, name=None):
+def cic_paint(mesh, part, weight=None, name=None, shift=0):
   """
   Paints particules on a 3D mesh.
 
@@ -47,6 +47,7 @@ def cic_paint(mesh, part, weight=None, name=None):
     if weight is not None: kernel = tf.multiply(tf.expand_dims(weight, axis=-1) , kernel)
 
     neighboor_coords = tf.cast(neighboor_coords, tf.int32)
+    neighboor_coords = neighboor_coords + tf.reshape(tf.constant([shift,0,0]), [1,1,3])
     neighboor_coords = tf.math.mod(neighboor_coords , nc)
 
     # Adding batch dimension to the neighboor coordinates
@@ -61,7 +62,7 @@ def cic_paint(mesh, part, weight=None, name=None):
     mesh = mesh + update
     return mesh
 
-def cic_readout(mesh, part, name=None):
+def cic_readout(mesh, part, name=None, shift=0):
   """
   Reads out particles from mesh.
 
@@ -100,6 +101,7 @@ def cic_readout(mesh, part, name=None):
     kernel = kernel[..., 0] * kernel[..., 1] * kernel[..., 2]
 
     neighboor_coords = tf.cast(neighboor_coords, tf.int32)
+    neighboor_coords = neighboor_coords + tf.reshape(tf.constant([shift,0,0]), [1,1,3])
     neighboor_coords = tf.math.mod(neighboor_coords , nc)
 
     meshvals = tf.gather_nd(mesh, neighboor_coords, batch_dims=1)

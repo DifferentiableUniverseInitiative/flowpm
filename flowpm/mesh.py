@@ -27,3 +27,39 @@ class IndicesOperation(mtf.Operation):
 
 def mtf_indices(mesh, shape, dtype, name=None):
   return IndicesOperation(mesh, shape, dtype, name).outputs[0]
+
+def fft3d(x):
+  """
+  Computes a 3D FFT along the 3 inner most dimensions
+
+  This requires the last dimension to not be splitted
+  """
+  x = mtf.cast(x, tf.complex64)
+  outer_dims =  x.shape[:-3]
+  x_dim, y_dim, z_dim = x.shape[-3:]
+  # Loop over the number of dimensions
+  for d in range(3):
+    x = mtf.slicewise(tf.signal.fft, [x],
+                      output_dtype=tf.complex64,
+                      splittable_dims=x.shape[:-1])
+    x = mtf.transpose(x, new_shape=outer_dims+[y_dim, z_dim, x_dim])
+    x = mtf.replace_dimensions(x, [y_dim, z_dim, x_dim], [x_dim, y_dim, z_dim])
+  return x
+
+def ifft3d(x):
+  """
+  Computes an inverse 3D FFT along the 3 inner-most dimensions of x
+
+  This requires the last dimension to not be splitted
+  """
+  x = mtf.cast(x, tf.complex64)
+  outer_dims =  x.shape[:-3]
+  x_dim, y_dim, z_dim = x.shape[-3:]
+  # Loop over the number of dimensions
+  for d in range(3):
+    x = mtf.slicewise(tf.signal.ifft, [x],
+                      output_dtype=tf.complex64,
+                      splittable_dims=x.shape[:-1])
+    x = mtf.transpose(x, new_shape=outer_dims+[y_dim, z_dim, x_dim])
+    x = mtf.replace_dimensions(x, [y_dim, z_dim, x_dim], [x_dim, y_dim, z_dim])
+  return x
