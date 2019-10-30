@@ -39,7 +39,7 @@ example_graphs.py has some more graphs showing how to define a graph that does a
 First install like so:
 ```bash
 $ pip install --user mesh-tensorflow
-$ git clone git@github.com:modichirag/flowpm.git
+$ git clone -b u/EiffL/mesh git@github.com:modichirag/flowpm.git
 $ cd flowpm
 $ pip install --user -e .
 ```
