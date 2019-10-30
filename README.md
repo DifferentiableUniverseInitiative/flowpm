@@ -32,3 +32,33 @@ with tf.Session() as sess:
 ```
 
 example_graphs.py has some more graphs showing how to define a graph that does a PM simulation from an initial field, how to combine the pm graph with other modules etc.
+
+
+## Mesh Tensorflow implementation
+
+First install like so:
+```bash
+$ pip install --user mesh-tensorflow
+$ git clone git@github.com:modichirag/flowpm.git
+$ cd flowpm
+$ pip install --user -e .
+```
+
+Go to the example folder:
+```bash
+$ cd examples
+```
+
+Then start the mesh servers, e.g. on a single machine with 2 GPUs:
+```bash
+$ CUDA_VISIBLE_DEVICES=0; python mesh_lpt.py --mesh_hosts=localhost:2222,localhost:2223 --job_name=mesh --task_index=0
+```
+
+```bash
+$ CUDA_VISIBLE_DEVICES=1; python mesh_lpt.py --mesh_hosts=localhost:2222,localhost:2223 --job_name=mesh --task_index=1
+```
+
+And finally run the code:
+```bash
+$ CUDA_VISIBLE_DEVICES=2; python mesh_lpt.py --mesh_hosts=localhost:2222,localhost:2223 --job_name=main --nc=128
+```
