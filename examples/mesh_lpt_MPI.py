@@ -126,7 +126,7 @@ def main(_):
 
   # Otherwise we are the main task, let's define the devices
   devices = ["/job:mesh/task:%d/device:GPU:%d"%(i,j) for i in range(cluster.num_tasks("mesh")) for j in range(8)]
-  print("List of devices" devices)
+  print("List of devices", devices)
 
   # And now a simple mesh, we will only partition along the x axis
   mesh_shape = [("all", len(devices))]
