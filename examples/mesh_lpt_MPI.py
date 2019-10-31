@@ -6,7 +6,7 @@ import numpy as np
 import mesh_tensorflow as mtf
 import tensorflow as tf
 from matplotlib import pyplot as plt
-
+import math
 import flowpm
 from astropy.cosmology import Planck15
 from flowpm.tfpm import PerturbationGrowth
@@ -82,6 +82,7 @@ def lpt_prototype(nc=64, batch_size=8, a=1.0, nproc=2):
   mfstate = mstate + pt.D1(a)*displacement
 
   # Paint the particles onto a new field, taking care of border effects
+  nproc = int(math.sqrt(nproc))
   lpt_field = mtf.slicewise(lambda x,y: cic_paint(x,y, shift=nc//2//nproc),
                             [mtf.zeros_like(rfield), mfstate],
                             output_dtype=tf.float32,
@@ -126,11 +127,13 @@ def main(_):
 
   # Otherwise we are the main task, let's define the devices
   devices = ["/job:mesh/task:%d/device:GPU:%d"%(i,j) for i in range(cluster.num_tasks("mesh")) for j in range(8)]
-  print("List of devices" devices)
+  print("List of devices", devices)
 
-  # And now a simple mesh, we will only partition along the x axis
-  mesh_shape = [("all", len(devices))]
-  layout_rules = [("nx", "all")]
+  # And now a simple 2d mesh splitting the cubes along x and y dimensions
+  mesh_shape = [("processor_rows", int(math.sqrt(len(devices)))), 
+                ("processor_cols", int(math.sqrt(len(devices))))]
+  layout_rules = [("batch", "processor_rows"), 
+                  ("nx", "processor_cols")]
 
   # Instantiate the mesh implementation
   mesh_impl = mtf.placement_mesh_impl.PlacementMeshImpl(mesh_shape, layout_rules,
@@ -172,6 +175,8 @@ def main(_):
   plt.colorbar()
 
   plt.savefig("comparison.png")
+
+  exit(0)
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
