@@ -73,10 +73,10 @@ def lpt_prototype(nc=64, batch_size=8, a=1.0, nproc=2):
 
   # Compute displacement by applying a series of fourier kernels, and taking the inverse fourier transform
   lineark = mpm.fft3d(rfield)
-  displacement = [mpm.ifft3d(mtf.multiply(lineark,mlx)),
-                  mpm.ifft3d(mtf.multiply(lineark,mly)),
-                  mpm.ifft3d(mtf.multiply(lineark,mlz))]
-  displacement = mtf.stack(mtf.cast(displacement, tf.float32), dim_name="ndim", axis=4)
+  displacement = [mtf.cast(mpm.ifft3d(mtf.multiply(lineark,mlx)), tf.float32),
+                  mtf.cast(mpm.ifft3d(mtf.multiply(lineark,mly)), tf.float32),
+                  mtf.cast(mpm.ifft3d(mtf.multiply(lineark,mlz)), tf.float32)]
+  displacement = mtf.stack(displacement, dim_name="ndim", axis=4)
 
   # Apply displacement to input particles, scaled by cosmology
   mfstate = mstate + pt.D1(a)*displacement
