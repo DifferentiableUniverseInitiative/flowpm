@@ -22,6 +22,8 @@ tf.flags.DEFINE_string("mesh_shape", "b1:4;b2:4", "mesh shape")
 tf.flags.DEFINE_string("layout", "x:b1;y:b2",
                        "layout rules")
 
+FLAGS = tf.flags.FLAGS
+
 def benchmark_model(mesh):
   """
   Initializes a 3D volume with random noise, and execute a forward FFT
