@@ -13,7 +13,7 @@ from flowpm.tfpm import PerturbationGrowth
 from flowpm import linear_field, lpt_init, nbody, cic_paint
 from scipy.interpolate import InterpolatedUnivariateSpline as iuspline
 cosmology=Planck15
-import flowpm.mesh as mpm
+import flowpm.mesh_ops as mpm
 
 FLAGS = None
 
@@ -130,9 +130,9 @@ def main(_):
   print("List of devices", devices)
 
   # And now a simple 2d mesh splitting the cubes along x and y dimensions
-  mesh_shape = [("processor_rows", int(math.sqrt(len(devices)))), 
+  mesh_shape = [("processor_rows", int(math.sqrt(len(devices)))),
                 ("processor_cols", int(math.sqrt(len(devices))))]
-  layout_rules = [("batch", "processor_rows"), 
+  layout_rules = [("batch", "processor_rows"),
                   ("nx", "processor_cols")]
 
   # Instantiate the mesh implementation

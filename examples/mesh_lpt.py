@@ -11,7 +11,7 @@ from flowpm.tfpm import PerturbationGrowth
 from flowpm import linear_field, lpt_init, nbody, cic_paint
 from scipy.interpolate import InterpolatedUnivariateSpline as iuspline
 cosmology=Planck15
-import flowpm.mesh as mpm
+import flowpm.mesh_ops as mpm
 
 FLAGS = None
 
@@ -80,18 +80,8 @@ def lpt_prototype(nc=64, batch_size=8, a=1.0, nproc=2):
   mfstate = mstate + pt.D1(a)*displacement
 
   # Paint the particles onto a new field, taking care of border effects
-  lpt_field = mtf.slicewise(lambda x,y: cic_paint(x,y, shift=nc//2//nproc),
-                            [mtf.zeros_like(rfield), mfstate],
-                            output_dtype=tf.float32,
-                            output_shape=[batch_dim,x_dim,y_dim, z_dim],
-                            splittable_dims=rfield.shape[:])
-  lpt_field = mtf.shift(lpt_field, -nc//nproc, x_dim, wrap=True)
-  lpt_field = mtf.slicewise(lambda x,y: cic_paint(x,y, shift=-nc//2//nproc),
-                            [lpt_field, mfstate],
-                            output_dtype=tf.float32,
-                            output_shape=[batch_dim,x_dim,y_dim, z_dim],
-                            splittable_dims=rfield.shape[:])
-  mesh_final_field = mtf.shift(lpt_field, nc//2//nproc, x_dim, wrap=True)
+  mesh_final_field = mpm.cic_paint(mtf.zeros_like(rfield),  mfstate,
+                                   [x_dim], [nproc])
 
   return initial_conditions, final_field, mesh_final_field
 
