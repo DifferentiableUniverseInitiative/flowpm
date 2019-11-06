@@ -6,15 +6,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import time
 import mesh_tensorflow as mtf
 import tensorflow.compat.v1 as tf
 import flowpm.mesh_ops as mpm
 
+tf.flags.DEFINE_integer("num_iters", 10, "Number of FFT transforms.")
 tf.flags.DEFINE_integer("cube_size", 512, "Size of the 3D volume.")
-tf.flags.DEFINE_integer("batch_size", 200,
+tf.flags.DEFINE_integer("batch_size", 64,
                         "Mini-batch size for the training. Note that this "
                         "is the global batch size and not the per-shard batch.")
-tf.flags.DEFINE_string("mesh_shape", "b1:2;b2:2", "mesh shape")
+tf.flags.DEFINE_string("mesh_shape", "b1:4;b2:4", "mesh shape")
 tf.flags.DEFINE_string("layout", "x:b1;y:b2",
                        "layout rules")
 
@@ -71,7 +73,6 @@ def main(_):
   mesh_devices = ["/job:mesh/task:%d/device:GPU:%d"%(i,j) for i in range(cluster.num_tasks("mesh")) for j in range(8)]
   print("List of devices", mesh_devices)
 
-
   graph = mtf.Graph()
   mesh = mtf.Mesh(graph, "fft_mesh")
   mesh_shape = mtf.convert_to_shape(FLAGS.mesh_shape)
@@ -90,8 +91,12 @@ def main(_):
 
   with tf.Session(server.target) as sess:
     err = sess.run(result)
+    start = time.time()
+    for _ in range(FLAGS.num_iters):
+      err = sess.run(result)
+    end = time.time()
 
-  print("Max absolute FFT error ", err)
+  print("Max absolute FFT error %f, with wall time %f"%(err, (end - start) / num_iters))
   exit(0)
 
 
