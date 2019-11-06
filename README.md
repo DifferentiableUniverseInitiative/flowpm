@@ -3,7 +3,7 @@ Particle Mesh Simulation in TensorFlow, based on [fastpm-python](https://github.
 
 To install:
 ```
-$ pip install git@github.com:modichirag/flowpm.git
+$ pip install flowpm
 ```
 
 Minimal working example is in flowpm.py. The steps are as follows:
