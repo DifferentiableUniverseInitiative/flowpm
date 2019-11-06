@@ -100,7 +100,7 @@ def main(_):
       err = sess.run(result)
     end = time.time()
 
-  print("Max absolute FFT error %f, with wall time %f"%(err, (end - start) / num_iters))
+  print("Max absolute FFT error %f, with wall time %f"%(err, (end - start) / FLAGS.num_iters))
   exit(0)
 
 
