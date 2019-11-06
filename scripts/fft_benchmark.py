@@ -28,7 +28,7 @@ def benchmark_model(mesh):
   """
   Initializes a 3D volume with random noise, and execute a forward FFT
   """
-  batch_dim = mtf.Dimension("batch", FLAGS.cube_size)
+  batch_dim = mtf.Dimension("batch", FLAGS.batch_size)
   x_dim = mtf.Dimension("nx", FLAGS.cube_size)
   y_dim = mtf.Dimension("ny", FLAGS.cube_size)
   z_dim = mtf.Dimension("nz", FLAGS.cube_size)
