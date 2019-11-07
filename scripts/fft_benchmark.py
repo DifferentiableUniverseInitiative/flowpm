@@ -13,6 +13,7 @@ import flowpm.mesh_ops as mpm
 
 tf.flags.DEFINE_integer("gpus_per_node", 8, "Number of GPU on each node")
 tf.flags.DEFINE_integer("gpus_per_task", 8, "Number of GPU in each task")
+tf.flags.DEFINE_integer("tasks_per_node", 1, "Number of task in each node")
 
 tf.flags.DEFINE_integer("num_iters", 10, "Number of FFT transforms.")
 
@@ -54,11 +55,17 @@ def main(_):
   layout_rules = mtf.convert_to_layout_rules(FLAGS.layout)
 
   # Resolve the cluster from SLURM environment
-  cluster = tf.distribute.cluster_resolver.SlurmClusterResolver({"mesh": mesh_shape.size},
-                                                                FLAGS.gpus_per_node,
-                                                                FLAGS.gpus_per_task)
+  cluster = tf.distribute.cluster_resolver.SlurmClusterResolver({"mesh": mesh_shape.size//FLAGS.gpus_per_task},
+								port_base=8822,
+                                                                gpus_per_node=FLAGS.gpus_per_node,
+                                                                gpus_per_task=FLAGS.gpus_per_task,
+								tasks_per_node=FLAGS.tasks_per_node,
+								)
+  cluster_spec = cluster.cluster_spec()
   # Create a server for all mesh members
-  server = tf.train.Server(cluster)
+  server = tf.distribute.Server(cluster_spec,
+				"mesh",
+	 			 cluster.task_id)
 
   # Only he master job takes care of the graph building,
   # everyone else can just chill for now
@@ -66,7 +73,7 @@ def main(_):
       server.join()
 
   # Otherwise we are the main task, let's define the devices
-  mesh_devices = ["/job:mesh/task:%d/device:GPU:%d"%(i,j) for i in range(cluster.num_tasks("mesh")) for j in range(8)]
+  mesh_devices = ["/job:mesh/task:%d/device:GPU:%d"%(i,j) for i in range(cluster_spec.num_tasks("mesh")) for j in range(8)]
   print("List of devices", mesh_devices)
 
   graph = mtf.Graph()
