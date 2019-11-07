@@ -120,18 +120,6 @@ def main(_):
   if cluster.task_id >0:
       server.join()
 
-  # Create a cluster from the mesh hosts.
-  cluster = tf.train.ClusterSpec({"mesh": mesh_hosts})
-
-  # Create a server for local mesh members
-  server = tf.train.Server(cluster,
-                           job_name="mesh",
-                           task_index=rank)
-
-  # Only he master job takes care of the graph building
-  if rank >0:
-      server.join()
-
   # Otherwise we are the main task, let's define the devices
   devices = ["/job:mesh/task:%d/device:GPU:%d"%(i,j) for i in range(cluster_spec.num_tasks("mesh")) for j in range(FLAGS.gpus_per_task)]
   print("List of devices", devices)
