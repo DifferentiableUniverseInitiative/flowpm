@@ -1,4 +1,5 @@
 import numpy as np
+import os
 import tensorflow.compat.v1 as tf
 import mesh_tensorflow as mtf
 import flowpm.mesh_ops as mpm
@@ -102,9 +103,10 @@ def lpt_prototype(nc=64, batch_size=8, a=1.0, nproc=2):
 
 
 def main(_):
+  num_tasks = int(os.environ['SLURM_NTASKS'])
 
   # Resolve the cluster from SLURM environment
-  cluster = tf.distribute.cluster_resolver.SlurmClusterResolver({"mesh": mesh_shape.size//FLAGS.gpus_per_task},
+  cluster = tf.distribute.cluster_resolver.SlurmClusterResolver({"mesh": num_tasks//FLAGS.gpus_per_task},
 								                                                port_base=8822,
                                                                 gpus_per_node=FLAGS.gpus_per_node,
                                                                 gpus_per_task=FLAGS.gpus_per_task,
