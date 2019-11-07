@@ -28,7 +28,7 @@ def lpt_prototype(nc=64, batch_size=8, a=1.0, nproc=2):
   pt = PerturbationGrowth(cosmology, a=[a], a_normalize=1.0)
   # Generate a batch of 3D initial conditions
   initial_conditions = flowpm.linear_field(nc,          # size of the cube
-                                         100,         # Physical size of the cube
+                                         200,         # Physical size of the cube
                                          ipklin,      # Initial power spectrum
                                          batch_size=batch_size)
   # Sample particles uniformly on the grid
@@ -80,8 +80,7 @@ def lpt_prototype(nc=64, batch_size=8, a=1.0, nproc=2):
   mfstate = mstate + pt.D1(a)*displacement
 
   # Paint the particles onto a new field, taking care of border effects
-  mesh_final_field = mpm.cic_paint(mtf.zeros_like(rfield),  mfstate,
-                                   [x_dim], [nproc])
+  mesh_final_field = mpm.cic_paint(mtf.zeros_like(rfield),  mfstate, [x_dim], [nproc])
 
   return initial_conditions, final_field, mesh_final_field
 

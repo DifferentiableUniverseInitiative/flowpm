@@ -34,9 +34,9 @@ def lpt_prototype(nc=64, batch_size=8, a=1.0, nproc=2):
   pt = PerturbationGrowth(cosmology, a=[a], a_normalize=1.0)
   # Generate a batch of 3D initial conditions
   initial_conditions = flowpm.linear_field(nc,          # size of the cube
-                                         200,         # Physical size of the cube
-                                         ipklin,      # Initial power spectrum
-                                         batch_size=batch_size)
+                                           200,         # Physical size of the cube
+                                           ipklin,      # Initial power spectrum
+                                           batch_size=batch_size)
   # Sample particles uniformly on the grid
   particle_positions = tf.cast(tf.stack(tf.meshgrid(tf.range(nc), tf.range(nc), tf.range(nc)), axis=-1), dtype=tf.float32)
   particle_positions = tf.tile(tf.expand_dims(particle_positions, axis=0), [batch_size, 1, 1, 1, 1])
@@ -120,8 +120,7 @@ def main(_):
 
   # Instantiate the mesh implementation
   mesh_impl = mtf.placement_mesh_impl.PlacementMeshImpl(mesh_shape,
-                                                        layout_rules,
-                                                        devices)
+                                                        layout_rules, devices)
 
   # Create computational graphs
   initial_conditions, final_field, mesh_final_field = lpt_prototype(nc=FLAGS.nc,
