@@ -156,7 +156,7 @@ def main(_):
 
   plt.subplot(142)
   plt.imshow(b[0].sum(axis=2))
-  plt.title('FlowPM')
+  plt.title('TensorFlow (single GPU)')
   plt.colorbar()
 
   plt.subplot(143)
