@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import math
 import tensorflow.compat.v1 as tf
 import mesh_tensorflow as mtf
 import flowpm.mesh_ops as mpm
@@ -113,9 +114,7 @@ def main(_):
                                                 								tasks_per_node=FLAGS.tasks_per_node)
   cluster_spec = cluster.cluster_spec()
   # Create a server for all mesh members
-  server = tf.distribute.Server(cluster_spec,
-				"mesh",
-	 			 cluster.task_id)
+  server = tf.distribute.Server(cluster_spec, "mesh", cluster.task_id)
 
   if cluster.task_id >0:
       server.join()
@@ -131,7 +130,8 @@ def main(_):
                   ("nx", "processor_cols")]
 
   # Instantiate the mesh implementation
-  mesh_impl = mtf.placement_mesh_impl.PlacementMeshImpl(mesh_shape, layout_rules,
+  mesh_impl = mtf.placement_mesh_impl.PlacementMeshImpl(mesh_shape,
+                                                        layout_rules,
                                                         devices)
 
   # Create computational graphs
