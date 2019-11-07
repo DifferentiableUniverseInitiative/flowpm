@@ -34,7 +34,7 @@ def lpt_prototype(nc=64, batch_size=8, a=1.0, nproc=2):
   pt = PerturbationGrowth(cosmology, a=[a], a_normalize=1.0)
   # Generate a batch of 3D initial conditions
   initial_conditions = flowpm.linear_field(nc,          # size of the cube
-                                         100,         # Physical size of the cube
+                                         200,         # Physical size of the cube
                                          ipklin,      # Initial power spectrum
                                          batch_size=batch_size)
   # Sample particles uniformly on the grid
