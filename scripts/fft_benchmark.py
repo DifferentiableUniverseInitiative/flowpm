@@ -6,21 +6,23 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
-from mpi4py import MPI
 import time
-import mesh_tensorflow as mtf
 import tensorflow.compat.v1 as tf
+import mesh_tensorflow as mtf
 import flowpm.mesh_ops as mpm
 
+tf.flags.DEFINE_integer("gpus_per_node", 8, "Number of GPU on each node")
+tf.flags.DEFINE_integer("gpus_per_task", 8, "Number of GPU in each task")
+tf.flags.DEFINE_integer("tasks_per_node", 1, "Number of task in each node")
+
 tf.flags.DEFINE_integer("num_iters", 10, "Number of FFT transforms.")
+
 tf.flags.DEFINE_integer("cube_size", 512, "Size of the 3D volume.")
 tf.flags.DEFINE_integer("batch_size", 64,
                         "Mini-batch size for the training. Note that this "
                         "is the global batch size and not the per-shard batch.")
 tf.flags.DEFINE_string("mesh_shape", "b1:16", "mesh shape")
-tf.flags.DEFINE_string("layout", "nx:b1",
-                       "layout rules")
+tf.flags.DEFINE_string("layout", "nx:b1", "layout rules")
 
 FLAGS = tf.flags.FLAGS
 
@@ -48,39 +50,34 @@ def benchmark_model(mesh):
 
 
 def main(_):
-  # Get MPI rank, we assume one process by node
-  comm = MPI.COMM_WORLD
-  rank = comm.Get_rank()
 
-  # Retrieve the list of nodes from SLURM
-  # Parse them with ridiculous logic
-  hosts_list=os.environ['SLURM_NODELIST']
-  hosts_list = ["cgpu"+ s for s in hosts_list.split("cgpu[")[1].split("]")[0].replace('-',',').split(",")]
-  mesh_hosts = [hosts_list[i] + ":%d"%(8222+j) for i in range(len(hosts_list)) for j in range(1)]
+  mesh_shape = mtf.convert_to_shape(FLAGS.mesh_shape)
+  layout_rules = mtf.convert_to_layout_rules(FLAGS.layout)
 
-  if rank ==0 :
-      print(hosts_list)
+  # Resolve the cluster from SLURM environment
+  cluster = tf.distribute.cluster_resolver.SlurmClusterResolver({"mesh": mesh_shape.size//FLAGS.gpus_per_task},
+								port_base=8822,
+                                                                gpus_per_node=FLAGS.gpus_per_node,
+                                                                gpus_per_task=FLAGS.gpus_per_task,
+								tasks_per_node=FLAGS.tasks_per_node,
+								)
+  cluster_spec = cluster.cluster_spec()
+  # Create a server for all mesh members
+  server = tf.distribute.Server(cluster_spec,
+				"mesh",
+	 			 cluster.task_id)
 
-  # Create a cluster from the mesh hosts.
-  cluster = tf.train.ClusterSpec({"mesh": mesh_hosts})
-
-  # Create a server for local mesh members
-  server = tf.train.Server(cluster,
-                           job_name="mesh",
-                           task_index=rank)
-
-  # Only he master job takes care of the graph building
-  if rank >0:
+  # Only he master job takes care of the graph building,
+  # everyone else can just chill for now
+  if cluster.task_id >0:
       server.join()
 
   # Otherwise we are the main task, let's define the devices
-  mesh_devices = ["/job:mesh/task:%d/device:GPU:%d"%(i,j) for i in range(cluster.num_tasks("mesh")) for j in range(8)]
+  mesh_devices = ["/job:mesh/task:%d/device:GPU:%d"%(i,j) for i in range(cluster_spec.num_tasks("mesh")) for j in range(8)]
   print("List of devices", mesh_devices)
 
   graph = mtf.Graph()
   mesh = mtf.Mesh(graph, "fft_mesh")
-  mesh_shape = mtf.convert_to_shape(FLAGS.mesh_shape)
-  layout_rules = mtf.convert_to_layout_rules(FLAGS.layout)
 
   # Build the model
   fft_err = benchmark_model(mesh)

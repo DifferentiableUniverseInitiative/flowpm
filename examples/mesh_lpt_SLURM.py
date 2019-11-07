@@ -1,21 +1,25 @@
-from mpi4py import MPI
-import os
-import argparse
-import sys
 import numpy as np
-import mesh_tensorflow as mtf
-import tensorflow as tf
-from matplotlib import pyplot as plt
+import os
 import math
+import tensorflow.compat.v1 as tf
+import mesh_tensorflow as mtf
+import flowpm.mesh_ops as mpm
 import flowpm
 from astropy.cosmology import Planck15
 from flowpm.tfpm import PerturbationGrowth
 from flowpm import linear_field, lpt_init, nbody, cic_paint
 from scipy.interpolate import InterpolatedUnivariateSpline as iuspline
+from matplotlib import pyplot as plt
 cosmology=Planck15
-import flowpm.mesh_ops as mpm
 
-FLAGS = None
+tf.flags.DEFINE_integer("gpus_per_node", 8, "Number of GPU on each node")
+tf.flags.DEFINE_integer("gpus_per_task", 8, "Number of GPU in each task")
+tf.flags.DEFINE_integer("tasks_per_node", 1, "Number of task in each node")
+
+tf.flags.DEFINE_integer("nc", 64, "Size of the cube")
+tf.flags.DEFINE_integer("batch_size", 8, "Batch Size")
+
+FLAGS = tf.flags.FLAGS
 
 def lpt_prototype(nc=64, batch_size=8, a=1.0, nproc=2):
   """
@@ -30,7 +34,7 @@ def lpt_prototype(nc=64, batch_size=8, a=1.0, nproc=2):
   pt = PerturbationGrowth(cosmology, a=[a], a_normalize=1.0)
   # Generate a batch of 3D initial conditions
   initial_conditions = flowpm.linear_field(nc,          # size of the cube
-                                         100,         # Physical size of the cube
+                                         200,         # Physical size of the cube
                                          ipklin,      # Initial power spectrum
                                          batch_size=batch_size)
   # Sample particles uniformly on the grid
@@ -98,35 +102,25 @@ def lpt_prototype(nc=64, batch_size=8, a=1.0, nproc=2):
 
   return initial_conditions, final_field, mesh_final_field
 
+
 def main(_):
+  num_tasks = int(os.environ['SLURM_NTASKS'])
 
-  # Get MPI rank, we assume one process by node
-  comm = MPI.COMM_WORLD
-  rank = comm.Get_rank()
+  # Resolve the cluster from SLURM environment
+  cluster = tf.distribute.cluster_resolver.SlurmClusterResolver({"mesh": num_tasks},
+								                                                port_base=8822,
+                                                                gpus_per_node=FLAGS.gpus_per_node,
+                                                                gpus_per_task=FLAGS.gpus_per_task,
+                                                								tasks_per_node=FLAGS.tasks_per_node)
+  cluster_spec = cluster.cluster_spec()
+  # Create a server for all mesh members
+  server = tf.distribute.Server(cluster_spec, "mesh", cluster.task_id)
 
-  # Retrieve the list of nodes from SLURM
-  # Parse them with ridiculous logic
-  hosts_list=os.environ['SLURM_NODELIST']
-  hosts_list = ["cgpu"+ s for s in hosts_list.split("cgpu[")[1].split("]")[0].replace('-',',').split(",")]
-  mesh_hosts = [hosts_list[i] + ":%d"%(8222+j) for i in range(len(hosts_list)) for j in range(1)]
-
-  if rank ==0 :
-      print(hosts_list)
-
-  # Create a cluster from the mesh hosts.
-  cluster = tf.train.ClusterSpec({"mesh": mesh_hosts})
-
-  # Create a server for local mesh members
-  server = tf.train.Server(cluster,
-                           job_name="mesh",
-                           task_index=rank)
-
-  # Only he master job takes care of the graph building
-  if rank >0:
+  if cluster.task_id >0:
       server.join()
 
   # Otherwise we are the main task, let's define the devices
-  devices = ["/job:mesh/task:%d/device:GPU:%d"%(i,j) for i in range(cluster.num_tasks("mesh")) for j in range(8)]
+  devices = ["/job:mesh/task:%d/device:GPU:%d"%(i,j) for i in range(cluster_spec.num_tasks("mesh")) for j in range(FLAGS.gpus_per_task)]
   print("List of devices", devices)
 
   # And now a simple 2d mesh splitting the cubes along x and y dimensions
@@ -136,7 +130,8 @@ def main(_):
                   ("nx", "processor_cols")]
 
   # Instantiate the mesh implementation
-  mesh_impl = mtf.placement_mesh_impl.PlacementMeshImpl(mesh_shape, layout_rules,
+  mesh_impl = mtf.placement_mesh_impl.PlacementMeshImpl(mesh_shape,
+                                                        layout_rules,
                                                         devices)
 
   # Create computational graphs
@@ -161,7 +156,7 @@ def main(_):
 
   plt.subplot(142)
   plt.imshow(b[0].sum(axis=2))
-  plt.title('FlowPM')
+  plt.title('TensorFlow (single GPU)')
   plt.colorbar()
 
   plt.subplot(143)
@@ -179,23 +174,4 @@ def main(_):
   exit(0)
 
 if __name__ == "__main__":
-  parser = argparse.ArgumentParser()
-  parser.register("type", "bool", lambda v: v.lower() == "true")
-
-  # Flags for defining the tf.train.ClusterSpec
-  parser.add_argument(
-      "--nc",
-      type=int,
-      default=64,
-      help="Size of cube"
-  )
-
-  parser.add_argument(
-      "--batch_size",
-      type=int,
-      default=8,
-      help="Size of batch"
-  )
-
-  FLAGS, unparsed = parser.parse_known_args()
-  tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
+  tf.app.run(main=main)
