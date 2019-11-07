@@ -55,7 +55,7 @@ def main(_):
 
   # Resolve the cluster from SLURM environment
   cluster = tf.distribute.cluster_resolver.SlurmClusterResolver({"mesh": mesh_shape.size},
-                                                                FLAGS.gpus_per_nodes,
+                                                                FLAGS.gpus_per_node,
                                                                 FLAGS.gpus_per_task)
   # Create a server for all mesh members
   server = tf.train.Server(cluster)
