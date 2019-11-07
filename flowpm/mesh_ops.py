@@ -134,10 +134,17 @@ def _cic_update(mesh, neighboor_coords, kernel, shift, name=None):
     neighboor_coords = neighboor_coords + tf.reshape(tf.constant(shift), [1,1,4])
     neighboor_coords = tf.math.mod(neighboor_coords , nc)
 
+    kernel = tf.reshape(kernel, (-1, 8))
+    # Only apply scatter to particles that fall within the slice, not the
+    # classiest solution
+    idx = tf.where( tf.reduce_max(neighboor_coords - tf.reshape(tf.constant([batch_size, nx, ny, nz]), [1,1,4]), axis=[1,2]) < 0)
+    neighboor_coords = neighboor_coords[idx]
+    kernel = kernel[idx]
+
     update = tf.scatter_nd(neighboor_coords,
-                           tf.reshape(kernel, (-1, 8)),
-                           [batch_size, nx, ny, nz])
+                           kernel, [batch_size, nx, ny, nz])
     mesh = mesh + update
+    
     return mesh
 
 def cic_paint(mesh, part, splitted_dims, nsplits, weight=None, name=None):
