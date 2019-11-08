@@ -5,15 +5,20 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
+import tensorflow_probability as tfp
 from astropy.cosmology import Planck15
+
+import mesh_tensorflow as mtf
+
+from . import mesh_ops
+from . import mesh_utils
 
 PerturbationGrowth = lambda cosmo, *args, **kwargs: MatterDominated(Omega0_lambda = cosmo.Ode0,
                                                                     Omega0_m = cosmo.Om0,
                                                                     Omega0_k = cosmo.Ok0,
                                                                     *args, **kwargs)
 
-def linear_field(nc, boxsize, pk, batch_size=1,
-                 kvec=None, seed=None, name=None, dtype=tf.float32):
+def linear_field(mesh, shape, boxsize, pk, kvec, seed=None, dtype=tf.float32):
   """Generates a linear field with a given linear power spectrum
 
   Parameters:
@@ -35,13 +40,26 @@ def linear_field(nc, boxsize, pk, batch_size=1,
   linfield: tensor (batch_size, nc, nc, nc)
     Realization of the linear field with requested power spectrum
   """
-  with tf.name_scope(name, "LinearField"):
-    if kvec is None:
-      kvec = fftk((nc, nc, nc), symmetric=False)
-    kmesh = sum((kk / boxsize * nc)**2 for kk in kvec)**0.5
-    pkmesh = pk(kmesh)
+  x_dim, y_dim, z_dim = shape[-3:]
+  nc = z_dim.size
+  field = mesh_ops.random_normal(mesh, shape=shape,
+                                 mean=0, stddev=nc**1.5, dtype=tf.float32)
+  kfield = mesh_utils.r2c3d(field)
 
-    whitec = white_noise(nc, batch_size=batch_size, seed=seed, type='complex')
-    lineark = tf.multiply(whitec, (pkmesh/boxsize**3)**0.5)
-    linear = c2r3d(lineark, norm=nc**3, name=name, dtype=dtype)
-    return linear
+  # Element-wise function that applies a Fourier kernel
+  def _cwise_fn(kfield, pk, kx, ky, kz):
+    kx = tf.reshape(kx, [-1, 1, 1])
+    ky = tf.reshape(ky, [1, -1, 1])
+    kz = tf.reshape(kz, [1, 1, -1])
+    kk = tf.sqrt((kx / boxsize * nc)**2 + (ky/ boxsize * nc)**2 + (kz/ boxsize * nc)**2)
+    shape = kk.shape
+    kk = tf.reshape(kk, [-1])
+    pkmesh = tfp.math.interp_regular_1d_grid(x=kk, x_ref_min=1e-05, x_ref_max=1000.0,
+                                             y_ref=pk, grid_regularizing_transform=tf.log)
+    pkmesh = tf.reshape(pkmesh, shape)
+    kfield = kfield * tf.cast((pkmesh/boxsize**3)**0.5, tf.complex64)
+    return kfield
+  kfield = mtf.cwise(_cwise_fn,
+                     [kfield, pk] + kvec,
+                     output_dtype=tf.complex64)
+  return mesh_utils.c2r3d(kfield)

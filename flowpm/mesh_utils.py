@@ -187,10 +187,8 @@ def r2c3d(rfield, norm=None, dtype=tf.complex64):
   """
   x_dim, y_dim, z_dim = rfield.shape[-3:]
   if norm is None:
-    norm = mtf.cast(x_dim.value*y_dim.value*z_dim.value, dtype)
-  else:
-    norm = mtf.cast(norm, dtype)
-  cfield = mesh_ops.fft3d(mtf.cast(rfield, dtype)) / norm
+    norm = mtf.constant(rfield.mesh, x_dim.size*y_dim.size*z_dim.size)
+  cfield = mesh_ops.fft3d(mtf.cast(rfield / norm, dtype))
   return cfield
 
 def c2r3d(cfield, norm=None, dtype=tf.float32, name=None):
@@ -213,10 +211,8 @@ def c2r3d(cfield, norm=None, dtype=tf.float32, name=None):
   rfield: tensor (batch_size, nc, nc, nc)
     Real valued field
   """
-  x_dim, y_dim, z_dim = rfield.shape[-3:]
+  x_dim, y_dim, z_dim = cfield.shape[-3:]
   if norm is None:
-    norm = mtf.cast(x_dim.value*y_dim.value*z_dim.value, dtype)
-  else:
-    norm = mtf.cast(norm, dtype)
+    norm = mtf.constant(cfield.mesh, x_dim.size*y_dim.size*z_dim.size)
   rfield = mtf.cast(mesh_ops.ifft3d(cfield), dtype) * norm
   return rfield
