@@ -36,14 +36,14 @@ def fft3d(x):
   """
   x = mtf.cast(x, tf.complex64)
   outer_dims =  x.shape[:-3]
-  x_dim, y_dim, z_dim = x.shape[-3:]
   # Loop over the number of dimensions
   for d in range(3):
+    x_dim, y_dim, z_dim = x.shape[-3:]
     x = mtf.slicewise(tf.signal.fft, [x],
                       output_dtype=tf.complex64,
                       splittable_dims=x.shape[:-1])
     x = mtf.transpose(x, new_shape=outer_dims+[y_dim, z_dim, x_dim])
-    x = mtf.replace_dimensions(x, [y_dim, z_dim, x_dim], [x_dim, y_dim, z_dim])
+    x = mtf.reshape(x, new_shape=outer_dims+[y_dim, x_dim, z_dim])
   return x
 
 def ifft3d(x):
@@ -54,14 +54,14 @@ def ifft3d(x):
   """
   x = mtf.cast(x, tf.complex64)
   outer_dims =  x.shape[:-3]
-  x_dim, y_dim, z_dim = x.shape[-3:]
   # Loop over the number of dimensions
   for d in range(3):
+    x_dim, y_dim, z_dim = x.shape[-3:]
     x = mtf.slicewise(tf.signal.ifft, [x],
                       output_dtype=tf.complex64,
                       splittable_dims=x.shape[:-1])
     x = mtf.transpose(x, new_shape=outer_dims+[y_dim, z_dim, x_dim])
-    x = mtf.replace_dimensions(x, [y_dim, z_dim, x_dim], [x_dim, y_dim, z_dim])
+    x = mtf.reshape(x, new_shape=outer_dims+[y_dim, x_dim, z_dim])
   return x
 
 def random_normal(mesh, shape, **kwargs):
@@ -75,5 +75,5 @@ def random_normal(mesh, shape, **kwargs):
   Returns:
     a Tensor
   """
-  shape = convert_to_shape(shape)
+  shape = mtf.convert_to_shape(shape)
   return mtf.RandomOperation(mesh, shape, tf.random.normal, **kwargs).outputs[0]

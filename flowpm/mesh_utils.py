@@ -218,5 +218,5 @@ def c2r3d(cfield, norm=None, dtype=tf.float32, name=None):
     norm = mtf.cast(x_dim.value*y_dim.value*z_dim.value, dtype)
   else:
     norm = mtf.cast(norm, dtype)
-  rfield = tf.cast(mesh_ops.ifft3d(cfield), dtype) * norm
+  rfield = mtf.cast(mesh_ops.ifft3d(cfield), dtype) * norm
   return rfield
