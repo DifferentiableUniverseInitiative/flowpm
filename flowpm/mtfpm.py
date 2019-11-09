@@ -12,6 +12,7 @@ import mesh_tensorflow as mtf
 
 from . import mesh_ops
 from . import mesh_utils
+from . import mesh_kernels
 
 PerturbationGrowth = lambda cosmo, *args, **kwargs: MatterDominated(Omega0_lambda = cosmo.Ode0,
                                                                     Omega0_m = cosmo.Om0,
@@ -63,3 +64,15 @@ def linear_field(mesh, shape, boxsize, pk, kvec, seed=None, dtype=tf.float32):
                      [kfield, pk] + kvec,
                      output_dtype=tf.complex64)
   return mesh_utils.c2r3d(kfield)
+
+
+def lpt1(kfield, pos, kvec):
+  # First apply Laplace Kernel
+  kfield = mesh_kernels.apply_laplace_kernel(kfield, kvec)
+  # Now apply gradient kernel
+  grad_kfield = mesh_kernels.apply_gradient_kernel(kfield, kvec)
+  # Compute displacements on mesh
+  displacement = [ mesh_utils.c2r3d(f) for f in grad_kfield ]
+  # Readout to particle positions
+  displacement = mtf.stack([ mesh_utils.cic_readout(d, pos) for d in displacement], axis=2)
+  return displacement

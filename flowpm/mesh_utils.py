@@ -165,6 +165,11 @@ def cic_paint(mesh, part, splitted_dims, nsplits, weight=None, name=None):
     mesh = mtf.shift(mesh, slice_size//2, mesh.shape[-3], wrap=True)
   return mesh
 
+
+def cic_readout(kfield):
+  return kfield
+    
+
 def r2c3d(rfield, norm=None, dtype=tf.complex64):
   """
   Converts a real field to its complex Fourier Transform
