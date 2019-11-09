@@ -56,7 +56,7 @@ def _cic_indexing(mesh, part, weight=None, name=None):
     neighboor_coords = tf.concat([b, neighboor_coords], axis=-1)
     return tf.reshape(neighboor_coords, (batch_size, nx, ny, nz, 8,4)), tf.reshape(kernel, (batch_size, nx, ny, nz, 8))
 
-def _cic_update(mesh, neighboor_coords, kernel, shift, name=None):
+def _cic_paint(mesh, neighboor_coords, kernel, shift, name=None):
   """
   Paints particules on a 3D mesh.
 
@@ -82,6 +82,33 @@ def _cic_update(mesh, neighboor_coords, kernel, shift, name=None):
                            [batch_size, nx, ny, nz])
     mesh = mesh + update
     return mesh
+
+def _cic_readout(mesh, neighboor_coords, kernel, shift, name=None):
+  """
+  Paints particules on a 3D mesh.
+
+  Parameters:
+  -----------
+  mesh: tensor (batch_size, nc, nc, nc)
+    Input 3D mesh tensor
+
+  shift: [x,y,z] array of coordinate shifting
+  """
+  with tf.name_scope(name, "cic_readout", [mesh, neighboor_coords, kernel]):
+    shape = tf.shape(mesh)
+    batch_size, nx, ny, nz = shape[0], shape[1], shape[2], shape[3]
+    nc = nz
+
+    #TODO: Assert shift shape
+    neighboor_coords = tf.reshape(neighboor_coords, (-1, 8,4))
+    neighboor_coords = neighboor_coords + tf.reshape(tf.constant(shift), [1,1,4])
+    neighboor_coords = tf.math.mod(neighboor_coords , nc)
+
+    meshvals = tf.gather_nd(mesh, neighboor_coords)
+    weightedvals = tf.multiply(meshvals, tf.reshape(kernel, (-1, 8)))
+    value = tf.reduce_sum(weightedvals, axis=-1)
+    value = tf.reshape(value, shape)
+    return value
 
 def cic_paint(mesh, part, splitted_dims, nsplits, weight=None, name=None):
   """
@@ -123,13 +150,13 @@ def cic_paint(mesh, part, splitted_dims, nsplits, weight=None, name=None):
 
   # Implement simple split along one axis
   if len(splitted_dims) == 1:
-    mesh = mtf.slicewise(lambda x,y,z: _cic_update(x, y, z, shift=[0, slice_size//2, 0, 0]),
+    mesh = mtf.slicewise(lambda x,y,z: _cic_paint(x, y, z, shift=[0, slice_size//2, 0, 0]),
                          [mesh, indices, values],
                          output_dtype=tf.float32,
                          output_shape=mesh.shape,
                          splittable_dims=mesh.shape[:-1])
     mesh = mtf.shift(mesh, -slice_size, mesh.shape[-3], wrap=True)
-    mesh = mtf.slicewise(lambda x,y,z: _cic_update(x, y, z, shift=[0, -slice_size//2, 0, 0]),
+    mesh = mtf.slicewise(lambda x,y,z: _cic_paint(x, y, z, shift=[0, -slice_size//2, 0, 0]),
                          [mesh, indices, values],
                          output_dtype=tf.float32,
                          output_shape=mesh.shape,
@@ -137,26 +164,26 @@ def cic_paint(mesh, part, splitted_dims, nsplits, weight=None, name=None):
     mesh = mtf.shift(mesh, slice_size//2, mesh.shape[-3], wrap=True)
 
   elif len(splitted_dims) == 2:
-    mesh = mtf.slicewise(lambda x,y,z: _cic_update(x, y, z, shift=[0, slice_size//2, slice_size//2, 0]),
+    mesh = mtf.slicewise(lambda x,y,z: _cic_paint(x, y, z, shift=[0, slice_size//2, slice_size//2, 0]),
                          [mesh, indices, values],
                          output_dtype=tf.float32,
                          output_shape=mesh.shape,
                          splittable_dims=mesh.shape[:-1])
     mesh = mtf.shift(mesh, -slice_size, mesh.shape[-2], wrap=True)
-    mesh = mtf.slicewise(lambda x,y,z: _cic_update(x, y, z, shift=[0, slice_size//2, -slice_size//2, 0]),
+    mesh = mtf.slicewise(lambda x,y,z: _cic_paint(x, y, z, shift=[0, slice_size//2, -slice_size//2, 0]),
                          [mesh, indices, values],
                          output_dtype=tf.float32,
                          output_shape=mesh.shape,
                          splittable_dims=mesh.shape[:-1])
     mesh = mtf.shift(mesh, slice_size//2, mesh.shape[-2], wrap=True)
     mesh = mtf.shift(mesh, -slice_size, mesh.shape[-3], wrap=True)
-    mesh = mtf.slicewise(lambda x,y,z: _cic_update(x, y, z, shift=[0, -slice_size//2, slice_size//2, 0]),
+    mesh = mtf.slicewise(lambda x,y,z: _cic_paint(x, y, z, shift=[0, -slice_size//2, slice_size//2, 0]),
                          [mesh, indices, values],
                          output_dtype=tf.float32,
                          output_shape=mesh.shape,
                          splittable_dims=mesh.shape[:-1])
     mesh = mtf.shift(mesh, -slice_size, mesh.shape[-2], wrap=True)
-    mesh = mtf.slicewise(lambda x,y,z: _cic_update(x, y, z, shift=[0, -slice_size//2, -slice_size//2, 0]),
+    mesh = mtf.slicewise(lambda x,y,z: _cic_paint(x, y, z, shift=[0, -slice_size//2, -slice_size//2, 0]),
                          [mesh, indices, values],
                          output_dtype=tf.float32,
                          output_shape=mesh.shape,
@@ -166,9 +193,63 @@ def cic_paint(mesh, part, splitted_dims, nsplits, weight=None, name=None):
   return mesh
 
 
-def cic_readout(kfield):
-  return kfield
-    
+def cic_readout(mesh, part, splitted_dims, nsplits, name=None):
+  nk = mtf.Dimension("nk", 8)
+  nl = mtf.Dimension("nl", 4)
+
+  indices, values = mtf.slicewise(_cic_indexing,
+                         [mesh, part],
+                         output_dtype=[tf.float32, tf.float32],
+                         output_shape=[mtf.Shape(part.shape.dims[:-1]+[nk, nl]),
+                                       mtf.Shape(part.shape.dims[:-1]+[nk])],
+                         splittable_dims=mesh.shape[:-1])
+
+  dim_size = splitted_dims[0].size
+  slice_size = dim_size // nsplits[0]
+
+  # Implement simple split along one axis
+  if len(splitted_dims) == 1:
+    value = mtf.slicewise(lambda x,y,z: _cic_readout(x, y, z, shift=[0, slice_size//2, 0, 0]),
+                         [mesh, indices, values],
+                         output_dtype=tf.float32,
+                         output_shape=part.shape[:-1],
+                         splittable_dims=mesh.shape[:-1])
+    value = mtf.shift(value, slice_size, mesh.shape[-3], wrap=True)
+    value += mtf.slicewise(lambda x,y,z: _cic_readout(x, y, z, shift=[0, -slice_size//2, 0, 0]),
+                         [mesh, indices, values],
+                         output_dtype=tf.float32,
+                         output_shape=part.shape[:-1],
+                         splittable_dims=mesh.shape[:-1])
+    value = mtf.shift(value, -slice_size//2, mesh.shape[-3], wrap=True)
+
+  elif len(splitted_dims) == 2:
+    value += mtf.slicewise(lambda x,y,z: _cic_readout(x, y, z, shift=[0, slice_size//2, slice_size//2, 0]),
+                         [mesh, indices, values],
+                         output_dtype=tf.float32,
+                         output_shape=mesh.shape,
+                         splittable_dims=mesh.shape[:-1])
+    mesh = mtf.shift(mesh, -slice_size, mesh.shape[-2], wrap=True)
+    value += mtf.slicewise(lambda x,y,z: _cic_readout(x, y, z, shift=[0, slice_size//2, -slice_size//2, 0]),
+                         [mesh, indices, values],
+                         output_dtype=tf.float32,
+                         output_shape=mesh.shape,
+                         splittable_dims=mesh.shape[:-1])
+    mesh = mtf.shift(mesh, slice_size//2, mesh.shape[-2], wrap=True)
+    mesh = mtf.shift(mesh, -slice_size, mesh.shape[-3], wrap=True)
+    value += mtf.slicewise(lambda x,y,z: _cic_readout(x, y, z, shift=[0, -slice_size//2, slice_size//2, 0]),
+                         [mesh, indices, values],
+                         output_dtype=tf.float32,
+                         output_shape=mesh.shape,
+                         splittable_dims=mesh.shape[:-1])
+    mesh = mtf.shift(mesh, -slice_size, mesh.shape[-2], wrap=True)
+    value += mtf.slicewise(lambda x,y,z: _cic_readout(x, y, z, shift=[0, -slice_size//2, -slice_size//2, 0]),
+                         [mesh, indices, values],
+                         output_dtype=tf.float32,
+                         output_shape=mesh.shape,
+                         splittable_dims=mesh.shape[:-1])
+    mesh = mtf.shift(mesh, slice_size//2, mesh.shape[-2], wrap=True)
+    mesh = mtf.shift(mesh, slice_size//2, mesh.shape[-3], wrap=True)
+  return value
 
 def r2c3d(rfield, norm=None, dtype=tf.complex64):
   """
