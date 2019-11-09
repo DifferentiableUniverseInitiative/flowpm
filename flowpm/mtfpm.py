@@ -99,3 +99,126 @@ def lpt_init(field, a0, kvec, splitted_dims, nsplits, order=1, cosmology=Planck1
   X = X + DX
 
   return X, P, F
+
+def kick(state, ai, ac, af, cosmology=Planck15, **kwargs):
+  """Kick the particles given the state
+
+  Parameters
+  ----------
+  state: tensor
+    Input state tensor of shape (3, batch_size, npart, 3)
+
+  ai, ac, af: float
+  """
+  X, P, F = state
+
+  pt = PerturbationGrowth(cosmology, a=[ai, ac, af], a_normalize=1.0)
+  fac = 1 / (ac ** 2 * pt.E(ac)) * (pt.Gf(af) - pt.Gf(ai)) / pt.gf(ac)
+  P += fac * F
+  return X, P ,F
+
+def drift(state, ai, ac, af, cosmology=Planck15, **kwargs):
+  """Drift the particles given the state
+
+  Parameters
+  ----------
+  state: tensor
+    Input state tensor of shape (3, batch_size, npart, 3)
+
+  ai, ac, af: float
+  """
+  X, P, F = state
+  pt = PerturbationGrowth(cosmology, a=[ai, ac, af], a_normalize=1.0)
+  fac = 1. / (ac ** 3 * pt.E(ac)) * (pt.Gp(af) - pt.Gp(ai)) / pt.gp(ac)
+  X += fac * P
+  return X, P, F
+
+def force(state, shape, kvec, splitted_dims, nsplits, cosmology=Planck15, pm_nc_factor=1, **kwargs):
+  """
+  Estimate force on the particles given a state.
+
+  Parameters:
+  -----------
+  state: tensor
+    Input state tensor of shape (3, batch_size, npart, 3)
+
+  boxsize: float
+    Size of the simulation volume (Mpc/h) TODO: check units
+
+  cosmology: astropy.cosmology
+    Cosmology object
+
+  pm_nc_factor: int
+    TODO: @modichirag please add doc
+  """
+  X, P, F = state
+  #TODO: support different factor
+  assert pm_nc_factor ==1
+  kfield = mesh_utils.r2c3d(mesh_utils.cic_paint(mtf.zeros(X.mesh,shape), X, splitted_dims, nsplits))
+
+  # use the four point kernel to suppresse artificial growth of noise like terms
+  kfield = mesh_kernels.apply_longrange_kernel(kfield, kvec, r_split=0)
+  kforces = mesh_kernels.apply_gradient_laplace_kernel(kfield, kvec)
+  F = mtf.stack([mesh_utils.cic_readout(mesh_utils.c2r3d(f), X, splitted_dims, nsplits) for f in kforces], "ndim", axis=4)
+
+  F = F * 1.5 * cosmology.Om0
+  return X, P, F
+
+def nbody(state, stages, shape, kvec, splitted_dims, nsplits, cosmology=Planck15, pm_nc_factor=1):
+  """
+  Integrate the evolution of the state across the givent stages
+
+  Parameters:
+  -----------
+  state: tensor (3, batch_size, npart, 3)
+    Input state
+
+  stages: array
+    Array of scale factors
+
+  nc: int
+    Number of cells
+
+  pm_nc_factor: int
+    Upsampling factor for computing
+
+  Returns
+  -------
+  state: tensor (3, batch_size, npart, 3)
+    Integrated state to final condition
+  """
+  assert pm_nc_factor == 1
+
+  # Unrolling leapfrog integration to make tf Autograph happy
+  if len(stages) == 0:
+    return state
+
+  ai = stages[0]
+
+  # first force calculation for jump starting
+  state = force(state, shape, kvec, splitted_dims, nsplits, pm_nc_factor=pm_nc_factor, cosmology=cosmology)
+
+  x, p, f = ai, ai, ai
+  # Loop through the stages
+  for i in range(len(stages) - 1):
+    a0 = stages[i]
+    a1 = stages[i + 1]
+    ah = (a0 * a1) ** 0.5
+
+    # Kick step
+    state = kick(state, p, f, ah, cosmology=cosmology)
+    p = ah
+
+    # Drift step
+    state = drift(state, x, p, a1, cosmology=cosmology)
+    x = a1
+
+    # Force
+    state = force(state, shape, kvec, splitted_dims, nsplits, pm_nc_factor=pm_nc_factor, cosmology=cosmology)
+    f = a1
+
+    # Kick again
+    state = kick(state, p, f, a1, cosmology=cosmology)
+    p = a1
+
+  return state
