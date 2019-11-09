@@ -74,5 +74,5 @@ def lpt1(kfield, pos, kvec):
   # Compute displacements on mesh
   displacement = [ mesh_utils.c2r3d(f) for f in grad_kfield ]
   # Readout to particle positions
-  displacement = mtf.stack([ mesh_utils.cic_readout(d, pos) for d in displacement], axis=2)
+  # displacement = mtf.stack([ mesh_utils.cic_readout(d, pos) for d in displacement], axis=2)
   return displacement
