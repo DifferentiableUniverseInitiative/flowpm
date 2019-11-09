@@ -46,7 +46,9 @@ def fft3d(x):
     if d < 2:
       x = mtf.transpose(x, new_shape=outer_dims+[y_dim, z_dim, x_dim])
       x = mtf.reshape(x, new_shape=outer_dims+[y_dim, x_dim, z_dim])
-      
+
+  x = mtf.transpose(x, new_shape=outer_dims+[y_dim, z_dim, x_dim])
+  x = mtf.reshape(x, new_shape=original_shape)
   return x
 
 def ifft3d(x):
@@ -68,6 +70,8 @@ def ifft3d(x):
       x = mtf.transpose(x, new_shape=outer_dims+[y_dim, z_dim, x_dim])
       x = mtf.reshape(x, new_shape=outer_dims+[y_dim, x_dim, z_dim])
 
+  x = mtf.transpose(x, new_shape=outer_dims+[y_dim, z_dim, x_dim])
+  x = mtf.reshape(x, new_shape=original_shape)
   return x
 
 def random_normal(mesh, shape, **kwargs):

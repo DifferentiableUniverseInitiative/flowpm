@@ -10,6 +10,7 @@ from astropy.cosmology import Planck15
 
 import mesh_tensorflow as mtf
 
+from .background import MatterDominated
 from . import mesh_ops
 from . import mesh_utils
 from . import mesh_kernels
@@ -65,14 +66,36 @@ def linear_field(mesh, shape, boxsize, pk, kvec, seed=None, dtype=tf.float32):
                      output_dtype=tf.complex64)
   return mesh_utils.c2r3d(kfield)
 
-
-def lpt1(kfield, pos, kvec):
+def lpt1(kfield, pos, kvec, splitted_dims, nsplits):
   # First apply Laplace Kernel
-  kfield = mesh_kernels.apply_laplace_kernel(kfield, kvec)
+  grad_kfield = mesh_kernels.apply_gradient_laplace_kernel(kfield, kvec)
   # Now apply gradient kernel
-  grad_kfield = mesh_kernels.apply_gradient_kernel(kfield, kvec)
+  # grad_kfield = mesh_kernels.apply_gradient_kernel(kfield, kvec)
   # Compute displacements on mesh
   displacement = [ mesh_utils.c2r3d(f) for f in grad_kfield ]
   # Readout to particle positions
-  # displacement = mtf.stack([ mesh_utils.cic_readout(d, pos) for d in displacement], axis=2)
+  displacement = mtf.stack([ mesh_utils.cic_readout(d, pos, splitted_dims, nsplits) for d in displacement],"ndim",axis=4)
   return displacement
+
+def lpt_init(field, a0, kvec, splitted_dims, nsplits, order=1, cosmology=Planck15):
+  a = a0
+  batch_dim, x_dim, y_dim, z_dim = field.shape
+
+  # Create particles on uniform grid
+  mstate = mesh_ops.mtf_indices(field.mesh, shape=[x_dim, y_dim, z_dim], dtype=tf.float32)
+  X = mtf.einsum([mtf.ones(field.mesh, [batch_dim]), mstate], output_shape=[batch_dim] + mstate.shape[:])
+
+  # Computes Fourier Transform of input field
+  kfield = mesh_utils.r2c3d(field)
+
+  pt = PerturbationGrowth(cosmology, a=[a], a_normalize=1.0)
+
+  DX = pt.D1(a) * lpt1(kfield, X, kvec, splitted_dims, nsplits)
+  P = (a ** 2 * pt.f1(a) * pt.E(a)) * DX
+  F = (a ** 2 * pt.E(a) * pt.gf(a) / pt.D1(a)) * DX
+  # TODO: Implement 2nd order LPT
+
+  # Moves the particles according to displacement
+  X = X + DX
+
+  return X, P, F
