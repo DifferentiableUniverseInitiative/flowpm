@@ -15,14 +15,14 @@ tf.flags.DEFINE_integer("gpus_per_node", 8, "Number of GPU on each node")
 tf.flags.DEFINE_integer("gpus_per_task", 8, "Number of GPU in each task")
 tf.flags.DEFINE_integer("tasks_per_node", 1, "Number of task in each node")
 
-tf.flags.DEFINE_integer("num_iters", 10, "Number of FFT transforms.")
-
 tf.flags.DEFINE_integer("cube_size", 512, "Size of the 3D volume.")
 tf.flags.DEFINE_integer("batch_size", 64,
                         "Mini-batch size for the training. Note that this "
                         "is the global batch size and not the per-shard batch.")
 tf.flags.DEFINE_string("mesh_shape", "b1:16", "mesh shape")
 tf.flags.DEFINE_string("layout", "nx:b1", "layout rules")
+
+tf.flags.DEFINE_string("output_file", "timeline", "Name of the output timeline file")
 
 FLAGS = tf.flags.FLAGS
 
@@ -48,7 +48,6 @@ def benchmark_model(mesh):
   err = mtf.reduce_max(mtf.abs(field - rfield))
   return err
 
-
 def main(_):
 
   mesh_shape = mtf.convert_to_shape(FLAGS.mesh_shape)
@@ -57,15 +56,13 @@ def main(_):
   # Resolve the cluster from SLURM environment
   cluster = tf.distribute.cluster_resolver.SlurmClusterResolver({"mesh": mesh_shape.size//FLAGS.gpus_per_task},
 								port_base=8822,
-                                                                gpus_per_node=FLAGS.gpus_per_node,
-                                                                gpus_per_task=FLAGS.gpus_per_task,
-								tasks_per_node=FLAGS.tasks_per_node,
-								)
+                gpus_per_node=FLAGS.gpus_per_node,
+                gpus_per_task=FLAGS.gpus_per_task,
+								tasks_per_node=FLAGS.tasks_per_node)
+
   cluster_spec = cluster.cluster_spec()
   # Create a server for all mesh members
-  server = tf.distribute.Server(cluster_spec,
-				"mesh",
-	 			 cluster.task_id)
+  server = tf.distribute.Server(cluster_spec, "mesh", cluster.task_id)
 
   # Only he master job takes care of the graph building,
   # everyone else can just chill for now
@@ -91,14 +88,28 @@ def main(_):
   result = lowering.export_to_tf_tensor(fft_err)
 
   with tf.Session(server.target) as sess:
-    err = sess.run(result)
+
     start = time.time()
-    for _ in range(FLAGS.num_iters):
-      err = sess.run(result)
+    err = sess.run(result)
     end = time.time()
 
-  print("Max absolute FFT error %f, with wall time %f"%(err, (end - start) / FLAGS.num_iters))
-  exit(0)
+    profiler = tf.profiler.Profiler(sess.graph)
+
+    run_meta = tf.RunMetadata()
+    err = sess.run(result,
+                   options=tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE),
+                   run_metadata=run_meta)
+
+    profiler.add_step(0, run_meta)
+
+    opts = (tf.profiler.ProfileOptionBuilder(
+        tf.profiler.ProfileOptionBuilder.time_and_memory())
+        .with_step(0)
+        .with_timeline_output(FLAGS.output_file).build())
+    profiler.profile_graph(options=opts)
+
+  print("Max absolute FFT error %f, with wall time %f"%(err, (end - start)))
+  exit(-1)
 
 
 if __name__ == "__main__":
