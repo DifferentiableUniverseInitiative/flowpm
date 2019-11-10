@@ -106,8 +106,8 @@ def main(_):
         .with_timeline_output('test.json').build())
     profiler.profile_graph(options=opts)
 
-  print("Max absolute FFT error %f, with wall time %f"%(err, (end - start) / FLAGS.num_iters))
-  exit(0)
+  print("Max absolute FFT error %f, with wall time %f"%(err, (end - start)))
+  exit(-1)
 
 
 if __name__ == "__main__":
