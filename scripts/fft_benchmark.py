@@ -93,9 +93,9 @@ def main(_):
 
     profiler = tf.profiler.Profiler(sess.graph)
 
-    run_meta = tf.compat.v1.RunMetadata()
+    run_meta = tf.RunMetadata()
     err = sess.run(result,
-                   options=tf.compat.v1.RunOptions(trace_level=tf.RunOptions.FULL_TRACE),
+                   options=tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE),
                    run_metadata=run_meta)
 
     profiler.add_step(0, run_meta)
@@ -105,7 +105,7 @@ def main(_):
         .with_step(0)
         .with_timeline_output('test.json').build())
     profiler.profile_graph(options=opts)
-    
+
   print("Max absolute FFT error %f, with wall time %f"%(err, (end - start) / FLAGS.num_iters))
   exit(0)
 
