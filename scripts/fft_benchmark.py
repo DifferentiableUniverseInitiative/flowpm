@@ -22,6 +22,8 @@ tf.flags.DEFINE_integer("batch_size", 64,
 tf.flags.DEFINE_string("mesh_shape", "b1:16", "mesh shape")
 tf.flags.DEFINE_string("layout", "nx:b1", "layout rules")
 
+tf.flags.DEFINE_string("output_file", "timeline", "Name of the output timeline file")
+
 FLAGS = tf.flags.FLAGS
 
 def benchmark_model(mesh):
@@ -103,7 +105,7 @@ def main(_):
     opts = (tf.profiler.ProfileOptionBuilder(
         tf.profiler.ProfileOptionBuilder.time_and_memory())
         .with_step(0)
-        .with_timeline_output('test.json').build())
+        .with_timeline_output(FLAGS.output_file).build())
     profiler.profile_graph(options=opts)
 
   print("Max absolute FFT error %f, with wall time %f"%(err, (end - start)))
