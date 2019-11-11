@@ -28,6 +28,8 @@ tf.flags.DEFINE_string(
     "specified, we will attempt to automatically detect the GCE project from "
     "metadata.")
 
+tf.flags.DEFINE_string("model_dir", None, "Estimator model_dir")
+
 tf.flags.DEFINE_integer("gpus_per_node", 8, "Number of GPU on each node")
 tf.flags.DEFINE_integer("gpus_per_task", 8, "Number of GPU in each task")
 tf.flags.DEFINE_integer("tasks_per_node", 1, "Number of task in each node")
