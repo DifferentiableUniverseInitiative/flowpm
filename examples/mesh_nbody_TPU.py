@@ -174,7 +174,7 @@ def main(_):
   # Run evaluate loop for ever, we will be connecting to this process using a profiler
   for i, f in enumerate(model.predict(input_fn=dummy_input_fn)):
     print(i)
-    np.save(file_io.FileIO('gs://flowpm/field_%d.npy'%i, 'w'), f)
+    np.save(file_io.FileIO('gs://flowpm_eu/field_%d.npy'%i, 'w'), f)
 
 if __name__ == "__main__":
   tf.disable_v2_behavior()
