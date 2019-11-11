@@ -35,6 +35,7 @@ tf.flags.DEFINE_string(
     "metadata.")
 
 tf.flags.DEFINE_string("model_dir", None, "Estimator model_dir")
+tf.flags.DEFINE_string("output_dir", None, "Output directory for simulations")
 
 tf.flags.DEFINE_integer("cube_size", 512, "Size of the 3D volume.")
 tf.flags.DEFINE_float("box_size", 1000., "Physical size of the 3D volume.")
@@ -174,7 +175,7 @@ def main(_):
   # Run evaluate loop for ever, we will be connecting to this process using a profiler
   for i, f in enumerate(model.predict(input_fn=dummy_input_fn)):
     print(i)
-    np.save(file_io.FileIO('gs://flowpm_eu/field_%d.npy'%i, 'w'), f)
+    np.save(file_io.FileIO(FLAGS.output_dir+'/field_%d.npy'%i, 'w'), f)
 
 if __name__ == "__main__":
   tf.disable_v2_behavior()
