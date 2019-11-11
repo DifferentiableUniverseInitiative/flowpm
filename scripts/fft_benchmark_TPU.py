@@ -34,17 +34,11 @@ tf.flags.DEFINE_string(
 
 tf.flags.DEFINE_string("model_dir", None, "Estimator model_dir")
 
-tf.flags.DEFINE_integer("gpus_per_node", 8, "Number of GPU on each node")
-tf.flags.DEFINE_integer("gpus_per_task", 8, "Number of GPU in each task")
-tf.flags.DEFINE_integer("tasks_per_node", 1, "Number of task in each node")
-
-tf.flags.DEFINE_integer("num_iters", 10, "Number of FFT transforms.")
-
 tf.flags.DEFINE_integer("cube_size", 512, "Size of the 3D volume.")
-tf.flags.DEFINE_integer("batch_size", 64,
+tf.flags.DEFINE_integer("batch_size", 128,
                         "Mini-batch size for the training. Note that this "
                         "is the global batch size and not the per-shard batch.")
-tf.flags.DEFINE_string("mesh_shape", "b1:16", "mesh shape")
+tf.flags.DEFINE_string("mesh_shape", "b1:32", "mesh shape")
 tf.flags.DEFINE_string("layout", "nx:b1", "layout rules")
 
 FLAGS = tf.flags.FLAGS
