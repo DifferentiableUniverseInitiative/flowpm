@@ -81,7 +81,7 @@ def nbody_model(mesh):
   #### N-body simulation starts here
   # Create initial conditions
   initial_conditions = fpm.linear_field(mesh, [batch_dim, x_dim, y_dim, z_dim],
-                                        FLAGS.boxsize, pk, kv)
+                                        FLAGS.box_size, pk, kv)
 
   # LPT evolution to a0
   state = fpm.lpt_init(initial_conditions, FLAGS.a0, kv, [x_dim], [32])
