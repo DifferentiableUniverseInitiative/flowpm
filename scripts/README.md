@@ -47,3 +47,14 @@ script with `ctrl+\`
 More info on using TensorBoard and Profiling for TPU here:
   - https://cloud.google.com/tpu/docs/tensorboard-setup
   - https://cloud.google.com/tpu/docs/cloud-tpu-tools
+
+To access these traces from your local computer, here are the 2 simple steps
+  - Use the gcloud cli to authenticate yourself:
+  ```
+  $ gcloud auth application-default login
+  ```
+  - Start TensorBoard with the path to your Bucket:
+  ```
+  $ tensorboard --logdir=gs://flowpm_eu/tpu_test
+  ```
+  - Step 3: Profit!
