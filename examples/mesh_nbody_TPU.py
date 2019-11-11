@@ -123,7 +123,7 @@ def model_fn(features, labels, mode, params):
     x_dim_nosplit = mtf.Dimension("nx", FLAGS.cube_size)
 
     # Until we implement distributed outputs, we only return one example
-    field_slice, _ = mtf.split(rfield, batch_dim, [1, FLAGS.batch_size-1])
+    field_slice, _ = mtf.split(field, batch_dim, [1, FLAGS.batch_size-1])
     field_slice = mtf.reshape(field_slice, [mtf.Dimension("bs", 1), x_dim_nosplit, y_dim, z_dim])
 
   lowering = mtf.Lowering(graph, {mesh: mesh_impl})
