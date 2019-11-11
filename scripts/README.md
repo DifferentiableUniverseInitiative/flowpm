@@ -42,4 +42,8 @@ Address Type: TPU Name
 Profiling duration: 10000
 
 4) When you have acquired the profile, you can shutdown the running benchmarking
-script with `ctrl+\` 
+script with `ctrl+\`
+
+More info on using TensorBoard and Profiling for TPU here:
+  - https://cloud.google.com/tpu/docs/tensorboard-setup
+  - https://cloud.google.com/tpu/docs/cloud-tpu-tools
