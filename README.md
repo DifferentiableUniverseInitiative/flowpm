@@ -68,3 +68,30 @@ $ sbatch lpt_job.sh
 This will generate a plot `comparison.png` showing from a set of initial
 conditions, the result of a single LPT step on single GPU TensorFlow vs Mesh
 TensorFlow.
+
+### TPU setup
+
+To run FlowPM on Google TPUs here is the procedure
+
+ - Step 1: Setting up a cloud TPU in the desired zone, do from the GCP console:
+ ```
+$ gcloud config set compute/region europe-west4
+$ gcloud config set compute/zone europe-west4-a
+$ ctpu up --name=flowpm --tpu-size=v3-32
+ ```
+
+  - Step 2: Installing dependencies and FlowPM:
+```
+$ git clone https://github.com/modichirag/flowpm.git
+$ cd flowpm
+$ git checkout mesh
+$ pip3 install --user mesh-tensorflow
+$ pip3 install --user -e .
+```
+
+It's so easy, it's almost criminal.
+
+#### Notes on using and profiling for TPUs
+
+There a few things to keep in mind when using TPUs, in particular, the section
+on `Excessive tensor padding` from this document: https://cloud.google.com/tpu/docs/troubleshooting
