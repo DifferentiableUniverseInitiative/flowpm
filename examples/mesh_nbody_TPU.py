@@ -120,7 +120,7 @@ def model_fn(features, labels, mode, params):
   with mtf.utils.outside_all_rewrites():
     field = nbody_model(mesh)
     batch_dim, x_dim, y_dim, z_dim = field.shape
-    x_dim_nosplit = mtf.Dimension("nx", FLAGS.cube_size)
+    x_dim_nosplit = mtf.Dimension("nx_nosplit", FLAGS.cube_size)
 
     # Until we implement distributed outputs, we only return one example
     field_slice, _ = mtf.split(field, batch_dim, [1, FLAGS.batch_size-1])
