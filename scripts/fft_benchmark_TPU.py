@@ -11,6 +11,10 @@ import tensorflow.compat.v1 as tf
 import mesh_tensorflow as mtf
 import flowpm.mesh_ops as mpm
 
+from tensorflow.python.tpu import tpu_config  # pylint: disable=g-direct-tensorflow-import
+from tensorflow.python.tpu import tpu_estimator  # pylint: disable=g-direct-tensorflow-import
+from tensorflow_estimator.python.estimator import estimator as estimator_lib
+
 # Cloud TPU Cluster Resolver flags
 tf.flags.DEFINE_string(
     "tpu", default="flowpm",
