@@ -101,7 +101,7 @@ def model_fn(features, labels, mode, params):
 
 def main(_):
 
-  tf.logging.set_verbosity(logging.INFO)
+  tf.logging.set_verbosity(tf.logging.INFO)
   mesh_shape = mtf.convert_to_shape(FLAGS.mesh_shape)
 
   # Resolve the TPU environment
