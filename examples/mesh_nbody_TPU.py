@@ -131,7 +131,7 @@ def model_fn(features, labels, mode, params):
   tf_field = tf.to_float(lowering.export_to_tf_tensor(field_slice))
 
   with mtf.utils.outside_all_rewrites():
-    return tpu_estimator.TPUEstimatorSpec(mode, loss=tf_field, predictions={'field': tf_field})
+    return tpu_estimator.TPUEstimatorSpec(mode, loss=tf.reduce_sum(tf_field), predictions={'field': tf_field})
 
 def main(_):
 
