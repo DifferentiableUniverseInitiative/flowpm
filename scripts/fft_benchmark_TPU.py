@@ -38,6 +38,7 @@ tf.flags.DEFINE_integer("cube_size", 512, "Size of the 3D volume.")
 tf.flags.DEFINE_integer("batch_size", 128,
                         "Mini-batch size for the training. Note that this "
                         "is the global batch size and not the per-shard batch.")
+
 tf.flags.DEFINE_string("mesh_shape", "b1:32", "mesh shape")
 tf.flags.DEFINE_string("layout", "nx:b1", "layout rules")
 

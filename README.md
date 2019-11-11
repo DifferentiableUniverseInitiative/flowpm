@@ -95,3 +95,5 @@ It's so easy, it's almost criminal.
 
 There a few things to keep in mind when using TPUs, in particular, the section
 on `Excessive tensor padding` from this document: https://cloud.google.com/tpu/docs/troubleshooting
+
+See the [README](scripts/README.md) in the script folder for more info on how to profile
