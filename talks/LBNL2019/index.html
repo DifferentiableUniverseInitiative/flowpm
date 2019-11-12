@@ -81,7 +81,7 @@
 				<!-------------------------------------------------------------------------------->
 				<!-------------------------------------------------------------------------------->
 				<section>
-					<section data-background-image="assets/cmb.png" data-background-size="1500px" data-background-color="black">
+					<section data-background-image="assets/cmb.png" data-background-size="1400px" data-background-color="black">
 						<h2 class='slide-title'> Cosmological Probes</h2>
 						<div class="container">
 							<div class="col">
@@ -222,7 +222,7 @@
 								<div style="position:relative; width:480px; height:320px; margin:0 auto;">
 									<img class="plain" data-src="assets/millenium.png" />
 								</div>
-								<div class="plain" data-fragment-index="2" style="position:relative; float:right; font-size: 20px">Leclercq et.al. 2014 </div>
+								<div class="plain" data-fragment-index="2" style="position:relative; float:right; font-size: 20px">Leclercq et al. 2014 </div>
 							</div>
 						</div>
 					</section>
@@ -335,8 +335,21 @@
 									<div class="block-content">
 										<ul>
 											<li >High Dimensional Optimization (&gt $10^6$ parameters)</li>
-											<li class="fragment">Gradient Based Algorithm</li>
-											<li class="fragment" style="font-weight:bold">Differentiable Forward Models</li>
+											<li class="fragment"  data-fragment-index="3">Gradient Based Algorithm</li>
+											<li class="fragment"  data-fragment-index="4" style="font-weight:bold">Differentiable Forward Models</li>
+										</ul>
+									</div>
+									
+								</div>								
+								<br><br><br>
+								<div class="block fragment " data-fragment-index="5">
+									<div class="block-title">
+										Framework so far
+									</div>
+									<div class="block-content">
+										<ul>
+											<li > Code-base : cosmo4d, vmad, abopt</li>
+											<li class="fragment">Seljak et al. 2017, Feng et al. 2018, Modi et al. 2018, Horowitz et al. 2018</li>
 										</ul>
 									</div>
 									
@@ -352,7 +365,136 @@
 						<br><br>
 
 					</section>
+				</section>
+				<!-------------------------------------------------------------------------------->
+				<!-------------------------------------------------------------------------------->
 
+				<section>
+					<section>
+						<h2 class='slide-title'> Differentiable Halo Models </h2>
+						<br><br>
+
+						<div class="container">
+							
+							<div class="col">
+								<ul>
+									<li class="fragment" data-fragment-index="1" >Friends of friends is non-differentiable</li>
+									<br>
+									<li class="fragment" data-fragment-index="2" >Halos form at peaks of matter density field </li>
+									<br>
+									<ul class="fragment" data-fragment-index="3" >
+										Bias model with respect to the underlying matter density field <br>
+										<div style="text-align:center; font-size: 20px">$\delta_h = b \delta_m$</div>
+									</ul>	
+									<br>
+									<li class="fragment" data-fragment-index="4" > Neural networks to learn halo formation</li>
+									<br>
+								</ul>
+								
+							</div>
+														
+							<div class="col" >
+								<div style="position:relative; width:480px; height:220px; margin:0 auto;">
+									<img class="fragment current-visible" data-fragment-index="1" style="position:absolute;top:0;left:0;" data-src="assets/FOFgroups.png" height="200"/>
+									<img class="fragment current-visible" data-fragment-index="2" style="position:absolute;top:0;left:0;" data-src="assets/halo_peak.png" height="200"/>
+									<img class="fragment current-visible" data-fragment-index="3" style="position:absolute;top:0;left:0;" data-src="assets/halo_peak.png" height="200"/>
+									<img class="fragment" data-fragment-index="4" style="position:absolute;top:0;left:0;" data-src="assets/fnn.jpeg" height="200"/>
+								</div>
+							</div>
+						</div>
+						<br><br>
+
+					</section>
+
+					<!-------------------------------------------------------------------------------->			
+
+					<section>
+						<h2 class='slide-title'> Neural Halo Model </h2>
+						<br><br>
+						<div class="container">
+							
+							<div class="col">
+								<ul>
+									<li class="fragment" data-fragment-index="1" >Classification network learns position mask</li>
+									<br>
+									<li class="fragment" data-fragment-index="2" >Regression network learns mass </li>
+									<br>
+									<li class="fragment" data-fragment-index="3" > Combination is the halo model </li>
+									<br>
+								</ul>
+								
+							</div>
+														
+							<div class="col" >
+								<div style="position:relative; width:480px; height:220px; margin:0 auto;">
+									<img class="fragment current-visible" data-fragment-index="1" style="position:absolute;top:0;left:0;" data-src="assets/nnpos.png" height="200"/>
+									<img class="fragment current-visible" data-fragment-index="2" style="position:absolute;top:0;left:0;" data-src="assets/nnmass.png" height="200"/>
+									<img class="fragment " data-fragment-index="3" style="position:absolute;top:0;left:0;" data-src="assets/nnmodel.png" height="200"/>
+								</div>
+								<br>
+								<div class="fragment" data-fragment-index="1" style="position:relative; float:right; font-size: 20px; margin:0 auto">Modi et al. 2018</div>
+							</div>
+						</div>
+						<br><br>
+
+					</section>
+
+					<!-------------------------------------------------------------------------------->
+					<section>
+						<h2 class='slide-title'> Reconstruction from Halo Field </h2>
+
+						<div class="fragment" data-fragment-index="0" style="text-align:center"> $\boxed{ \mathcal{L}(s) = [d - \mathcal{F}(s)]^\dagger N ^{-1} [d - \mathcal{F}(s)] + s^\dagger S^{-1} s}$ </div>
+						<br>
+						<div class="container">
+							
+							<div class="col">
+								<ul>
+									<li class="fragment" data-fragment-index="1">Error pdf for smoothed mass fields</li>
+									<br>
+									<li class="fragment" data-fragment-index="2">Shifted Log-Normal</li>
+									<br>
+								</ul>
+							<div class="fragment" data-fragment-index="2" style="text-align:right"> $ \mathcal{E} = \sum_i \Big(\frac{\mu_N + \rm{log(M_{R,i}^{NN} + M_0)} - \rm{log(M_{R,i}^{d} + M_0)}}{2\sigma_N}\Big)^2$ </div>
+							</div>		
+														
+							<div class="col" style="flex: 0 0 25em;">
+							<!-- <div class="col"> -->
+								<img class="fragment" data-fragment-index="1" data-src="assets/nnnoisefield.png" height="200"/>
+								<img class="fragment" data-fragment-index="2" data-src="assets/nnnoisehist.png" height="200"/>
+							</div>
+						</div>
+						<br><br>
+
+					</section>
+
+
+					<!-------------------------------------------------------------------------------->
+					<section>
+						<h2 class='slide-title'> Adiabatic Optimization </h2>
+
+						<div class="fragment" data-fragment-index="0" style="text-align:center"> $\boxed{ \mathcal{L}(s) = [d - \mathcal{F}(s)]^\dagger N ^{-1} [d - \mathcal{F}(s)] + s^\dagger S^{-1} s}$ </div>
+						<br>
+						<div class="container">
+							
+							<div class="col">
+								<ul>
+									<li class="fragment" data-fragment-index="1">Error pdf for smoothed mass fields</li>
+									<br>
+									<li class="fragment" data-fragment-index="2">Shifted Log-Normal</li>
+									<br>
+								</ul>
+							<div class="fragment" data-fragment-index="2" style="text-align:right"> $ \mathcal{E} = \sum_i \Big(\frac{\mu_N + \rm{log(M_{R,i}^{NN} + M_0)} - \rm{log(M_{R,i}^{d} + M_0)}}{2\sigma_N}\Big)^2$ </div>
+							</div>		
+														
+							<div class="col" style="flex: 0 0 25em;">
+							<!-- <div class="col"> -->
+								<img class="fragment" data-fragment-index="1" data-src="assets/annealinit.png" height="200"/>
+								<img class="fragment" data-fragment-index="2" data-src="assets/noanneal.png" height="200"/>
+							</div>
+						</div>
+						<br><br>
+
+					</section>
 
 				</section>
 				<!-------------------------------------------------------------------------------->
