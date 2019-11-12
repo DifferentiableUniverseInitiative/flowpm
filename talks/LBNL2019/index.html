@@ -455,13 +455,15 @@
 									<br>
 								</ul>
 							<div class="fragment" data-fragment-index="2" style="text-align:right"> $ \mathcal{E} = \sum_i \Big(\frac{\mu_N + \rm{log(M_{R,i}^{NN} + M_0)} - \rm{log(M_{R,i}^{d} + M_0)}}{2\sigma_N}\Big)^2$ </div>
-							</div>		
-														
-							<div class="col" style="flex: 0 0 25em;">
+							</div>																
+							
+							<div class="col" >
 							<!-- <div class="col"> -->
 								<img class="fragment" data-fragment-index="1" data-src="assets/nnnoisefield.png" height="200"/>
 								<img class="fragment" data-fragment-index="2" data-src="assets/nnnoisehist.png" height="200"/>
 							</div>
+							<div class="fragment" data-fragment-index="1" style="position:relative; float:right; left:-200px; font-size: 20px; margin:0 auto">Modi et al. 2018</div>
+
 						</div>
 						<br><br>
 
@@ -472,31 +474,139 @@
 					<section>
 						<h2 class='slide-title'> Adiabatic Optimization </h2>
 
-						<div class="fragment" data-fragment-index="0" style="text-align:center"> $\boxed{ \mathcal{L}(s) = [d - \mathcal{F}(s)]^\dagger N ^{-1} [d - \mathcal{F}(s)] + s^\dagger S^{-1} s}$ </div>
-						<br>
 						<div class="container">
 							
 							<div class="col">
 								<ul>
-									<li class="fragment" data-fragment-index="1">Error pdf for smoothed mass fields</li>
+									<li class="fragment" data-fragment-index="1"> <b>Problem </b>: Simple optimization leads to poor results </li> 
+									<ul>
+										<li class="fragment" data-fragment-index="2"> Volume effect : Number of modes scale as $k^3$ </li>
+										<li class="fragment" data-fragment-index="3"> Evolution moves information from large to small scales</li>											
+										<li class="fragment" data-fragment-index="4"> Large scales are linear </li>
+									</ul>
 									<br>
-									<li class="fragment" data-fragment-index="2">Shifted Log-Normal</li>
+									<br>									
+									<br>
+									<li class="fragment" data-fragment-index="5"><b>Solution </b>: Smooth residual $\mathcal{E}$ on small scales to fit the large scales first </li>
+									<br>
+									<br>
+									<br>
+									<br>
 									<br>
 								</ul>
-							<div class="fragment" data-fragment-index="2" style="text-align:right"> $ \mathcal{E} = \sum_i \Big(\frac{\mu_N + \rm{log(M_{R,i}^{NN} + M_0)} - \rm{log(M_{R,i}^{d} + M_0)}}{2\sigma_N}\Big)^2$ </div>
 							</div>		
 														
 							<div class="col" style="flex: 0 0 25em;">
-							<!-- <div class="col"> -->
-								<img class="fragment" data-fragment-index="1" data-src="assets/annealinit.png" height="200"/>
-								<img class="fragment" data-fragment-index="2" data-src="assets/noanneal.png" height="200"/>
+								<!-- <div class="col"> -->
+								<div style="position:relative; width:500px; height:300px; margin:0 auto;">
+									<img class="fragment current-visible" data-fragment-index="0" style="position:absolute;top:0;left:0;" data-src="assets/annealinit.png" height="300"/>
+									<img class="fragment" data-fragment-index="1" style="position:absolute;top:0;left:0;" data-src="assets/noanneal.png" height="300"/>
+								</div>
+								<div style="position:relative; width:500px; height:300px; margin:0 auto;">
+									<img class="fragment current-visible" data-fragment-index="5" style="position:absolute;top:0;left:0;" data-src="assets/annealinit.png" height="300"/>
+									<img class="fragment current-visible" data-fragment-index="6" style="position:absolute;top:0;left:0;" data-src="assets/anneal4.png" height="300"/>
+									<img class="fragment current-visible" data-fragment-index="7" style="position:absolute;top:0;left:0;" data-src="assets/anneal2.png" height="300"/>
+									<img class="fragment current-visible" data-fragment-index="8" style="position:absolute;top:0;left:0;" data-src="assets/anneal0.png" height="300"/>
+								</div>
 							</div>
 						</div>
 						<br><br>
 
 					</section>
 
+					<!-------------------------------------------------------------------------------->
+					<section>
+						<h2 class='slide-title'> Reconstruction </h2>
+
+						<div style="position:relative; width:1000px; height:300px; margin:0 auto;">							
+							<img class="fragment " data-fragment-index="0"  style="position:absolute;top:0;left:0;" data-src="assets/recontruth.png" height="500"/>
+						</div>
+						<div style="position:relative; width:1000px; height:300px; margin:0 auto;">							
+							<img class="fragment current-visible" data-fragment-index="1"  style="position:absolute;top:0;left:0;" data-src="assets/reconinit.png" height="500"/>
+							<img class="fragment " data-fragment-index="2"  style="position:absolute;top:0;left:0;" data-src="assets/reconrecon.png" height="500"/>
+						</div>
+						<div class="fragment" data-fragment-index="1" style="position:relative; float:right; left:-50px; font-size: 20px; margin:0 auto">Modi et al. 2018</div>
+						
+
+					</section>
+
+					
+					<!-------------------------------------------------------------------------------->
+					<section>
+						<h2 class='slide-title'> Baryon Acoustic Oscillations </h2>
+
+						<i> Most robust probes for dark energy from galaxy surveys (DESI, LSST) </i>
+
+						<br>
+						<br>
+						
+						<div class="container">
+
+							<div class="col">
+								<ul>
+									<li class="fragment" data-fragment-index="1"> Pressure waves in the primordial photon-baryon fluids </li> 
+									<br>									
+									<li class="fragment" data-fragment-index="2">Frozen at the time of decoupling </li>
+									<br>
+									<ul class="fragment" data-fragment-index="3"> $\rightarrow$ Clustering at preferred scale</ul>
+									<br>
+									<img class="fragment" data-fragment-index="3" data-src="assets/bao_xi.png" height="250"/>
+									<br>
+									<br>
+									<br>
+								</ul>
+							</div>		
+														
+							<div class="col" style="flex: 0 0 1em;">
+								<!-- <div class="col"> -->
+								<div style="position:relative; width:600px; height:300px; left:20px; top:80px; margin:1 auto">
+									<div class="fragment current-visible" data-fragment-index="4" style="position:absolute;top:-50px;left:-20px;text-align:center"> Comparision with standard reconstruction for Fisher Information (Real Space) </div>
+									<div class="fragment " data-fragment-index="5" style="position:absolute;top:-50px;left:-20px;text-align:center"> Comparision with standard reconstruction for Fisher Information (Redshift Space) </div>
+									<img class="fragment current-visible" data-fragment-index="4" style="position:absolute;top:0;left:0;" data-src="assets/realrccfig.png" height="250"/>
+									<img class="fragment" data-fragment-index="5" style="position:absolute;top:0;left:0;" data-src="assets/redrccfig.png" height="250"/>
+								</div>
+								<div class="fragment current-visible" data-fragment-index="4" style="position:relative; float:right;  top:50px; font-size: 20px; margin:0 auto">Modi et al. 2018</div>
+
+							</div>
+						
+						</div>
+						<br><br>
+
+					</section>
+
+
+					<!-- <\!-------------------------------------------------------------------------------\-> -->
+					<!-- <section> -->
+					<!-- 	<h2 class='slide-title'> Baryon Acoustic Oscillations </h2> -->
+						
+					<!-- 	<div class="container"> -->
+							
+					<!-- 		<div class="col"> -->
+					<!-- 			<ul> -->
+					<!-- 				<li class="fragment" data-fragment-index="1"> <b>Pressure waves in the primordial photon-baryon fluid </li>  -->
+					<!-- 				<li class="fragment" data-fragment-index="2"> <b>Frozen at the time of decoupling i </li>  -->
+					<!-- 				<br> -->
+					<!-- 				<br> -->
+					<!-- 			</ul> -->
+					<!-- 		</div>		 -->
+							
+					<!-- 		<div class="col" style="align:center; flex: 10em 10em 5em;"> -->
+					<!-- 			<\!-- <div class="col"> -\-> -->
+					<!-- 			<div style="position:relative; width:700px; height:300px; margin:0 auto;"> -->
+					<!-- 				<img class="fragment current-visible" data-fragment-index="4" style="position:absolute;top:0;left:0;" data-src="assets/realrccfig.png" height="300"/> -->
+					<!-- 				<img class="fragment current-visible" data-fragment-index="5" style="position:absolute;top:0;left:0;" data-src="assets/redrccfig.png" height="300"/> -->
+					<!-- 			</div> -->
+					<!-- 			<div style="position:relative; width:500px; height:300px; margin:0 auto;"> -->
+					<!-- 			</div> -->
+					<!-- 		</div> -->
+					<!-- 	</div> -->
+					<!-- 	<br><br> -->
+					<!-- </section> -->
+
+
 				</section>
+				<!-------------------------------------------------------------------------------->
+				<!-------------------------------------------------------------------------------->
 				<!-------------------------------------------------------------------------------->
 				<!-------------------------------------------------------------------------------->
 				<section>
@@ -545,7 +655,7 @@
 											<li class="fragment" data-fragment-index="5"> Green's function approach in Fourier space to estimate force</li>
 											<br>
 											<li class="fragment" data-fragment-index="6"> Interpolate the force back to particle positions </li>
-							
+											
 										</ul>
 									</div>
 									<div class="col">
@@ -572,7 +682,7 @@
 							</div>
 						</div>
 					</section>
-
+					
 					<section>
 						<h2 class='slide-title'> Generating Initial Conditions </h2>
 						<div class="container">
@@ -590,17 +700,14 @@
 								<!-- <img class="fragment" style="position:relative; float:right" data-src="assets/lpt_depth2.PNG" height="620"/> -->
 								<img class="fragment"  data-src="assets/lpt_depth2.PNG" height="620"/>
 							</div>
-							
+						</div>
 					</section>
 					
 				</section>
-				<!-------------------------------------------------------------------------------->
-				<!-------------------------------------------------------------------------------->
-						
+				
+				</div>
 			</div>
-		</div>
-
-
+			
 
 		<style>
 		/* .reveal .slides {
