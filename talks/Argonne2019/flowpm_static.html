@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<head>
+  <title>FlowPM</title>
+  <style>
+    body{
+    	background: black;
+    	font-family: "Open Sans", "Helvetica Neue";
+		font-weight: 300;
+		font-size: 12px;
+		color: white;
+    }
+
+    canvas{
+		position: fixed;
+		left: 0px;
+		right: 0px;
+		top: 0px;
+		bottom: 0px;
+    }
+  </style>
+</head>
+<body>
+  <div id="nbody"></div>
+  <script src="reveal.js/js/three.min.js"></script>
+  <script src="reveal.js/js/d3.v3.min.js"></script>
+  <script src="npy.js"></script>
+<script>
+
+  var pointGeo = new THREE.Geometry();
+  var image = document.createElement('img');
+  var texture = new THREE.Texture('image');
+
+  var mat = new THREE.PointCloudMaterial({
+    vertexColors: true,
+    size: 5,
+    color: 0xffffff,
+    map: THREE.ImageUtils.loadTexture('assets/med-stars.png'),
+    transparent: true,
+    side: THREE.DoubleSide,
+    depthTest: false,
+    opacity:0.75
+  });
+
+  var scale = d3.scale.linear()
+    .domain([0,64])
+    .range([-30,30]);
+
+  window.ready_to_update = true;
+  var points = new THREE.PointCloud(pointGeo, mat);
+  var pointCount = 64**3;
+  var frameRate = 30; // ms per timestep (yeah I know it's not really a rate)
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  container = document.getElementById( 'nbody' );
+  document.body.appendChild( container );
+  container.appendChild(renderer.domElement);
+
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 500);
+  camera.position.set(0, 50, 150);
+  camera.lookAt(new THREE.Vector3(0, 0, 0));
+  scene = new THREE.Scene();
+
+    function loadParticles(data, density){
+    	pointGeo.dispose();
+      pointGeo.vertices = [];
+        for (var i = 0; i < pointCount; i ++) {
+          var x = scale(data[i*3] % 64);
+          var y = scale(data[i*3+1] % 64);
+          var z = scale(data[i*3+2] % 64);
+          pointGeo.vertices.push(new THREE.Vector3(x, y, z));
+          //var luminance= Math.floor((Math.log10(density[i])+1)/4.*100);
+          //var luminance= Math.floor((Math.min(density[i],500))/500*100);
+          var color = new THREE.Color(0xffffff);
+          pointGeo.colors.push(color);
+        }
+      scene.add(points);
+    }
+
+    // Load particles from data
+    let n1 = new npyjs();
+    n1.load('assets/state_1_64.npy', (array) => {
+        window.X = array.data;
+        // Loading array of densities
+        let n = new npyjs();
+        n.load('assets/density_1_64.npy', (array) => {
+          window.D = array.data;
+          loadParticles(window.X, window.D);
+        });
+    });
+
+  renderer.render(scene, camera);
+
+    var paused = false;
+    var down = false;
+    var sx = 0,
+        sy = 0,
+        sz = 0;
+
+    container.onmousedown = function(ev) {
+        down = true;
+        sx = ev.clientX;
+        sy = ev.clientY;
+    };
+    container.onmouseup = function() {
+        down = false;
+    };
+
+    window.onmousemove = function(ev) {
+        if (down) {
+            var dx = ev.clientX - sx;
+            var dy = ev.clientY - sy;
+            scene.rotation.y += dx * 0.01;
+            scene.rotation.x += dy * 0.01;
+            // camera.position.y += dy;
+            sx += dx;
+            sy += dy;
+        }
+    }
+
+    window.addEventListener("touchmove", function(ev){
+        var dx = ev.clientX - sx;
+        var dy = ev.clientY - sy;
+        scene.rotation.y += dx * 0.01;
+        scene.rotation.x += dy * 0.01;
+        // camera.position.y += dy;
+        sx += dx;
+        sy += dy;
+    });
+
+    window.onmousewheel = function(ev){
+      var dz = 0;
+
+      dz -= event.wheelDeltaY * 0.05;
+
+      if (camera.position.z <= 200 && camera.position.z >= 0 ) { camera.position.z -= dz } else{ camera.position.z = 200 };
+
+    }
+    //
+    // window.onkeypress= async function(ev) {
+    //   animating = ! animating;
+    //
+    // }
+
+    var animating = true;
+    var speed = 0.2
+    function animate(t) {
+
+        // We run the simulation through
+        if(animating){
+
+        //update_position();
+        scene.rotation.y += speed * 0.03;
+        sx += speed;
+
+        if (camera.position.z <= 200 && camera.position.z >= 5 )
+          { camera.position.z -= 0.4*speed }
+        else
+          {  };
+
+        }
+
+        renderer.clear();
+        camera.lookAt(scene.position);
+        renderer.render(scene, camera);
+        window.requestAnimationFrame(animate);
+
+    };
+    window.requestAnimationFrame(animate);
+
+</script>
+
+</body>

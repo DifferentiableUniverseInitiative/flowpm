@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<head>
+  <title>Massive Black II</title>
+  <style>
+    body{
+    	background: black;
+    	font-family: "Open Sans", "Helvetica Neue";
+		font-weight: 300;
+		font-size: 12px;
+		color: white;
+    }
+
+    canvas{
+		position: fixed;
+		left: 0px;
+		right: 0px;
+		top: 0px;
+		bottom: 0px;
+    }
+  </style>
+</head>
+<body>
+  <div id="nbody"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+  <script src="reveal.js/js/three.min.js"></script>
+  <script src="reveal.js/js/d3.v3.min.js"></script>
+  <script src="npy.js"></script>
+<script>
+
+  var pointGeo = new THREE.Geometry();
+  var image = document.createElement('img');
+  var texture = new THREE.Texture('image');
+
+  var mat = new THREE.PointCloudMaterial({
+    vertexColors: true,
+    size: 5,
+    color: 0xffffff,
+    map: THREE.ImageUtils.loadTexture('assets/med-stars.png'),
+    transparent: true,
+    side: THREE.DoubleSide,
+    depthTest: false
+  });
+
+  var scale = d3.scale.linear()
+    .domain([0,16])
+    .range([-20,20]);
+
+  window.ready_to_update = false;
+  var points = new THREE.PointCloud(pointGeo, mat);
+  var pointCount = 16**3;
+  var frameRate = 30; // ms per timestep (yeah I know it's not really a rate)
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  container = document.getElementById( 'nbody' );
+  document.body.appendChild( container );
+  container.appendChild(renderer.domElement);
+
+  // renderer.setSize(window.innerWidth, window.innerHeight);
+  // document.body.appendChild(renderer.domElement);
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 500);
+  camera.position.set(0, 0, 75);
+  camera.lookAt(new THREE.Vector3(0, 0, 0));
+  scene = new THREE.Scene();
+
+    function loadParticles(data){
+    	pointGeo.dispose();
+      pointGeo.vertices = [];
+        for (var i = 0; i < pointCount; i ++) {
+          var x = scale(data[i*3]);
+          var y = scale(data[i*3+1]);
+          var z = scale(data[i*3+2]);
+          pointGeo.vertices.push(new THREE.Vector3(x, y, z));
+          var color = new THREE.Color(0xffffff);
+          pointGeo.colors.push(color);
+        }
+      scene.add(points);
+    }
+
+    // Load particles from data
+    let n1 = new npyjs();
+    n1.load('assets/state_01_16.npy', (array) => {
+        window.X = array.data.slice(0,3*pointCount)
+        window.P = array.data.slice(3*pointCount,6*pointCount)
+        window.F = array.data.slice(6*pointCount)
+        loadParticles(window.X)
+        console.log(`You loaded an array with ${array.length} elements and ${array.shape.length} dimensions.`);
+    });
+
+    let n2 = new npyjs();
+    n2.load('assets/kernels_real_16.npy', (array) => {
+        window.k_real = array.data
+        console.log(`You loaded an array with ${array.length} elements and ${array.shape.length} dimensions.`);
+    });
+    let n3 = new npyjs();
+    n3.load('assets/kernels_imag_16.npy', (array) => {
+        window.k_imag = array.data
+        console.log(`You loaded an array with ${array.length} elements and ${array.shape.length} dimensions.`);
+    });
+    let n4 = new npyjs();
+    n4.load('assets/factors_16.npy', (array) => {
+        window.factors = array.data
+        console.log(`You loaded an array with ${array.length} elements and ${array.shape.length} dimensions.`);
+    });
+    window.counter=0
+
+    var onupdate = async function(){
+        window.ready_to_update = false;
+        console.log('executing worker', window.counter);
+        if (!window.model) {
+          window.model = await tf.loadGraphModel('assets/web_model26_16/model.json');
+          window.step_nbody = (x, p, f, fact, kr, ki) =>{
+      state = window.model.predict({'X':x, 'P':p, 'F':f,
+                  'factors':fact, 'kernels_real':kr, 'kernels_imag':ki});
+      return state;};
+    }
+        if (window.counter >= 100){
+          return;
+        }
+
+        const [x, p, f] = tf.tidy(() => {
+          const xi = tf.tensor(window.X);
+          const pi = tf.tensor(window.P);
+          const fi = tf.tensor(window.F);
+          const ki = tf.tensor(window.k_imag);
+          const kr = tf.tensor(window.k_real);
+          const tf_factor = tf.tensor([window.factors[window.counter*3],
+                                     window.factors[window.counter*3+1],
+                                     window.factors[window.counter*3+2]]);
+           return window.step_nbody(xi, pi, fi,tf_factor, ki, kr);
+         });
+
+         x.data().then((value) => {
+           window.X=value;
+           window.counter+=1;
+          window.ready_to_update = true;
+          if(window.counter < 99){
+         var positions = pointGeo.vertices.array;
+         for (var i = 0; i < pointCount; i ++) {
+           points.geometry.vertices[i].x = scale(window.X[i*3]);
+           points.geometry.vertices[i].y = scale(window.X[i*3 + 1]);
+           points.geometry.vertices[i].z = scale(window.X[i*3 + 2]);
+         }
+         points.geometry.verticesNeedUpdate = true;
+       }
+         });
+         p.data().then((value) => {window.P=value;});
+         f.data().then((value) => {window.F=value;});
+    };
+
+  renderer.render(scene, camera);
+
+    var paused = false;
+    var down = false;
+    var sx = 0,
+        sy = 0,
+        sz = 0;
+
+    container.onmousedown = function(ev) {
+        down = true;
+        sx = ev.clientX;
+        sy = ev.clientY;
+    };
+    container.onmouseup = function() {
+        down = false;
+    };
+
+    window.onmousemove = function(ev) {
+        if (down) {
+            var dx = ev.clientX - sx;
+            var dy = ev.clientY - sy;
+            scene.rotation.y += dx * 0.01;
+            scene.rotation.x += dy * 0.01;
+            // camera.position.y += dy;
+            sx += dx;
+            sy += dy;
+        }
+    }
+
+    window.addEventListener("touchmove", function(ev){
+        var dx = ev.clientX - sx;
+        var dy = ev.clientY - sy;
+        scene.rotation.y += dx * 0.01;
+        scene.rotation.x += dy * 0.01;
+        // camera.position.y += dy;
+        sx += dx;
+        sy += dy;
+    });
+
+    window.onmousewheel = function(ev){
+      var dz = 0;
+
+      dz -= event.wheelDeltaY * 0.05;
+
+      if (camera.position.z <= 200 && camera.position.z >= 0 ) { camera.position.z -= dz } else{ camera.position.z = 200 };
+
+    }
+    //
+    // window.onkeypress= function(ev) {
+    //   animating = ! animating;
+    // }
+
+    d3.timer(function () {if (window.ready_to_update) {onupdate();}}, frameRate);
+
+    var animating = true;
+    var speed = 0.1
+    function animate(t) {
+
+        // We run the simulation through
+        if(animating){
+
+        //update_position();
+        scene.rotation.y += speed * 0.02;
+        sx += speed;
+
+        if (camera.position.z <= 200 && camera.position.z >= 5 )
+          { camera.position.z -= 0.1*speed }
+        else
+          {  };
+
+        }
+
+        renderer.clear();
+        camera.lookAt(scene.position);
+        renderer.render(scene, camera);
+        window.requestAnimationFrame(animate);
+
+    };
+    window.requestAnimationFrame(animate);
+
+
+var _transitions = [
+{
+  transitionForward: () => { window.ready_to_update=true;},
+  transitionBackward: () => {window.ready_to_update=false;  animating = false;  },
+  index: 0
+}
+]
+
+</script>
+
+</body>

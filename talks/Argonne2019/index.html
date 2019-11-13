@@ -1,0 +1,767 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>FlowPM: Distributed Particle-Mesh N-body Simulations in TensorFlow</title>
+
+		<meta name="description" content="Advanced statistics meeting @ Argonne, November 2019">
+		<meta name="author" content="Francois Lanusse">
+
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+		<link rel="stylesheet" href="reveal.js/css/reset.css">
+		<link rel="stylesheet" href="reveal.js/css/reveal.css">
+		<link rel="stylesheet" href="reveal.js/css/theme/darkenergy.css">
+
+		<!-- Theme used for syntax highlighting of code -->
+		<link rel="stylesheet" href="reveal.js/lib/css/monokai.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'reveal.js/css/print/pdf.css' : 'reveal.js/css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+			<!-- Any section element inside of this container is displayed as a slide -->
+
+							<section class="fig-container" data-file="flowpm_static.html">
+
+									<div class="container">
+										<div class="title" style="border-radius: 20px; background-color:rgba(0, 0, 0, 0.4);">
+											<h1>FlowPM: Particle-Mesh N-body Simulations in TensorFlow</h1>
+											<h3>Advanced Statistics Meeting @ Argonne National Lab - November 13th, 2019</h3>
+									</div>
+								</div>
+
+								<hr>
+								<div style="border-radius: 20px; background-color:rgba(0, 0, 0, 0);">
+										<div class="container" >
+												<div class="col">
+													<div align="left" style="margin-left: 20px;">
+													<br>
+													<h3>François Lanusse<br> Chirag Modi, Uroš Seljak</h3>
+													<p>	University of California, Berkeley</p>
+
+													<img src="assets/logo_bccp.png" class="plain" height="100"></img>
+													<br>
+
+													</div>
+												</div>
+												<div class="col">
+													<br>
+													<br>
+                          <br>
+													<img src="assets/bids-logo2.png" class="plain" height="150"></img>
+													<img src="assets/desc-logo-inv.png" class="plain" height="200"></img>
+												</div>
+											</div>
+									</div>
+								</section>
+
+								<section data-background-image="assets/WMAP_timeline_large.jpg">
+									<h3 class='slide-title' style="position:absolute;top:0;"> the $\Lambda$CDM view of the Universe </h3>
+<br>	<br>
+									<div class="container">
+										<div class="col" style="flex: 0 0 40em;">
+
+										</div>
+										<div class="col">
+
+									  <img class="plain" data-src="assets/Euclid.png" style="width: 300px"/>
+
+									  <img class="plain" data-src="assets/wfirstlogo.png" style="width: 300px"/>
+
+									  <img class="plain" data-src="assets/LSST_web_black.png" style="width: 300px"/>
+										</div>
+									</div>
+											<br>	<br>	<br>	<br>	<br>	<br>	<br>	<br>	<br>	<br>	<br>	<br>
+								</section>
+
+
+								<section>
+								<section data-background-video="assets/animation-day-to-night.mov" data-background-video-muted>
+									<h3 class='slide-title'>the Large Synoptic Survey Telescope</h3>
+								<div class="container">
+								<div class="col">
+									<ul>
+										<li class="fragment fade-up"> 1000 images each night, 15 TB/night for 10 years</li>
+										<br>
+										<li class="fragment fade-up"> 18,000 square degrees, observed once every few days</li>
+										<br>
+										<li class="fragment fade-up"> Tens of billions of objects, each one observed $\sim1000$ times</li>
+									</ul>
+									<br >
+									<!-- <p class="fragment fade-up"> $\Longrightarrow$ Incredible potential for discovery, along with <b>unprecedented challenges</b >.</p> -->
+								</div>
+
+							 <div class="col">
+									<video class="fragment fade-up"  data-fragment-index="1" data-autoplay data-src="assets/obsim.mp4" type="video/mp4" />
+							 </div>
+						 </div>
+
+						 </section>
+						 			<!-- <section data-transition="fade-in fade-out" data-background="assets/gal_sdss.png" data-vertical-align-top>
+										<p>Previous generation survey: SDSS</p>
+										<br>	<br>	<br>	<br>	<br>	<br>	<br>	<br>	<br>	<br>	<br>	<br>
+										<br>	<br>	<br>	<br>	<br>	<br>	<br>
+						 								<div style="float:right; font-size: 20px">Image credit: Peter Melchior</div>
+						 			</section>
+						 			<section data-transition="fade-in fade-out" data-background="assets/gal_des.png" data-vertical-align-top>
+										<p>Current generation survey: DES</p>
+										<br>	<br>	<br>	<br>	<br>	<br>	<br>	<br>	<br>	<br>	<br>	<br>
+										<br>	<br>	<br>	<br>	<br>	<br>	<br>
+						 								<div style="float:right; font-size: 20px">Image credit: Peter Melchior</div>
+						 			</section>
+									<section data-transition="fade-in fade-out" data-background="assets/gal_hsc.png" data-vertical-align-top>
+										<p>LSST precursor survey: HSC</p>
+
+										<br>	<br>	<br>	<br>	<br>	<br>	<br>	<br>	<br>	<br>	<br>	<br>
+										<br>	<br>	<br>	<br>	<br>	<br>	<br>
+						 								<div style="float:right; font-size: 20px">Image credit: Peter Melchior</div>
+					 			</section> -->
+								<section>
+								<h3  class='slide-title'>The challenges of modern surveys</h3>
+								$\Longrightarrow$  Modern surveys will provide <b>large volumes</b> of <b>high quality</b> data
+								<br>
+
+										<br>
+								<div class="container">
+										<div class="col">
+
+											<div class="block fragment">
+												<div class="block-title">
+													A Blessing
+												</div>
+												<div class="block-content">
+													<ul>
+														<li>Unprecedented statistical power
+														</li>
+														<br>
+														<li>Great potential for new discoveries
+														</li>
+													</ul>
+											</div>
+										</div>
+
+										<br>
+										<div class="block fragment">
+											<div class="block-title">
+												A Curse
+											</div>
+											<div class="block-content">
+												<ul>
+													<li> Existing methods are reaching their limits at every
+														step of the science analysis
+													</li>
+													<br>
+													<li>Control of systematic uncertainties becomes paramount
+													</li>
+												</ul>
+										</div>
+									</div>
+
+									</div>
+										<div class="col">
+											LSST forecast on dark energy parameters
+											<img class="plain" data-src="assets/LSST_forecast_Y10.png" style="height :450px"/>
+										</div>
+								</div>
+								<div class="fragment">
+								$\Longrightarrow$ Dire need for <b class="alert">novel analysis techniques</b> to fully realize the potential of modern surveys.
+							</div>
+								</section>
+							</section>
+
+							<section>
+							<h3 class='slide-title'> traditional cosmological inference </h3>
+							<div class='container'>
+								<div class='col'>
+									<div style="position:relative; width:480px; height:30px; margin:0 auto;">
+									<div class="fragment current-visible" style="position:absolute;top:0;"  data-fragment-index="1">HSC cosmic shear power spectrum</div>
+									<div class="fragment" style="position:absolute;top:0;"  data-fragment-index="2">HSC Y1 constraints on $(S_8, \Omega_m)$</div>
+								</div>
+									<div style="position:relative; width:480px; height:300px; margin:0 auto;">
+										<div class="fragment current-visible"  style="position:absolute;top:0;left:0;" data-fragment-index="0" >
+									  	<img class="plain" data-src="assets/alonso_g1.png" />
+									  	<img class="plain" data-src="assets/alonso_g2.png" />
+										</div>
+									  <img class="fragment current-visible plain" data-src="assets/hsc_correlation_function.png" style="position:absolute;top:0;left:0;" data-fragment-index="1" />
+									  <img class="fragment  plain" data-src="assets/hsc_constraints.png" style="position:absolute;top:0;left:0;" data-fragment-index="2" />
+									</div>
+									<div class="fragment"  data-fragment-index="1" style="float:right; font-size: 20px">(Hikage,..., Lanusse, et al. 2018)</div>
+								</div>
+
+								<div class='col'>
+							<ul>
+								<li class="fragment" data-fragment-index="0"> Measure the ellipticity $\epsilon = \epsilon_i + \gamma$ of all galaxies<br>
+		$\Longrightarrow$ Noisy tracer of the weak lensing shear $\gamma$ </li>
+								<br>
+								<li class="fragment" data-fragment-index="1"> Compute <b class="alert">summary statistics</b> based on 2pt functions, <br>e.g. the <b>power spectrum</b> </li>
+								<br>
+								<li class="fragment" data-fragment-index="2"> Run an MCMC to recover a posterior on model parameters, using an <b class="alert">analytic likelihood</b>
+										$$ p(\theta | x ) \propto \underbrace{p(x | \theta)}_{\mathrm{likelihood}}  \  \underbrace{p(\theta)}_{\mathrm{prior}}$$
+								</li>
+							</ul>
+								</div>
+							</div>
+
+						<div class="block fragment">
+							<div class="block-title">
+								Main limitation: the need for an explicit likelihood
+							</div>
+							<div class="block-content">
+							We can only compute the likelihood for <b>simple summary statistics</b> and on <b>large scales</b>
+							<br>
+							<br>
+							<div class="fragment"> $\Longrightarrow$ We are dismissing most of the information! </div>
+						</div>
+					</div>
+				</section>
+
+        <!--
+            - The problem: Traditional inference is limited, relies on analytical
+            techniques, and even then, requires a lot of simulations.
+              -> Why is it difficult? because we are trying to piece many components together
+
+            - The solution: Hierarchical modeling, forward modeling
+              -> The full forward process defining our observation is described in terms of a Probabilistic Hierarchical model
+
+            - Now, we have this model, the  question is how do we do efficient inference
+              -> One thing is clear, we cannot go blindly to explore this extremely large dimensional space by
+              sampling
+              -> There are a number of inference techniqes that have been proposed to solve this kind of large scale inference problem
+                 Again, one thing is clear, having access to derivatives is better than the alternative
+
+            -> Hence the need for fast, accurate, differentiable forward simulations
+              - In this talk, I am introducing FlowPM, a first building block for the whole picture
+
+              Section I:
+                - We go over what N-body simulations are
+                - How Particle-Mesh solvers work
+                - Showcase the implementation in TensorFlow
+                - Show an example of bridging the simulation with ML elements
+                - Show an example of reconstructing a MAP solution of the initial conditions of the universe
+
+              Section II:
+                - General Purpose Distributed differentiable framework
+                - Mesh TensorFlow as a possible solution
+
+          -->
+        <section>
+					<h3  class='slide-title'>A different road: forward modeling</h3>
+
+							<div class='container'>
+								<div class='col'>
+
+                  <ul>
+                    <li> Instead of trying to analytically evaluate the likelihood,
+                      let us build a forward model of the observables.</li>
+                      <br>
+                    <li> Each component of the model is now tractable, but at the
+                      cost of a <b >large number of latent variables</b>.
+                    </li>
+                  </ul>
+
+                  <br>
+                  $\Longrightarrow$ How to peform efficient inference in this large number of dimensions?
+                  <br>
+                  <br>
+                  <ul class="fragment"> A non-exhaustive list of methods:
+                    <li> Hamiltonian Monte-Carlo
+                    </li>
+                    <li> Variational Inference
+                    </li>
+                    <li> MAP+Laplace
+                    </li>
+                    <li> Gold Mining
+                    </li>
+                    <li> Dimensionality reduction by Fisher-Information Maximization
+                    </li>
+                  </ul>
+            <div class="fragment">
+                  What do they all have in common?<br>
+            -> They require fast, accurate, differentiable forward simulations
+          </div>
+                </div>
+
+                <div class='col'>
+                  <img data-src="assets/pgm_lensing.png" class="plain" style="height:550px;"/>
+
+									<div style="float:right; font-size: 20px">(Schneider et al. 2015)</div>
+                </div>
+              </div>
+        </section>
+
+				<section>
+					<h1>FlowPM: Differentiable fast N-body simulations in TensorFlow</h1>
+				</section>
+
+          <section data-background-video="assets/illustris_movie_cube_sub_frame.mp4">
+  					<h3 class='slide-title'>What are cosmological simulations?</h3>
+            <br> <br>
+            <br> <br> <br> <br>
+            <br> <br> <br> <br>
+            <br> <br> <br> <br>
+            <br> <br> <br> <br>
+          </section>
+
+				<section class="inverted" data-background="#000">
+					<h2>How do we make them fast and differentiable?</h2>
+				</section>
+
+        <section>
+          <h3 class='slide-title'>the Fast Particle-Mesh scheme</h3>
+
+          <b>The idea</b>: approximate gravitational forces by esimating densities on a grid.
+
+							<div class='container'>
+								<div class='col'>
+                  <ul>
+                    <li>The numerical scheme:
+                      <br>
+                      <br>
+                    <ul>
+                      <li class="fragment" data-fragment-index="1"> Estimate the density of particles on a mesh<br>
+                        => compute gravitational forces by FFT
+                      </li>
+
+                      <br>
+
+                      <li class="fragment" data-fragment-index="2"> Interpolate forces at particle positions
+                      </li>
+
+                      <br>
+
+                      <li class="fragment" data-fragment-index="3"> Update particle velocity and positions, and iterate
+                      </li>
+                    </ul>
+                  </li>
+                    <br>
+
+                    <li class='fragment'> Fast and simple, at the cost of approximating short range interactions.
+                    </li>
+
+                  </ul>
+                </div>
+
+								<div class='col'>
+
+								<div style="position:relative; width:550px; height:550px; margin:0 auto;">
+									<img class="fragment current-visible plain" data-src="assets/particle_positions_0.png" style="position:absolute;top:0;left:0;" data-fragment-index="0" />
+									<img class="fragment current-visible plain" data-src="assets/particle_density_0.png" style="position:absolute;top:0;left:0;" data-fragment-index="1" />
+                  <img class="fragment current-visible plain" data-src="assets/particle_positions_0.png" style="position:absolute;top:0;left:0;" data-fragment-index="2" />
+									<img class="fragment  plain" data-src="assets/particle_positions_1.png" style="position:absolute;top:0;left:0;" data-fragment-index="3" />
+
+								</div>
+
+                </div>
+              </div>
+
+          <div class="fragment"> $\Longrightarrow$ Only a series of FFTs and interpolations.</div>
+        </section>
+
+        <section>
+          <h3 class='slide-title'>introducing FlowPM: Particle-Mesh Simulations in TensorFlow</h3>
+
+          	<div class='container'>
+								<div class='col'>
+                  <img data-src="assets/github.png" class="plain" style="height:70px"/>
+                  <div> <a href="https://github.com/modichirag/flowpm">https://github.com/modichirag/flowpm</a>
+                  </div>
+                  	<pre><code data-trim data-noescape>
+                      import tensorflow as tf
+                      import flowpm
+                      # Defines integration steps
+                      stages = np.linspace(0.1, 1.0, 10, endpoint=True)
+
+                      initial_conds = flowpm.linear_field(32,        # size of the cube
+                                                          100,       # Physical size
+                                                          ipklin,    # Initial powerspectrum
+                                                          batch_size=16)
+
+                      # Sample particles and displace them by LPT
+                      state = flowpm.lpt_init(initial_conds, a0=0.1)
+
+                      # Evolve particles down to z=0
+                      final_state = flowpm.nbody(state, stages, 32)
+
+                      # Retrieve final density field
+                      final_field = flowpm.cic_paint(tf.zeros_like(initial_conditions),
+                                                     final_state[0])
+
+                      with tf.Session() as sess:
+                          sim = sess.run(final_field)
+                  	</code></pre>
+                  <ul>
+                    <li class="fragment" data-fragment-index="1"> Seamless interfacing with deep learning components
+                    </li>
+                    <li class="fragment" data-fragment-index="2"> Gradients readily available
+                    </li>
+                  </ul>
+                </div>
+
+								<div class='col'>
+                  <div class="fig-container" data-file="flowpm_16.html" data-style="height: 550px;"></div>
+                  <img data-src="assets/TF_FullColor_Horizontal.png" class='plain' style="height: 70px;"/>
+                </div>
+              </div>
+
+          <!--We can have a link to the project, an showcase an iframe with the
+              small simulation running on the right-->
+        </section>
+
+        <section>
+        <section>
+          <h3 class='slide-title'>Extending dark matter simulations with Deep Learning</h3>
+
+          <br>
+
+							<div class='container'>
+								<div class='col'>
+          <img data-src="assets/fieldinit.png" class="plain" style="height:300px;"/>
+          Linear Field
+      </div>
+								<div class='col'>
+          <img data-src="assets/fieldfin.png" class="plain " style="height:300px;"/>
+          Final Dark Matter
+      </div>
+      <hr style="width: 1px; height: 400px; background: white; border: none;" />
+								<div class='col fragment'>
+          <img data-src="assets/fieldhalo.png" class="plain " style="height:300px;"/>
+          Dark Matter Halos
+      </div>
+								<div class='col fragment'>
+          <img data-src="assets/fieldgal.png" class="plain " style="height:300px;"/>
+          Galaxies
+        </div>
+      </div>
+
+      <br>
+      <br>
+
+      <div class="fragment">$\Longrightarrow$ How to model p( galaxies | dark matter)? </div>
+        </section>
+
+        <section>
+          <div class="container">
+          							<div class="col">
+          								<ul>
+                          Parametric models of the likelihood:<br><br>
+          									<li class="fragment" data-fragment-index="1"> <b>Mixture Density Networks</b></li>
+          									<br>
+          									<li class="fragment" data-fragment-index="2"> <b>Pixel CNN++</b>: Models the probability $p(x)$ of an image $x$ given $h$ as
+          										$$ p_{\theta}(x|h) = \prod_{i=0}^{n} p_{\theta}(x_i | x_{i-1} \ldots x_0, h) $$
+          									</li>
+          								</ul>
+          							</div>
+          							<div class="col" style="flex: 0 0 1em;">
+          								<!-- <div class="col"> -->
+          								<div style="position:relative; width:600px; height:300px; left:50px; top:0px; margin:1 auto">
+          									<img class="fragment current-visible" data-fragment-index="1" style="position:absolute;top:0;left:30px;" data-src="assets/MDN.png" height="550"/>
+          									<img class="fragment" data-fragment-index="2" style="position:absolute;top:0;left:200px;" data-src="assets/pixelcnn0.png" height="550"/>
+          								</div>
+          							</div>
+          				</div>
+                  <div class="fragment">
+                  <img data-src="assets/halo_sampling.png"  class="plain" style="height:300px;"/><br>
+                  MDN model predicting distribution of halo positions (left truth, right sample)
+                </div>
+        </section>
+      </section>
+
+      <section>
+        <section>
+          <h3 class='slide-title'>Reconstructing initial conditions by MAP optimization</h3>
+          <img data-src="assets/evolvingLSS.jpg" class="plain"/><br>
+          <div class="fragment">Going back to simpler times...</div>
+
+          <div class="fragment">
+          $$\arg\max_z \  \log p_\theta(x_{halo} | f(z)) \  + \  p(z) $$
+          where:<br>
+          <ul>
+            <li> $f$ is <b>FlowPM </b>
+            </li>
+            <li> $p_{\theta}$ is a learned likelihood
+            </li>
+            <li> $z$ are the initial conditions (early universe)
+            </li>
+            <li> $x_{halo}$ is the data
+            </li>
+          </ul>
+          </div>
+        </section>
+
+        <section>
+
+          <div style="position:relative; width:1000px; height:300px; margin:0 auto;">
+  <img  style="position:absolute;top:0;left:0;" data-src="assets/recontruth.png" height="500"/>
+</div>
+<div style="position:relative; width:1000px; height:300px; margin:0 auto;">
+  <img class="fragment " data-fragment-index="1"  style="position:absolute;top:0;left:0;" data-src="assets/reconrecon.png" height="500"/>
+</div>
+<div class="fragment" data-fragment-index="1" style="position:relative; float:right; left:-50px; font-size: 20px; margin:0 auto">Modi et al. 2018</div>
+        </section>
+
+      </section>
+
+
+        <section>
+					<h1>Towards Large Scale Inference</h1>
+
+          <!--- Or, distributed  --->
+        </section>
+
+        <section>
+          <h3 class='slide-title'>The practical challenges</h3>
+
+          <br>
+          <br>
+
+          <div class="container">
+          		<div class="col">
+              <ul>
+                <li> Simulations of scientifically interesting sizes <b>do not fit on a single GPU RAM</b>.<br>
+                  $\Longrightarrow$ We need for a distributed Machine Learning Framework
+                </li>
+
+                <br>
+
+                <li class="fragment" data-fragment-index="1">Most common form of distribution is <b>data-parallelism</b>
+                  $\Longrightarrow$ Reached Exascale on scientific deep learning applications
+                </li>
+
+                <br>
+
+                <li class="fragment"> What we need is <b>model-parallelism</b> on HPC environments
+                </li>
+              </ul>
+            </div>
+
+          	<div class="col">
+              <img data-src="assets/summit.png" class="fragment" data-fragment-index="1">
+            </div>
+          </div>
+
+          <br>
+          <br>
+
+            <div class="fragment">
+              $\Longrightarrow$ We have started investigating <b class="alert">Mesh TensorFlow at NERSC</b>.
+            </div>
+        </section>
+
+        <section>
+          <h3 class='slide-title'>Mesh TensorFlow in a few words</h3>
+          <ul>
+            <li> Redefines the TensorFlow API, in terms of abstract <em>logical tensors</em>
+              <ul> The actual instantiation of the memory on multiple devices depends on:
+                  <li class="fragment" data-fragment-index="1" > The specification of the mesh of computing devices
+                  </li>
+                  <li class="fragment" data-fragment-index="2" > The specification of rules for which dimensions can be splitted
+                  </li>
+              </ul>
+            </li>
+          </ul>
+
+          <img class="fragment"  data-fragment-index="3" data-src="assets/mesh_tensorflow.png"/><br>
+          <div class="fragment"  data-fragment-index="3" style="float:right; font-size: 20px">(Gholami et al. 2018)</div>
+        </section>
+
+        <section>
+          <h3 class='slide-title'>Mesh FlowPM</h3>
+          <br>
+          <img data-src="assets/mesh_flopwm.png" class="plain" style="height:450px;"/>
+
+          <ul>
+            <li> Technically working as of a few days ago, this is an example of a 128**3 simulation.
+            </li>
+            <li> Successfully ran on multiple Cori-GPU nodes, and on TPUv3-32 slice
+            </li>
+          </ul>
+        </section>
+
+        <!-- <section>
+          <h3 class='slide-title'>The bigger picture: an exascale Probabilistic Programming Language</h3>
+
+        </section>
+
+        <section>
+          <h3 class='slide-title'>The bigger picture: the Differentiable Universe Initiative</h3>
+          <!-- Here we need a plot showing the pieces, from cmb, dark matter, galaxies, images
+
+          The project for hacking is a model-based galaxy hod
+        </section> -->
+
+				<section>
+					<h1> Conclusion </h1>
+				</section>
+
+
+						<section>
+							<h3 class="slide-title"> Conclusion </h3>
+
+							<br> <br> <br>
+
+													<div class="block ">
+														<div class="block-title">
+															The bigger picture: Exascale Simulation-Based Cosmological Inference
+														</div>
+														<div class="block-content">
+															<ul>
+																<li class="fragment"> Efficient inference methodologies
+																	<ul>
+																		<li> Likelihood-Free Inference and Active Sampling </il>
+																	</ul>
+																</il>
+																<br>
+
+																<li class="fragment"> The Differentiable Universe Initiative
+																	<ul>
+																		<li> End-to-End differentiable simulations framework</li>
+                                    <li> Hands on project: Implementing a  differentiable HOD on top of FlowPM</li>
+																	</ul>
+																</li>
+																<br>
+																<li class="fragment"> Developping Production-Ready Large-Scale Inference tools
+																	<ul>
+																		<li> Distributed ML framework like Mesh TensorFlow</li>
+                                    <li> Distributed Probabilistic Programming Language</li>
+                                  </ul>
+																</li>
+
+															</ul>
+													</div>
+												</div>
+													<br>
+												<p class="fragment">Thank you ! </p>
+																		 <br> <br>
+
+
+						</section>
+
+			</div>
+		</div>
+
+
+		<style>
+		/* .reveal .slides {
+		    border: 5px solid red;
+		    min-height: 100%;
+		    width: 128mm;
+		    height: 96mm;
+		} */
+
+		.reveal .block {
+			background-color: #191919;
+			margin-left: 20px;
+			margin-right: 20px;
+			text-align: left;
+			padding-bottom: 0.1em;
+		}
+
+		.reveal .block-title {
+			background-color: #333333;
+			padding:8px 35px 8px 14px;
+  		color: #FFAA7F;
+  		font-weight: bold;
+		}
+
+		.reveal .block-content {
+			padding:8px 35px 8px 14px;
+		}
+
+		.reveal .slide-title {
+			border-left: 5px solid white;
+			text-align: left;
+			margin-left: 20px;
+			padding-left: 20px;
+		}
+
+		.reveal .alert {
+  		color: #FFAA7F;
+  		font-weight: bold;
+		}
+
+		.reveal .inverted {
+			filter: invert(100%);
+		}
+/*
+	    /* .reveal .alert {
+	             padding:8px 35px 8px 14px; margin-bottom:18px;
+	             text-shadow:0 1px 0 rgba(255,255,255,1);
+	             border:5px solid #FFAA7F;
+	             -webkit-border-radius: 14px; -moz-border-radius: 14px;
+	             border-radius:14px
+	             background-position: 10px 10px;
+	             background-repeat: no-repeat;
+	             background-size: 38px;
+	             padding-left: 30px; /* 55px; if icon
+	     }
+	     .reveal .alert-block {padding-top:14px; padding-bottom:14px}
+	     .reveal .alert-block > p, .alert-block > ul {margin-bottom:1em}
+	     /*.reveal .alert li {margin-top: 1em}
+	     .reveal .alert-block p+p {margin-top:5px} */
+
+		</style>
+
+		<script src="reveal.js/js/reveal.js"></script>
+
+		<script>
+			// More info about config & dependencies:
+			// - https://github.com/hakimel/reveal.js#configuration
+			// - https://github.com/hakimel/reveal.js#dependencies
+			Reveal.initialize({
+				controls: false,
+
+				//center: false,
+				hash: true,
+
+				// Visibility rule for backwards navigation arrows; "faded", "hidden"
+				// or "visible"
+				controlsBackArrows: 'hidden',
+
+				// Display a presentation progress bar
+				progress: true,
+
+				// Display the page number of the current slide
+				slideNumber: true,
+
+				transition: 'slide', // none/fade/slide/convex/concave/zoom
+
+				// The "normal" size of the presentation, aspect ratio will be preserved
+				// when the presentation is scaled to fit different resolutions. Can be
+				// specified using percentage units.
+				width: 1280,
+				height: 720,
+
+				// Factor of the display size that should remain empty around the content
+				margin: 0.1,
+
+				// Bounds for smallest/largest possible scale to apply to content
+				minScale: 0.2,
+				maxScale: 1.5,
+
+				dependencies: [
+					{ src: 'reveal.js/plugin/markdown/marked.js' },
+					{ src: 'reveal.js/plugin/markdown/markdown.js' },
+					{ src: 'reveal.js/plugin/notes/notes.js', async: true },
+					{ src: 'reveal.js/plugin/math/math.js', async: true },
+					{ src: 'reveal.js/plugin/reveal.js-d3/reveald3.js' },
+					{ src: 'reveal.js/plugin/reveal.js-plugins/chart/Chart.min.js' },
+					{ src: 'reveal.js/plugin/reveal.js-plugins/chart/csv2chart.js' },
+					{ src: 'reveal.js/plugin/highlight/highlight.js', async: true }
+				]
+
+			});
+		</script>
+	</body>
+</html>
