@@ -439,7 +439,11 @@
 
 					</section>
 
-					<!-------------------------------------------------------------------------------->
+				</section>
+				<!-------------------------------------------------------------------------------->
+				<!-------------------------------------------------------------------------------->
+
+				<section>
 					<section>
 						<h2 class='slide-title'> Reconstruction from Halo Field </h2>
 
@@ -448,13 +452,16 @@
 						<div class="container">
 							
 							<div class="col">
-								<ul>
-									<li class="fragment" data-fragment-index="1">Error pdf for smoothed mass fields</li>
-									<br>
-									<li class="fragment" data-fragment-index="2">Shifted Log-Normal</li>
-									<br>
-								</ul>
-							<div class="fragment" data-fragment-index="2" style="text-align:right"> $ \mathcal{E} = \sum_i \Big(\frac{\mu_N + \rm{log(M_{R,i}^{NN} + M_0)} - \rm{log(M_{R,i}^{d} + M_0)}}{2\sigma_N}\Big)^2$ </div>
+								<div  class="fragment" data-fragment-index="1"  style="text-align:center"> Smooth the fields to estimate error</div>
+								<br>
+								<br>
+								<br>									
+								<br>
+								<br>
+								<br>									
+								<div class="fragment" data-fragment-index="2" style="text-align:center">Shifted Log-Normal</div>
+								<br>
+								<div class="fragment" data-fragment-index="2" style="text-align:center"> $$ \mathcal{E} = \sum_i \Big(\frac{\mu_N + \rm{log(M_{R,i}^{NN} + M_0)} - \rm{log(M_{R,i}^{d} + M_0)}}{2\sigma_N}\Big)^2 $$ </div>
 							</div>																
 							
 							<div class="col" >
@@ -478,7 +485,8 @@
 							
 							<div class="col">
 								<ul>
-									<li class="fragment" data-fragment-index="1"> <b>Problem </b>: Simple optimization leads to poor results </li> 
+									<li class="fragment" data-fragment-index="1"> <b>Problem </b>: Simple optimization leads to poor results </li>
+									<br>
 									<ul>
 										<li class="fragment" data-fragment-index="2"> Volume effect : Number of modes scale as $k^3$ </li>
 										<li class="fragment" data-fragment-index="3"> Evolution moves information from large to small scales</li>											
@@ -575,40 +583,55 @@
 					</section>
 
 
-					<!-- <\!-------------------------------------------------------------------------------\-> -->
-					<!-- <section> -->
-					<!-- 	<h2 class='slide-title'> Baryon Acoustic Oscillations </h2> -->
-						
-					<!-- 	<div class="container"> -->
-							
-					<!-- 		<div class="col"> -->
-					<!-- 			<ul> -->
-					<!-- 				<li class="fragment" data-fragment-index="1"> <b>Pressure waves in the primordial photon-baryon fluid </li>  -->
-					<!-- 				<li class="fragment" data-fragment-index="2"> <b>Frozen at the time of decoupling i </li>  -->
-					<!-- 				<br> -->
-					<!-- 				<br> -->
-					<!-- 			</ul> -->
-					<!-- 		</div>		 -->
-							
-					<!-- 		<div class="col" style="align:center; flex: 10em 10em 5em;"> -->
-					<!-- 			<\!-- <div class="col"> -\-> -->
-					<!-- 			<div style="position:relative; width:700px; height:300px; margin:0 auto;"> -->
-					<!-- 				<img class="fragment current-visible" data-fragment-index="4" style="position:absolute;top:0;left:0;" data-src="assets/realrccfig.png" height="300"/> -->
-					<!-- 				<img class="fragment current-visible" data-fragment-index="5" style="position:absolute;top:0;left:0;" data-src="assets/redrccfig.png" height="300"/> -->
-					<!-- 			</div> -->
-					<!-- 			<div style="position:relative; width:500px; height:300px; margin:0 auto;"> -->
-					<!-- 			</div> -->
-					<!-- 		</div> -->
-					<!-- 	</div> -->
-					<!-- 	<br><br> -->
-					<!-- </section> -->
-
-
 				</section>
 				<!-------------------------------------------------------------------------------->
 				<!-------------------------------------------------------------------------------->
+				
+				<section>
+						<h2 class='slide-title'> Can we do better? </h2>
+
+						<div class="fragment" data-fragment-index="0" style="text-align:center font-size:20px"> $ {\mathcal{E} = \sum_i \Bigg(\frac{\mu_N + \rm{log(M_{R,i}^{NN} + M_0)} - \rm{log(M_{R,i}^{d} + M_0)}}{2\sigma_N}\Bigg)^2}$ </div>
+						
+						<div class="container">
+							<div class="col">
+								<ul>
+									<li class="fragment" data-fragment-index="1">Diagonal Gaussian Likelihood </li> 
+									<br>									
+									<li class="fragment" data-fragment-index="2">Spatial, data dependence of noise/error </li>
+									<br>
+									<ul class="fragment" data-fragment-index="3"> $\rightarrow$ <b>Mixture Density Networks </b>: learn the likelihood</ul>
+									<br>
+									<li class="fragment" data-fragment-index="4">Correlations in noise/error </li>
+									<br>
+									<ul class="fragment" data-fragment-index="5"> $\rightarrow$ <b>Pixel CNN </b>: Models the probability $p(x)$ of an image $x$ given latent input $h$ as
+										$$ p_{\theta}(x|h) = \prod_{i=0}^{n} p_{\theta}(x_i | x_{i-1} \ldots x_0, h) $$
+									</ul>
+									
+									<li class="fragment" data-fragment-index="6">Adiabatic Optimization for deep networks </li>
+									<br>
+									<ul class="fragment" data-fragment-index="7"> $\rightarrow$ <b>Recurrent Inference Machine</b> : RNN to learn inference algorithm
+									</ul>
+									<br>
+								</ul>
+							</div>
+							<div class="col" style="flex: 0 0 1em;">
+								<!-- <div class="col"> -->
+								<div style="position:relative; width:600px; height:300px; left:50px; top:0px; margin:1 auto">
+									<img class="fragment current-visible" data-fragment-index="3" style="position:absolute;top:0;left:30px;" data-src="assets/mdn.png" height="250"/>
+									<img class="fragment current-visible" data-fragment-index="5" style="position:absolute;top:0;left:200px;" data-src="assets/pixelcnn0.png" height="250"/>
+									<img class="fragment current-visible" data-fragment-index="7" style="position:absolute;top:0;left:100px;" data-src="assets/rim00.png" height="250"/>
+									<img class="fragment" data-fragment-index="8" style="position:absolute;top:0;left:30px;" data-src="assets/rim1.png" height="250"/>
+								</div>
+
+							</div>
+
+						</div>					
+					
+					
+				</section>
 				<!-------------------------------------------------------------------------------->
 				<!-------------------------------------------------------------------------------->
+
 				<section>
 					<section>
 						<h2 class='slide-title'> Particle Mesh Simulations - I </h2>
@@ -704,6 +727,21 @@
 					</section>
 					
 				</section>
+				<!-------------------------------------------------------------------------------->
+				<!-------------------------------------------------------------------------------->
+				
+				<section>
+						<h2 class='slide-title'> FlowPM </h2>
+
+					
+					
+				</section>
+				<!-------------------------------------------------------------------------------->
+				<!-------------------------------------------------------------------------------->
+				<!-------------------------------------------------------------------------------->
+				<!-------------------------------------------------------------------------------->
+				<!-------------------------------------------------------------------------------->
+
 				
 				</div>
 			</div>
