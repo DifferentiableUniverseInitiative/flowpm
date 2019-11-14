@@ -33,7 +33,9 @@
 			<!-- Any section element inside of this container is displayed as a slide -->
 			<div class="slides">
 
-				<section  data-background-image="assets/dark_univ2.png"  >
+				<!-- <section  data-background-image="assets/dark_univ2.png"  > -->
+				<section class="fig-container" data-file="flowpm_static.html"
+>
 
 						<div class="container">
 							<div class="title" style="border-radius: 20px; background-color:rgba(0, 0, 0, 0.4);">
@@ -48,7 +50,8 @@
 								<div class="col">
 									<div align="left" style="margin-left: 20px;">
 										<br>
-										<h3>Chirag Modi</h3>
+										<h3>Chirag Modi<br>
+										François Lanusse, Uroš Seljak</h3>
 										<p>	University of California, Berkeley</p>
 										
 										<br>
@@ -111,8 +114,8 @@
 				<!-------------------------------------------------------------------------------->
 				<section>
 					<section data-background-image="assets/cmb.png" data-background-size="1400px" data-background-color="black">
-						<h2 class='slide-title'> Cosmological Probes</h2>
-						<div class="container">
+						<h3 class='slide-title'> Cosmological Probes</h3>
+						<div class="container" style="color:white; font-weight:bold">
 							<div class="col">
 								<div class="fragment fade-up">
 									Galaxy Clustering
@@ -142,7 +145,8 @@
 					</section>
 					<!-------------------------------------------------------------------------------->
 					<section data-background-image="assets/Mayall.jpg">
-						<h2 class='slide-title'> the Dark Energy Spectroscopic Instrument</h2>						
+						<font color='white'>
+						<h3 class='slide-title'> <font color='white'> the Dark Energy Spectroscopic Instrument </font></h3>						
 						<div class="container">
 							<div class="col">
 								<ul>
@@ -152,17 +156,23 @@
 									<br>
 									<li class="fragment fade-up"> Measuring growth of structures and Baryon Acoustic Oscillations</li>
 								</ul>
-								<br >
 							</div>
 							<div class="col">
 								<!-- <img src="assets/desi_bao.png" class="fragment fade-up" height="400"></img> -->
 								<img src="assets/desi_de.png" class="fragment fade-up" height="400"></img>
 							</div>
+						</div>
+						<br>
+						<br>
+						<br>
+						<br>
+							
+						</font >
 					</section>
 					<!-------------------------------------------------------------------------------->
 					<section data-background-image="assets/LSST.jpg" >
 						<font color='black'>
-						<h2 class='slide-title-black'> <font color='black'> the Large Synoptic Survey Telescope </font> </h2>
+						<h3 class='slide-title-black'> <font color='black'> the Large Synoptic Survey Telescope </font> </h3>
 						<div class="container">
 							<div class="col">
 								<ul>
@@ -172,7 +182,7 @@
 									<br>
 									<li class="fragment fade-up"> Tens of billions of objects, each one observed $\sim1000$ times</li>
 									<br>
-									<li class="fragment fade-up"> Galaxy Clustering, Weak lensing, Supernovae and much more</li>
+									<li class="fragment fade-up"> Galaxy Clustering, Weak lensing, Supernovae &amp more</li>
 								</ul>
 								<br >
 							</div>
@@ -184,6 +194,10 @@
 							</div>
 						</div>
 						</font>
+						<br>
+						<br>
+						<br>
+						<br>
 					</section>
 					
 				</section>
@@ -192,580 +206,620 @@
 				<!-------------------------------------------------------------------------------->
 				<section>
 					<section>
-						<h2 class='slide-title'> Challenges</h2>
+						<h3 class='slide-title'> modern cosmological surveys </h3>
 						<div class="container">
-							<div class="col">
-								<ul>
-									<li class="fragment fade-up" data-fragment-index="1">
-										How to combine different cosmological probes?
-										<ul class="fragment fade-up" data-fragment-index="2">
+							<div class="col" style="flex: 0 0 30em;">
+								
+								<div class="block fragment" data-fragment-index="0">
+									<div class="block-title">
+										A Blessing
+									</div>
+									<div class="block-content">
+										<ul>
+											<li>Unprecedented statistical power
+											</li>
 											<br>
-											Covariance Matrix
-											
+											<li>Great potential for new discoveries
+											</li>
 										</ul>
-										<br>										
-									</li>
-									<br><br>
+									</div>
+								</div>
+								
+								<br>
+								<div class="block fragment" data-fragment-index="1">
+									<div class="block-title">
+										The challenge
+									</div>
+									<div class="block-content">
+										<ul>
+											<li class="fragment" data-fragment-index="2">How to combine different cosmological probes </li>
+											<br>
+											<li class="fragment" data-fragment-index="3">What are the optimal summary statistics? <br>
+												$\rightarrow$ <b>2 point function</b>, 3 point function, peak counts ...
+											</li>
+											<br>
+											<li class="fragment" data-fragment-index="4"> MCMC to recover a posterior on model parameters <br>
+												$\rightarrow$  <b class="alert">analytic likelihood</b> : 
+												$p(\theta | x ) \propto \underbrace{p(x | \theta)}_{\mathrm{likelihood}}  \  \underbrace{p(\theta)}_{\mathrm{prior}}$
+											</li>
 
-									<li class="fragment fade-up" data-fragment-index="3">
-										What is the correct summary statistic ?
-										<br>
-										<br>
-										<ul class="fragment fade-up" data-fragment-index="4">
-											<!-- <li> 2 point function </li>
-											<li> 3 point function </li>
-											<li> Peak counts </li>
-											<li> Void </li> -->
-											2 point function <br>
-											3 point function <br>
-											Peak counts <br>
-											Void <br>
 										</ul>
-										
-									</li>
-									
-								</ul>
+									</div>
+
+								</div>
+
 							</div>
 							<div class="col" >
 								<div style="position:relative; width:480px; height:420px; margin:0 auto;">
 									<img class="fragment current-visible plain"  data-src="assets/cov.png" style="position:absolute;top:0;left:0;" data-fragment-index="2" />
-									<img class="fragment fade-up" data-src="assets/nongauss.PNG"  data-fragment-index="4" />
+									<img class="fragment current-visible plain" data-src="assets/nbody.png"  data-fragment-index="3" />
+									  <img class="fragment  plain" data-src="assets/hsc_constraints.png" style="position:absolute;top:0;left:0;" data-fragment-index="4" />
 								</div>
 								<div class="fragment current-visible" data-fragment-index="2" style="position:relative; float:right; font-size: 20px">Krause &amp; Eifler 2016</div>
+								<div class="fragment"  data-fragment-index="4" style="position:relative; float:right; font-size: 20px; top:-50px; left:200px">(Hikage,..., Lanusse, et al. 2018)</div>
 							</div>
 						</div>
+						<br>
+						<div class="fragment">
+							$\Longrightarrow$ Dire need for <b class="alert">novel analysis techniques</b> to fully realize the potential of modern surveys.
+						</div>
+
 						
 					</section>
 					<!-------------------------------------------------------------------------------->
-					<section>
-						<h2 class='slide-title'> Forward Modeling Approaches &amp Reconstruction</h2>
 
-						<div class="container">
-							<div class="col">
-								Something mildly clever along the lines that we can systematically include the noise in forward model and
-								combine different probes to get the same initial conditions whose power spectrum is the summary statistic
-							</div>
-							
-	
-							<div class="col">
-								<div style="position:relative; width:480px; height:320px; margin:0 auto;">
-									<img class="plain" data-src="assets/millenium.png" />
+					<section>
+						<h3  class='slide-title'>A different road: forward modeling</h3>
+						
+						<div class='container'>
+								<div class='col'>
+									
+									<ul>
+										<li> Instead of trying to analytically evaluate the likelihood,
+											let us build a forward model of the observables.</li>
+										<br>
+										<li> Each component of the model is now tractable, but at the
+											cost of a <b >large number of latent variables</b>.
+										</li>
+									</ul>
+
+									<br>
+									$\Longrightarrow$ How to peform efficient inference in this large number of dimensions?
+									<br>
+									<br>
+									<ul class="fragment"> A non-exhaustive list of methods:
+										<li> Hamiltonian Monte-Carlo
+										</li>
+										<li> Variational Inference
+										</li>
+										<li> MAP+Laplace
+										</li>
+										<li> Gold Mining
+										</li>
+										<li> Dimensionality reduction by Fisher-Information Maximization
+										</li>
+									</ul>
+									<div class="fragment">
+										What do they all have in common?<br>
+										-> They require fast, accurate, differentiable forward simulations
+									</div>
 								</div>
-								<div class="plain" data-fragment-index="2" style="position:relative; float:right; font-size: 20px">Leclercq et al. 2014 </div>
-							</div>
+								
+								<div class='col'>
+									<img data-src="assets/pgm_lensing.png" class="plain" style="height:550px;"/>
+									<div style="float:right; font-size: 20px">(Schneider et al. 2015)</div>
+								</div>
 						</div>
 					</section>
 					<!-------------------------------------------------------------------------------->
-					
-					<section>
-						<h2 class='slide-title'> Likelihood Free/Simulation Based Inference </h2>
-						No clue what to say here in 1 slide
-					</section>
-				</section>
-				<!-------------------------------------------------------------------------------->
-				<!-------------------------------------------------------------------------------->
-				<section>
-					<section>
-						<h2 class='slide-title'> Forward Models in Cosmology</h2>
 
-						<div class="container fragment">
-							<!-- <div class="col"> <h3> 1 </h3> </div> -->
-							<div class="col">
-								<div class="box">
-									<div class="box-title">
-										Initial Dark Matter
-									</div>
-									<img class="plain" data-src="assets/fieldinit.png" height="100"/>
-
-								</div>								
-							</div>
-							<div class="col"> <br><br>$\Longrightarrow$ <br>N-Body Simulation  <br>e.g. Particle Mesh Simulations</div>
-							<div class="col">
-								<div class="box">
-									<div class="box-title">
-										Final Dark Matter
-									</div>
-									<img class="plain" data-src="assets/fieldfin.png" height="100"/>
-								</div>
-								
-							</div>
-						</div>
-						<br><br>
-						<div class="container fragment">
-							<!-- <div class="col"> <h3> 2 </h3> </div> -->
-							<div class="col">
-								<div class="box">
-									<div class="box-title">
-										Final Dark Matter
-									</div>
-									<img class="plain" data-src="assets/fieldfin.png" height="100"/>
-								</div>								
-							</div>
-							<div class="col">  <br> <br>$\Longrightarrow$ <br> Group Finding Algorithm <br> e.g. Friends of Friends</div>
-							<div class="col">
-								<div class="box">
-									<div class="box-title">
-										Dark Matter Halos
-									</div>
-									<img class="plain" data-src="assets/fieldhalo.png" height="100"/>
-								</div>
-								
-							</div>
-						</div>
-
-						<br><br>
-						<div class="container fragment">
-							<!-- <div class="col"> <h3> 3 </h3> </div> -->
-							<div class="col">
-								<div class="box">
-									<div class="box-title">
-										Dark Matter Halos
-									</div>
-									<img class="plain" data-src="assets/fieldhalo.png" height="100"/>
-								</div>								
-							</div>
-							<div class="col">  <br> <br>$\Longrightarrow$ <br> Semi analytic approaches <br> Distribution Functions</div>
-							<div class="col">
-								<div class="box">
-									<div class="box-title">
-										Galaxies
-									</div>
-									<img class="plain" data-src="assets/fieldgal.png" height="100"/>
-								</div>
-								
-							</div>
-						</div>
-
-					</section>
-
-
-					<!-------------------------------------------------------------------------------->
 				
 					<section>
-						<h2 class='slide-title'> Bayesian Reconstruction </h2>
+						<h3 class='slide-title'> Bayesian Reconstruction of Cosmological Fields </h3>
+
+						<br>
+						<div> <b> Idea : </b> Reconstruct latent fields for analysis by maximizing the posterior of the initial conditions </div>
+						$$ \mathcal{L}(s) = \underbrace{[d - \mathcal{F}(s)]^\dagger N ^{-1} [d - \mathcal{F}(s)]}_{likelihood} + \underbrace{s^\dagger \mathcal{S}^{-1} s}_{prior} $$
 
 						<div class="container">
-							
-							<div class="col">
-								<div class="block fragment" data-fragment-index="0">
-									<div class="block-title">
-										Posterior of Initial Conditions
-									</div>
-									<div class="block-content">
-										<div align="left"> $\mathcal{L}(s) = [d - \mathcal{F}(s)]^\dagger N ^{-1} [d - \mathcal{F}(s)] + s^\dagger S^{-1} s$ </div>
-									</div>
-									
-								</div>
-								<br><br><br>
+
+							<div class="col"  style="flex: 0 0 32em;">
 								<div class="block fragment " data-fragment-index="2">
 									<div class="block-title">
 										Challenges
 									</div>
 									<div class="block-content">
 										<ul>
-											<li >High Dimensional Optimization (&gt $10^6$ parameters)</li>
-											<li class="fragment"  data-fragment-index="3">Gradient Based Algorithm</li>
-											<li class="fragment"  data-fragment-index="4" style="font-weight:bold">Differentiable Forward Models</li>
+											<li >High Dimensional Optimization (&gt $10^7$ parameters)<br>
+											$\rightarrow$ Gradient Based Algorithm <br>
+												$\rightarrow$ Differentiable Forward Models</li>
+											<li > Correct Likelihood and noise model 
 										</ul>
 									</div>
 									
 								</div>								
-								<br><br><br>
-								<div class="block fragment " data-fragment-index="5">
+								<br>
+								<div class="block fragment " data-fragment-index="4">
 									<div class="block-title">
-										Framework so far
+										Code Development
 									</div>
 									<div class="block-content">
 										<ul>
-											<li > Code-base : cosmo4d, vmad, abopt</li>
-											<li class="fragment">Seljak et al. 2017, Feng et al. 2018, Modi et al. 2018, Horowitz et al. 2018</li>
+											<li > <b> cosmo4d </b> : Reconstructing the Universe from observed data </li>
+											<li> <b> vmad </b> : A simple autodiff &amp library of operators  </li>
+											<li> <b> abopt </b> : optimization of generic numerical models </li>
 										</ul>
 									</div>
 									
 								</div>								
+								
 							</div>
-														
-							<div class="col" style="flex: 0 0 25em;">
-							<!-- <div class="col"> -->
-								<div class="fragment" data-fragment-index="1" >Optimization Cycle to get the MAP</div> <br>
-								<img class="fragment" data-fragment-index="1" data-src="assets/opt_cycle.png" height="400"/>
+							<div class="col">
+								<div class="block fragment " data-fragment-index="5">
+									<div class="block-title">
+										Applications to various cosmological probes
+									</div>
+									<div class="block-content">
+										<ul>
+											<li> Dark Matter <br> $\rightarrow$ Seljak et al. 2017, Feng et al. 2017 </li>
+											<li> Galaxies  <br> $\rightarrow$  Modi et al. 2018 </li>
+											<li> Weak Lensing  <br> $\rightarrow$  Boehm et al. 2017, Horowitz et al. 2018 </li>
+											<li> 21 cm intensity mapping  <br> $\rightarrow$  Modi et al. 2019 </li>
+											<li> Lyman-$\alpha$ forests  <br> $\rightarrow$  Horowitz et al. 2019 </li>
+										</ul>
+									</div>
+									
+								</div>
 							</div>
-						</div>
-						<br><br>
-
+						
 					</section>
+					
 				</section>
+
 				<!-------------------------------------------------------------------------------->
 				<!-------------------------------------------------------------------------------->
 
 				<section>
 					<section>
-						<h2 class='slide-title'> Differentiable Halo Models </h2>
-						<br><br>
+						 <h3 class='slide-title'> Forward Models in Cosmology</h3> 
 
-						<div class="container">
-							
-							<div class="col">
-								<ul>
-									<li class="fragment" data-fragment-index="1" >Friends of friends is non-differentiable</li>
-									<br>
-									<li class="fragment" data-fragment-index="2" >Halos form at peaks of matter density field </li>
-									<br>
-									<ul class="fragment" data-fragment-index="3" >
-										Bias model with respect to the underlying matter density field <br>
-										<div style="text-align:center; font-size: 20px">$\delta_h = b \delta_m$</div>
-									</ul>	
-									<br>
-									<li class="fragment" data-fragment-index="4" > Neural networks to learn halo formation</li>
-									<br>
-								</ul>
+						<!-- <div class="container fragment"> -->
+						<!-- 	<\!-- <div class="col"> <h3> 1 </h3> </div> -\-> -->
+						<!-- 	<div class="col"> -->
+						<!-- 		<div class="box"> -->
+						<!-- 			<div class="box-title"> -->
+						<!-- 				Initial Dark Matter -->
+						<!-- 			</div> -->
+						<!-- 			<img class="plain" data-src="assets/fieldinit.png" height="200"/> -->
+
+						<!-- 		</div>								 -->
+						<!-- 	</div> -->
+						<!-- 	<div class="col"> <br><br>$\Longrightarrow$ <br>N-Body Simulation  <br>e.g. Particle Mesh Simulations</div> -->
+						<!-- 	<div class="col"> -->
+						<!-- 		<div class="box"> -->
+						<!-- 			<div class="box-title"> -->
+						<!-- 				Final Dark Matter -->
+						<!-- 			</div> -->
+						<!-- 			<img class="plain" data-src="assets/fieldfin.png" height="100"/> -->
+						<!-- 		</div> -->
 								
-							</div>
-														
-							<div class="col" >
-								<div style="position:relative; width:480px; height:220px; margin:0 auto;">
-									<img class="fragment current-visible" data-fragment-index="1" style="position:absolute;top:0;left:0;" data-src="assets/FOFgroups.png" height="200"/>
-									<img class="fragment current-visible" data-fragment-index="2" style="position:absolute;top:0;left:0;" data-src="assets/halo_peak.png" height="200"/>
-									<img class="fragment current-visible" data-fragment-index="3" style="position:absolute;top:0;left:0;" data-src="assets/halo_peak.png" height="200"/>
-									<img class="fragment" data-fragment-index="4" style="position:absolute;top:0;left:0;" data-src="assets/fnn.jpeg" height="200"/>
-								</div>
-							</div>
-						</div>
-						<br><br>
-
-					</section>
-
-					<!-------------------------------------------------------------------------------->			
-
-					<section>
-						<h2 class='slide-title'> Neural Halo Model </h2>
-						<br><br>
-						<div class="container">
-							
-							<div class="col">
-								<ul>
-									<li class="fragment" data-fragment-index="1" >Classification network learns position mask</li>
-									<br>
-									<li class="fragment" data-fragment-index="2" >Regression network learns mass </li>
-									<br>
-									<li class="fragment" data-fragment-index="3" > Combination is the halo model </li>
-									<br>
-								</ul>
+						<!-- 	</div> -->
+						<!-- </div> -->
+						<!-- <br><br> -->
+						<!-- <div class="container fragment"> -->
+						<!-- 	<\!-- <div class="col"> <h3> 2 </h3> </div> -\-> -->
+						<!-- 	<div class="col"> -->
+						<!-- 		<div class="box"> -->
+						<!-- 			<div class="box-title"> -->
+						<!-- 				Final Dark Matter -->
+						<!-- 			</div> -->
+						<!-- 			<img class="plain" data-src="assets/fieldfin.png" height="100"/> -->
+						<!-- 		</div>								 -->
+						<!-- 	</div> -->
+						<!-- 	<div class="col">  <br> <br>$\Longrightarrow$ <br> Group Finding Algorithm <br> e.g. Friends of Friends</div> -->
+						<!-- 	<div class="col"> -->
+						<!-- 		<div class="box"> -->
+						<!-- 			<div class="box-title"> -->
+						<!-- 				Dark Matter Halos -->
+						<!-- 			</div> -->
+						<!-- 			<img class="plain" data-src="assets/fieldhalo.png" height="100"/> -->
+						<!-- 		</div> -->
 								
+						<!-- 	</div> -->
+						<!-- </div> -->
+
+						<!-- <br><br> -->
+						<!-- <div class="container fragment"> -->
+						<!-- 	<\!-- <div class="col"> <h3> 3 </h3> </div> -\-> -->
+						<!-- 	<div class="col"> -->
+						<!-- 		<div class="box"> -->
+						<!-- 			<div class="box-title"> -->
+						<!-- 				Dark Matter Halos -->
+						<!-- 			</div> -->
+						<!-- 			<img class="plain" data-src="assets/fieldhalo.png" height="100"/> -->
+						<!-- 		</div>								 -->
+						<!-- 	</div> -->
+						<!-- 	<div class="col">  <br> <br>$\Longrightarrow$ <br> Semi analytic approaches <br> Distribution Functions</div> -->
+						<!-- 	<div class="col"> -->
+						<!-- 		<div class="box"> -->
+						<!-- 			<div class="box-title"> -->
+						<!-- 				Galaxies -->
+						<!-- 			</div> -->
+						<!-- 			<img class="plain" data-src="assets/fieldgal.png" height="100"/> -->
+						<!-- 		</div> -->
+								
+						<!-- 	</div> -->
+						<!-- </div> -->
+
+						<div class="container"'>
+							<div class='col'>
+								<img data-src="assets/fieldinit.png" class="plain" style="height:300px;"/>
+								<b class="alert"> Linear Field </b>
 							</div>
-														
-							<div class="col" >
-								<div style="position:relative; width:480px; height:220px; margin:0 auto;">
-									<img class="fragment current-visible" data-fragment-index="1" style="position:absolute;top:0;left:0;" data-src="assets/nnpos.png" height="200"/>
-									<img class="fragment current-visible" data-fragment-index="2" style="position:absolute;top:0;left:0;" data-src="assets/nnmass.png" height="200"/>
-									<img class="fragment " data-fragment-index="3" style="position:absolute;top:0;left:0;" data-src="assets/nnmodel.png" height="200"/>
-								</div>
-								<br>
-								<div class="fragment" data-fragment-index="1" style="position:relative; float:right; font-size: 20px; margin:0 auto">Modi et al. 2018</div>
+							<div class='col fragment' data-fragment-index='2'>
+								<img data-src="assets/fieldfin.png" class="plain " style="height:300px;"/>
+								<b class="alert"> Final Dark Matter </b>
+							</div>
+							<hr style="width: 1px; height: 400px; background: white; border: none;" />
+							<div class='col fragment' data-fragment-index='3'>
+								<img data-src="assets/fieldhalo.png" class="plain " style="height:300px;"/>
+								<b class="alert"> Dark Matter Halos </b>
+							</div>
+							<div class='col fragment' data-fragment-index='4'>
+								<img data-src="assets/fieldgal.png" class="plain " style="height:300px;"/>
+								<b class="alert"> Galaxies </b>
 							</div>
 						</div>
-						<br><br>
-
-					</section>
-
-				</section>
-				<!-------------------------------------------------------------------------------->
-				<!-------------------------------------------------------------------------------->
-
-				<section>
-					<section>
-						<h2 class='slide-title'> Reconstruction from Halo Field </h2>
-
-						<div class="fragment" data-fragment-index="0" style="text-align:center"> $\boxed{ \mathcal{L}(s) = [d - \mathcal{F}(s)]^\dagger N ^{-1} [d - \mathcal{F}(s)] + s^\dagger S^{-1} s}$ </div>
-						<br>
-						<div class="container">
-							
-							<div class="col">
-								<div  class="fragment" data-fragment-index="1"  style="text-align:center"> Smooth the fields to estimate error</div>
-								<br>
-								<br>
-								<br>									
-								<br>
-								<br>
-								<br>									
-								<div class="fragment" data-fragment-index="2" style="text-align:center">Shifted Log-Normal</div>
-								<br>
-								<div class="fragment" data-fragment-index="2" style="text-align:center"> $$ \mathcal{E} = \sum_i \Big(\frac{\mu_N + \rm{log(M_{R,i}^{NN} + M_0)} - \rm{log(M_{R,i}^{d} + M_0)}}{2\sigma_N}\Big)^2 $$ </div>
-							</div>																
-							
-							<div class="col" >
-							<!-- <div class="col"> -->
-								<img class="fragment" data-fragment-index="1" data-src="assets/nnnoisefield.png" height="200"/>
-								<img class="fragment" data-fragment-index="2" data-src="assets/nnnoisehist.png" height="200"/>
-							</div>
-							<div class="fragment" data-fragment-index="1" style="position:relative; float:right; left:-200px; font-size: 20px; margin:0 auto">Modi et al. 2018</div>
-
+						<div class="container" style="position:relative; width:1000px; height:50px; margin:0 auto;">							
+							<div class='col fragment'  data-fragment-index='2'> <font size="10"> $\longrightarrow$ </font> <br> N-body simulations </div>
+							<div class='col fragment' data-fragment-index='3'>  <font size="10"> $\longrightarrow$ </font> <br> Group Finding <br> algorithms </div>
+							<div class='col fragment' data-fragment-index='4'>  <font size="10"> $\longrightarrow$ </font> <br> Semi-analytic &amp <br> distribution models </div>
+						<!-- 		<div class='fragment' data-fragment-index='2'> N-body simulations <div> -->
+						<!-- <div class='fragment' data-fragment-index='3'> Group Finding algorithms <div> -->
+						<!-- <div class='fragment' data-fragment-index='4'> Semi-analytic models <div> -->
 						</div>
-						<br><br>
-
 					</section>
 
 
 					<!-------------------------------------------------------------------------------->
-					<section>
-						<h2 class='slide-title'> Adiabatic Optimization </h2>
-
-						<div class="container">
-							
-							<div class="col">
-								<ul>
-									<li class="fragment" data-fragment-index="1"> <b>Problem </b>: Simple optimization leads to poor results </li>
-									<br>
-									<ul>
-										<li class="fragment" data-fragment-index="2"> Volume effect : Number of modes scale as $k^3$ </li>
-										<li class="fragment" data-fragment-index="3"> Evolution moves information from large to small scales</li>											
-										<li class="fragment" data-fragment-index="4"> Large scales are linear </li>
-									</ul>
-									<br>
-									<br>									
-									<br>
-									<li class="fragment" data-fragment-index="5"><b>Solution </b>: Smooth residual $\mathcal{E}$ on small scales to fit the large scales first </li>
-									<br>
-									<br>
-									<br>
-									<br>
-									<br>
-								</ul>
-							</div>		
-														
-							<div class="col" style="flex: 0 0 25em;">
-								<!-- <div class="col"> -->
-								<div style="position:relative; width:500px; height:300px; margin:0 auto;">
-									<img class="fragment current-visible" data-fragment-index="0" style="position:absolute;top:0;left:0;" data-src="assets/annealinit.png" height="300"/>
-									<img class="fragment" data-fragment-index="1" style="position:absolute;top:0;left:0;" data-src="assets/noanneal.png" height="300"/>
-								</div>
-								<div style="position:relative; width:500px; height:300px; margin:0 auto;">
-									<img class="fragment current-visible" data-fragment-index="5" style="position:absolute;top:0;left:0;" data-src="assets/annealinit.png" height="300"/>
-									<img class="fragment current-visible" data-fragment-index="6" style="position:absolute;top:0;left:0;" data-src="assets/anneal4.png" height="300"/>
-									<img class="fragment current-visible" data-fragment-index="7" style="position:absolute;top:0;left:0;" data-src="assets/anneal2.png" height="300"/>
-									<img class="fragment current-visible" data-fragment-index="8" style="position:absolute;top:0;left:0;" data-src="assets/anneal0.png" height="300"/>
-								</div>
-							</div>
-						</div>
-						<br><br>
-
-					</section>
-
 					<!-------------------------------------------------------------------------------->
 					<section>
-						<h2 class='slide-title'> Reconstruction </h2>
-
-						<div style="position:relative; width:1000px; height:300px; margin:0 auto;">							
-							<img class="fragment " data-fragment-index="0"  style="position:absolute;top:0;left:0;" data-src="assets/recontruth.png" height="500"/>
+						<h3 class='slide-title'> Extending Dark Matter Simulations with Deep Learning : I </h3>
+						<h4> Differentiable forward models </h4>
+						
+						<div style="position:relative; width:1000px; height:300px; margin:0 auto;">
+							<img  style="position:absolute;top:0;left:0;" data-src="assets/recontruth.png" height="500"/>
 						</div>
-						<div style="position:relative; width:1000px; height:300px; margin:0 auto;">							
-							<img class="fragment current-visible" data-fragment-index="1"  style="position:absolute;top:0;left:0;" data-src="assets/reconinit.png" height="500"/>
+						<div style="position:relative; width:1000px; height:300px; margin:0 auto;">
+							<img class="fragment " data-fragment-index="1"  style="position:absolute;top:0;left:0;" data-src="assets/reconinit.png" height="500"/>
 							<img class="fragment " data-fragment-index="2"  style="position:absolute;top:0;left:0;" data-src="assets/reconrecon.png" height="500"/>
 						</div>
 						<div class="fragment" data-fragment-index="1" style="position:relative; float:right; left:-50px; font-size: 20px; margin:0 auto">Modi et al. 2018</div>
-						
+
+					</section>
+
+					<!-------------------------------------------------------------------------------->
+					<section>
+						<h3 class='slide-title'> Extending Dark Matter Simulations with Deep Learning : II </h3>
+						<h4> How to model p( galaxies | dark matter)? <h4>
+												
+						<div class="container">
+							<div class="col"  style="flex: 0 0 30em;">
+								<ul>
+									<ul class="fragment" data-fragment-index="1"> <b>Mixture Density Networks </b>: learn the likelihood</ul>
+									<br>
+									<ul class="fragment" data-fragment-index="2"> <b>Pixel CNN++ </b>: Models the probability $p(x)$ of an image $x$ given latent input $h$ <br>
+										$$p_{\theta}(x|h) = \prod_{i=0}^{n} p_{\theta}(x_i | x_{i-1} \ldots x_0, h) $$
+									</ul>
+									
+									<!-- <li class="fragment" data-fragment-index="6">Adiabatic Optimization for deep networks </li> -->
+									<!-- <br> -->
+									<!-- <ul class="fragment" data-fragment-index="7"> $\rightarrow$ <b>Recurrent Inference Machine</b> : RNN to learn inference algorithm -->
+									<!-- </ul> -->
+									<!-- <br> -->
+								</ul>
+							</div>
+							<div class="col" style="flex: 0 0 0em;">
+								<!-- <div class="col"> -->
+								<div style="position:relative; width:600px; height:300px; left:50px; top:0px; margin:1 auto">
+							          	<img class="fragment current-visible" data-fragment-index="1" style="position:absolute;top:0;left:70px;" data-src="assets/MDN.png" height="550"/>
+									<!-- <img class="fragment current-visible" data-fragment-index="3" style="position:absolute;top:0;left:30px;" data-src="assets/mdn.png" height="250"/>
+ -->									<img class="fragment " data-fragment-index="2" style="position:absolute;top:0;left:100px;" data-src="assets/pixelcnn0.png" height="250"/>
+									<!-- <img class="fragment current-visible" data-fragment-index="7" style="position:absolute;top:0;left:100px;" data-src="assets/rim00.png" height="250"/> -->
+									<!-- <img class="fragment" data-fragment-index="8" style="position:absolute;top:0;left:30px;" data-src="assets/rim1.png" height="250"/> -->
+								</div>
+
+							</div>
+							<br>
+						</div>					
+						<div class="fragment" style="position:relative; top:-20px">
+							<img data-src="assets/halo_sampling.png"  class="plain" style="height:250px;"/><br>
+							MDN model predicting distribution of halo positions (left truth, right sample)
+						</div>
+
 
 					</section>
 
 					
 					<!-------------------------------------------------------------------------------->
-					<section>
-						<h2 class='slide-title'> Baryon Acoustic Oscillations </h2>
+					<!-- <section> -->
+					<!-- 	<h2 class='slide-title'> Baryon Acoustic Oscillations </h2> -->
 
-						<i> Most robust probes for dark energy from galaxy surveys (DESI, LSST) </i>
+					<!-- 	<i> Most robust probes for dark energy from galaxy surveys (DESI, LSST) </i> -->
 
-						<br>
-						<br>
+					<!-- 	<br> -->
+					<!-- 	<br> -->
 						
-						<div class="container">
+					<!-- 	<div class="container"> -->
 
-							<div class="col">
-								<ul>
-									<li class="fragment" data-fragment-index="1"> Pressure waves in the primordial photon-baryon fluids </li> 
-									<br>									
-									<li class="fragment" data-fragment-index="2">Frozen at the time of decoupling </li>
-									<br>
-									<ul class="fragment" data-fragment-index="3"> $\rightarrow$ Clustering at preferred scale</ul>
-									<br>
-									<img class="fragment" data-fragment-index="3" data-src="assets/bao_xi.png" height="250"/>
-									<br>
-									<br>
-									<br>
-								</ul>
-							</div>		
+					<!-- 		<div class="col"> -->
+					<!-- 			<ul> -->
+					<!-- 				<li class="fragment" data-fragment-index="1"> Pressure waves in the primordial photon-baryon fluids </li>  -->
+					<!-- 				<br>									 -->
+					<!-- 				<li class="fragment" data-fragment-index="2">Frozen at the time of decoupling </li> -->
+					<!-- 				<br> -->
+					<!-- 				<ul class="fragment" data-fragment-index="3"> $\rightarrow$ Clustering at preferred scale</ul> -->
+					<!-- 				<br> -->
+					<!-- 				<img class="fragment" data-fragment-index="3" data-src="assets/bao_xi.png" height="250"/> -->
+					<!-- 				<br> -->
+					<!-- 				<br> -->
+					<!-- 				<br> -->
+					<!-- 			</ul> -->
+					<!-- 		</div>		 -->
 														
-							<div class="col" style="flex: 0 0 1em;">
-								<!-- <div class="col"> -->
-								<div style="position:relative; width:600px; height:300px; left:20px; top:80px; margin:1 auto">
-									<div class="fragment current-visible" data-fragment-index="4" style="position:absolute;top:-50px;left:-20px;text-align:center"> Comparision with standard reconstruction for Fisher Information (Real Space) </div>
-									<div class="fragment " data-fragment-index="5" style="position:absolute;top:-50px;left:-20px;text-align:center"> Comparision with standard reconstruction for Fisher Information (Redshift Space) </div>
-									<img class="fragment current-visible" data-fragment-index="4" style="position:absolute;top:0;left:0;" data-src="assets/realrccfig.png" height="250"/>
-									<img class="fragment" data-fragment-index="5" style="position:absolute;top:0;left:0;" data-src="assets/redrccfig.png" height="250"/>
-								</div>
-								<div class="fragment current-visible" data-fragment-index="4" style="position:relative; float:right;  top:50px; font-size: 20px; margin:0 auto">Modi et al. 2018</div>
+					<!-- 		<div class="col" style="flex: 0 0 1em;"> -->
+					<!-- 			<\!-- <div class="col"> -\-> -->
+					<!-- 			<div style="position:relative; width:600px; height:300px; left:20px; top:80px; margin:1 auto"> -->
+					<!-- 				<div class="fragment current-visible" data-fragment-index="4" style="position:absolute;top:-50px;left:-20px;text-align:center"> Comparision with standard reconstruction for Fisher Information (Real Space) </div> -->
+					<!-- 				<div class="fragment " data-fragment-index="5" style="position:absolute;top:-50px;left:-20px;text-align:center"> Comparision with standard reconstruction for Fisher Information (Redshift Space) </div> -->
+					<!-- 				<img class="fragment current-visible" data-fragment-index="4" style="position:absolute;top:0;left:0;" data-src="assets/realrccfig.png" height="250"/> -->
+					<!-- 				<img class="fragment" data-fragment-index="5" style="position:absolute;top:0;left:0;" data-src="assets/redrccfig.png" height="250"/> -->
+					<!-- 			</div> -->
+					<!-- 			<div class="fragment current-visible" data-fragment-index="4" style="position:relative; float:right;  top:50px; font-size: 20px; margin:0 auto">Modi et al. 2018</div> -->
 
-							</div>
+					<!-- 		</div> -->
 						
-						</div>
-						<br><br>
+					<!-- 	</div> -->
+					<!-- 	<br><br> -->
 
-					</section>
+					<!-- </section> -->
 
 
-				</section>
-				<!-------------------------------------------------------------------------------->
-				<!-------------------------------------------------------------------------------->
+
 				
-				<section>
-						<h2 class='slide-title'> Can we do better? </h2>
-
-						<div class="fragment" data-fragment-index="0" style="text-align:center font-size:20px"> $ {\mathcal{E} = \sum_i \Bigg(\frac{\mu_N + \rm{log(M_{R,i}^{NN} + M_0)} - \rm{log(M_{R,i}^{d} + M_0)}}{2\sigma_N}\Bigg)^2}$ </div>
-						
-						<div class="container">
-							<div class="col">
-								<ul>
-									<li class="fragment" data-fragment-index="1">Diagonal Gaussian Likelihood </li> 
-									<br>									
-									<li class="fragment" data-fragment-index="2">Spatial, data dependence of noise/error </li>
-									<br>
-									<ul class="fragment" data-fragment-index="3"> $\rightarrow$ <b>Mixture Density Networks </b>: learn the likelihood</ul>
-									<br>
-									<li class="fragment" data-fragment-index="4">Correlations in noise/error </li>
-									<br>
-									<ul class="fragment" data-fragment-index="5"> $\rightarrow$ <b>Pixel CNN </b>: Models the probability $p(x)$ of an image $x$ given latent input $h$ as
-										$$ p_{\theta}(x|h) = \prod_{i=0}^{n} p_{\theta}(x_i | x_{i-1} \ldots x_0, h) $$
-									</ul>
-									
-									<li class="fragment" data-fragment-index="6">Adiabatic Optimization for deep networks </li>
-									<br>
-									<ul class="fragment" data-fragment-index="7"> $\rightarrow$ <b>Recurrent Inference Machine</b> : RNN to learn inference algorithm
-									</ul>
-									<br>
-								</ul>
-							</div>
-							<div class="col" style="flex: 0 0 1em;">
-								<!-- <div class="col"> -->
-								<div style="position:relative; width:600px; height:300px; left:50px; top:0px; margin:1 auto">
-									<img class="fragment current-visible" data-fragment-index="3" style="position:absolute;top:0;left:30px;" data-src="assets/mdn.png" height="250"/>
-									<img class="fragment current-visible" data-fragment-index="5" style="position:absolute;top:0;left:200px;" data-src="assets/pixelcnn0.png" height="250"/>
-									<img class="fragment current-visible" data-fragment-index="7" style="position:absolute;top:0;left:100px;" data-src="assets/rim00.png" height="250"/>
-									<img class="fragment" data-fragment-index="8" style="position:absolute;top:0;left:30px;" data-src="assets/rim1.png" height="250"/>
-								</div>
-
-							</div>
-
-						</div>					
-					
-					
 				</section>
 				<!-------------------------------------------------------------------------------->
 				<!-------------------------------------------------------------------------------->
+				<!-------------------------------------------------------------------------------->
+				<!-------------------------------------------------------------------------------->
 
+				<section class="inverted" data-background="#000">
+					<div class='fragment current-visible'  data-fragment-index='0'> Need differentaible N-body simulations that allow seamless interfacing with deep learning components?
+					</div>
+					<br>
+					<h1 class='fragment' data-fragment-index='1'><b> FlowPM </b>: Differentiable fast N-body simulations in TensorFlow</h1>
+				</section>
+
+				<!-------------------------------------------------------------------------------->
+				<!-------------------------------------------------------------------------------->
 				<section>
-					<section>
-						<h2 class='slide-title'> Particle Mesh Simulations - I </h2>
-						Series of Kick-Drift-Kick operators
-						<br><br>
-						
-						<div class="container">
-							<div class="col">
 
-								<div class="block fragment" data-fragment-index="0">
-									<div class="block-title">
-										Drift Operator
-									</div>
-									<div class="block-content">
-										$x(t_1) = x(t_0) + p(t_r) \mathcal{D}_\mathrm{PM} $
+					<h3 class='slide-title'> the fast Particle-Mesh Simulations </h3>
+					<h4> <b> The idea </b> : move particles with approximate gravitational forces by estimating densities on grid
+					<br><br>
 
-									</div>							
-								</div>
-							</div>
-							<div class="col">
-								<div class="block fragment" data-fragment-index="1">
-									<div class="block-title">
-										Kick Operator
-									</div>
-									<div class="block-content">
-										$p(t_1) = p(t_0) + f(t_r) \mathcal{K}_\mathrm{PM}$
-									</div>							
-								</div>
-							</div>
+					<div class="block fragment" data-fragment-index="0">
+						<div class="block-title">
+							The numerical scheme
 						</div>
-						<br>
-						<div class="block fragment" data-fragment-index="2">
-							<div class="block-title">
-								Gravitational Force Calculation
-							</div>
-							<div class="block-content">
-								<div class="container">
-									<div class="col">
-										<ul>
-											<li class="fragment" data-fragment-index="3"> Particles are interpolated to the grid to estimate mass</li>
-											<br>
-											<li class="fragment" data-fragment-index="4"> Poisson Equation to estimate potential </li>
-											<br>
-											<li class="fragment" data-fragment-index="5"> Green's function approach in Fourier space to estimate force</li>
-											<br>
-											<li class="fragment" data-fragment-index="6"> Interpolate the force back to particle positions </li>
-											
-										</ul>
-									</div>
-									<div class="col">
-										<div class="fragment" data-fragment-index="3">
-											$ W(r) = \begin{cases} 
+						<div class="block-content">
+							<div class="container">
+								<div class="col">
+									<ul>
+										<li class="fragment" data-fragment-index="3"> Interpolate particles on the grid to estimate mass density</li>
+										<br>
+										<li class="fragment" data-fragment-index="4"> Estimate gravitational force on grid points with FFT </li>
+										<br>
+										<li class="fragment" data-fragment-index="5"> Interpolate the force at particle positions</li>
+										<br>
+										<li class="fragment" data-fragment-index="6"> Kick : Update the momentum of the particles </li>
+										<br>
+										<li class="fragment" data-fragment-index="7"> Drift : Update the position of the particles </li>
+										<br>
+										<div class="fragment" data-fragment-index='8'> $\longrightarrow$ Repeat! </div>
+									</ul>							
+								</div>
+								<div class="col">
+									<div style="position:relative; width:300px; height:200px; margin:0 auto;">
+										<div class="fragment current-visible" data-fragment-index="3" style="position:absolute;top:0;right:200;">
+											$$ W(r) = \begin{cases} 
 											1 - \frac{r}{d} & r\leq d \\
 											0 & otherwise
 											\end{cases}
-											$
-											<img class="plain" style="position:relative; float:right" data-src="assets/cic.png" height="100"/>
-											
+											$$											
+										<img class="plain" style="position:relative; float:right; top:700; left:500" data-src="assets/cic.png" height="100"/>
 										</div>
-										<br>
-										<div class="fragment" data-fragment-index="4">
-											$\nabla^2 \phi = - 4\pi G \rho$
-										</div>
-										<br>
-										<div class="fragment" data-fragment-index="5">
-											$\vec{\nabla} \nabla^2  = i\vec{k}k^{-2}$ <br>
-											$f(\vec{k})  = i\vec{k}k^{-2} \delta(\vec{k})$
-										</div>
+
+									<br>
+									<div class="fragment current-visible" data-fragment-index="4" style="position:absolute;top:0;left:0;">
+										$$\nabla^2 \phi = - 4\pi G \rho$$
+										$$f(\vec{k})  = i\vec{k}k^{-2} \rho(\vec{k})$$
 									</div>
+									<div class="fragment current-visible" data-fragment-index="5" style="position:absolute;top:0;left:0;">
+										$$\nabla^2 \phi = - 4\pi G \rho$$
+										$$f(\vec{k})  = i\vec{k}k^{-2} \rho(\vec{k})$$
+									</div>
+
+									<div class="fragment " data-fragment-index="6" style="position:absolute;top:0;left:0;">
+									$$p(t_1) = p(t_0) + f(t_r) \mathcal{K}_\mathrm{PM}$$ </div>
+									<br>
+									<div class="fragment " data-fragment-index="7" style="position:absolute;top:200;left:0;">
+									$$x(t_1) = x(t_0) + p(t_r) \mathcal{D}_\mathrm{PM} $$ </div>
+
+
+
 								</div>
 							</div>
-						</div>
-					</section>
-					
-					<section>
-						<h2 class='slide-title'> Generating Initial Conditions </h2>
-						<div class="container">
-							<div class="col">
-								<ul>
-									<li class="fragment"> Generate a Gaussian random field </li>
-									<br>
-									<li class="fragment"> Scale the amplitude to correct power - initial density field</li>
-									<br>
-									<li class="fragment"> Generate initial conditions of displacement and velocity </li>
-									<br><br><br><br><br><br>
-								</ul>
 							</div>
-							<div class="col">
-								<!-- <img class="fragment" style="position:relative; float:right" data-src="assets/lpt_depth2.PNG" height="620"/> -->
-								<img class="fragment"  data-src="assets/lpt_depth2.PNG" height="620"/>
-							</div>
-						</div>
-					</section>
-					
-				</section>
-				<!-------------------------------------------------------------------------------->
-				<!-------------------------------------------------------------------------------->
-				
-				<section>
-						<h2 class='slide-title'> FlowPM </h2>
+						</div><br>
+					</div>
+					<h4 class="fragment"> Series of Kick-Drift-Kick operators with FFTs and interpolations </h4>
 
-					
-					
+
+
 				</section>
 				<!-------------------------------------------------------------------------------->
+				<!-------------------------------------------------------------------------------->
+
+				<section>
+					  <h3 class='slide-title'>introducing FlowPM: Particle-Mesh Simulations in TensorFlow</h3>
+
+					  <div class='container'>
+						  <div class='col' style="flex: 0 0 25em;">
+							  <img data-src="assets/github.png" class="plain" style="height:70px"/>
+							  <div> <a href="https://github.com/modichirag/flowpm">https://github.com/modichirag/flowpm</a>
+							  </div>
+							  <pre><code data-trim data-noescape>
+							  import tensorflow as tf
+							  import flowpm
+							  # Defines integration steps
+							  stages = np.linspace(0.1, 1.0, 10, endpoint=True)
+
+							  initial_conds = flowpm.linear_field(32,        # size of the cube
+											      100,       # Physical size
+											      ipklin,    # Initial powerspectrum
+											      batch_size=16)
+
+							  # Sample particles and displace them by LPT
+							  state = flowpm.lpt_init(initial_conds, a0=0.1)
+
+							  # Evolve particles down to z=0
+							  final_state = flowpm.nbody(state, stages, 32)
+
+							  # Retrieve final density field
+							  final_field = flowpm.cic_paint(tf.zeros_like(initial_conditions),
+											 final_state[0])
+
+							  with tf.Session() as sess:
+							      sim = sess.run(final_field)
+							  </code></pre>
+						  </div>
+
+						  <div class='col fragment' data-fragment-index="1">
+							  <br>
+							  <img data-src="assets/TF_FullColor_Horizontal.png" class='plain' style="height: 70px;"/>
+							  <div class="fragment" data-fragment-index="1"> Gradients readily available &amp interfacing DL elements
+							  </div>
+							  <pre><code data-trim data-noescape>
+							  import tensorflow as tf
+							  import flowpm
+
+							  linear = tf.get_variable('linmesh', shape=(nc, nc, nc),
+										 initializer=tf.random_normal_initializer(), trainable=True)
+							  icstate = flowpm.lpt_init(linear, name='icstate')
+							  fnstate = flowpm.nbody(icstate, stages, nc, name='fnstate')
+
+							  #Likelihood term of data
+							  final = tf.zeros_like(linear)
+							  final = tfpf.cic_paint(final, fnstate[0], boxsize=bs, name='final')
+							  residual = tf.multiply(tf.subtract(final, data), 1/sigma)
+							  chisq = tf.reduce_sum(tf.multiply(residual, residual)) #Deep learning likelihood
+							  #Prior
+							  lineark = tfpf.r2c3d(linear, norm=nc**3)
+							  priormesh = tf.square(tf.cast(tf.abs(lineark), tf.float32))
+							  prior = tf.reduce_sum(tf.multiply(priormesh, 1/priorwt))
+
+							  #Loss
+							  loss = tf.add(chisq, prior, name='loss')
+							  optimizer = ScipyOptimizerInterface(loss, var_list=[linear], 'L-BFGS-B')
+
+							  with tf.Session() as session:
+							      optimizer.minimize(session)
+							      recon = session.run(linmesh)
+							  </code></pre>
+						  </div>
+					  </div>
+				</section>
+
+
+
+        <section>
+					<h1>Towards Large Scale Inference</h1>
+
+          <!--- Or, distributed  --->
+        </section>
+
+        <section>
+          <h3 class='slide-title'>The practical challenges</h3>
+
+          <br>
+          <br>
+
+          <div class="container">
+          		<div class="col">
+              <ul>
+                <li> Simulations of scientifically interesting sizes <b>do not fit on a single GPU RAM</b>.<br>
+                  $\Longrightarrow$ We need for a distributed Machine Learning Framework
+                </li>
+
+                <br>
+
+                <li class="fragment" data-fragment-index="1">Most common form of distribution is <b>data-parallelism</b>
+                  $\Longrightarrow$ Reached Exascale on scientific deep learning applications
+                </li>
+
+                <br>
+
+                <li class="fragment"> What we need is <b>model-parallelism</b> on HPC environments
+                </li>
+              </ul>
+            </div>
+
+          	<div class="col">
+              <img data-src="assets/summit.png" class="fragment" data-fragment-index="1">
+            </div>
+          </div>
+
+          <br>
+          <br>
+
+            <div class="fragment">
+              $\Longrightarrow$ We have started investigating <b class="alert">Mesh TensorFlow at NERSC</b>.
+            </div>
+        </section>
+
+        <section>
+          <h3 class='slide-title'>Mesh TensorFlow in a few words</h3>
+          <ul>
+            <li> Redefines the TensorFlow API, in terms of abstract <em>logical tensors</em>
+              <ul> The actual instantiation of the memory on multiple devices depends on:
+                  <li class="fragment" data-fragment-index="1" > The specification of the mesh of computing devices
+                  </li>
+                  <li class="fragment" data-fragment-index="2" > The specification of rules for which dimensions can be splitted
+                  </li>
+              </ul>
+            </li>
+          </ul>
+
+          <img class="fragment"  data-fragment-index="3" data-src="assets/mesh_tensorflow.png"/><br>
+          <div class="fragment"  data-fragment-index="3" style="float:right; font-size: 20px">(Gholami et al. 2018)</div>
+        </section>
+
+        <section>
+          <h3 class='slide-title'>Mesh FlowPM</h3>
+          <br>
+          <img data-src="assets/mesh_flopwm.png" class="plain" style="height:450px;"/>
+
+          <ul>
+            <li> Technically working as of a few days ago, this is an example of a 128**3 simulation.
+            </li>
+            <li> Successfully ran on multiple Cori-GPU nodes, and on TPUv3-32 slice
+            </li>
+          </ul>
+        </section>
+
+
+	
 				<!-------------------------------------------------------------------------------->
 				<!-------------------------------------------------------------------------------->
 				<!-------------------------------------------------------------------------------->
@@ -871,8 +925,281 @@
 					{ src: 'reveal.js/plugin/notes/notes.js', async: true },
 					{ src: 'reveal.js/plugin/highlight/highlight.js', async: true },
 					{ src: 'reveal.js/plugin/math/math.js', async: true }
+					<!-- { src: 'reveal.js/plugin/reveal.js-d3/reveald3.js' }, -->
+					<!-- { src: 'reveal.js/plugin/reveal.js-plugins/chart/Chart.min.js' }, -->
+					<!-- { src: 'reveal.js/plugin/reveal.js-plugins/chart/csv2chart.js' }, -->
 				]
 			});
 		</script>
 	</body>
 </html>
+
+
+
+
+
+
+
+				<!-------------------------------------------------------------------------------->
+
+				<!-- <section> -->
+				<!-- 	<section> -->
+				<!-- 		<h2 class='slide-title'> Differentiable Halo Models </h2> -->
+				<!-- 		<br><br> -->
+
+				<!-- 		<div class="container"> -->
+							
+				<!-- 			<div class="col"> -->
+				<!-- 				<ul> -->
+				<!-- 					<li class="fragment" data-fragment-index="1" >Friends of friends is non-differentiable</li> -->
+				<!-- 					<br> -->
+				<!-- 					<li class="fragment" data-fragment-index="2" >Halos form at peaks of matter density field </li> -->
+				<!-- 					<br> -->
+				<!-- 					<ul class="fragment" data-fragment-index="3" > -->
+				<!-- 						Bias model with respect to the underlying matter density field <br> -->
+				<!-- 						<div style="text-align:center; font-size: 20px">$\delta_h = b \delta_m$</div> -->
+				<!-- 					</ul>	 -->
+				<!-- 					<br> -->
+				<!-- 					<li class="fragment" data-fragment-index="4" > Neural networks to learn halo formation</li> -->
+				<!-- 					<br> -->
+				<!-- 				</ul> -->
+								
+				<!-- 			</div> -->
+														
+				<!-- 			<div class="col" > -->
+				<!-- 				<div style="position:relative; width:480px; height:220px; margin:0 auto;"> -->
+				<!-- 					<img class="fragment current-visible" data-fragment-index="1" style="position:absolute;top:0;left:0;" data-src="assets/FOFgroups.png" height="200"/> -->
+				<!-- 					<img class="fragment current-visible" data-fragment-index="2" style="position:absolute;top:0;left:0;" data-src="assets/halo_peak.png" height="200"/> -->
+				<!-- 					<img class="fragment current-visible" data-fragment-index="3" style="position:absolute;top:0;left:0;" data-src="assets/halo_peak.png" height="200"/> -->
+				<!-- 					<img class="fragment" data-fragment-index="4" style="position:absolute;top:0;left:0;" data-src="assets/fnn.jpeg" height="200"/> -->
+				<!-- 				</div> -->
+				<!-- 			</div> -->
+				<!-- 		</div> -->
+				<!-- 		<br><br> -->
+
+				<!-- 	</section> -->
+
+				<!-- 	<\!-------------------------------------------------------------------------------\->			 -->
+
+				<!-- 	<section> -->
+				<!-- 		<h2 class='slide-title'> Neural Halo Model </h2> -->
+				<!-- 		<br><br> -->
+				<!-- 		<div class="container"> -->
+							
+				<!-- 			<div class="col"> -->
+				<!-- 				<ul> -->
+				<!-- 					<li class="fragment" data-fragment-index="1" >Classification network learns position mask</li> -->
+				<!-- 					<br> -->
+				<!-- 					<li class="fragment" data-fragment-index="2" >Regression network learns mass </li> -->
+				<!-- 					<br> -->
+				<!-- 					<li class="fragment" data-fragment-index="3" > Combination is the halo model </li> -->
+				<!-- 					<br> -->
+				<!-- 				</ul> -->
+								
+				<!-- 			</div> -->
+														
+				<!-- 			<div class="col" > -->
+				<!-- 				<div style="position:relative; width:480px; height:220px; margin:0 auto;"> -->
+				<!-- 					<img class="fragment current-visible" data-fragment-index="1" style="position:absolute;top:0;left:0;" data-src="assets/nnpos.png" height="200"/> -->
+				<!-- 					<img class="fragment current-visible" data-fragment-index="2" style="position:absolute;top:0;left:0;" data-src="assets/nnmass.png" height="200"/> -->
+				<!-- 					<img class="fragment " data-fragment-index="3" style="position:absolute;top:0;left:0;" data-src="assets/nnmodel.png" height="200"/> -->
+				<!-- 				</div> -->
+				<!-- 				<br> -->
+				<!-- 				<div class="fragment" data-fragment-index="1" style="position:relative; float:right; font-size: 20px; margin:0 auto">Modi et al. 2018</div> -->
+				<!-- 			</div> -->
+				<!-- 		</div> -->
+				<!-- 		<br><br> -->
+
+				<!-- 	</section> -->
+
+				<!-- </section> -->
+				<!-------------------------------------------------------------------------------->
+				<!-------------------------------------------------------------------------------->
+
+				<!-- <section> -->
+				<!-- 	<section> -->
+				<!-- 		<h2 class='slide-title'> Reconstruction from Halo Field </h2> -->
+
+				<!-- 		<div class="fragment" data-fragment-index="0" style="text-align:center"> $\boxed{ \mathcal{L}(s) = [d - \mathcal{F}(s)]^\dagger N ^{-1} [d - \mathcal{F}(s)] + s^\dagger S^{-1} s}$ </div> -->
+				<!-- 		<br> -->
+				<!-- 		<div class="container"> -->
+							
+				<!-- 			<div class="col"> -->
+				<!-- 				<div  class="fragment" data-fragment-index="1"  style="text-align:center"> Smooth the fields to estimate error</div> -->
+				<!-- 				<br> -->
+				<!-- 				<br> -->
+				<!-- 				<br>									 -->
+				<!-- 				<br> -->
+				<!-- 				<br> -->
+				<!-- 				<br>									 -->
+				<!-- 				<div class="fragment" data-fragment-index="2" style="text-align:center">Shifted Log-Normal</div> -->
+				<!-- 				<br> -->
+				<!-- 				<div class="fragment" data-fragment-index="2" style="text-align:center"> $$ \mathcal{E} = \sum_i \Big(\frac{\mu_N + \rm{log(M_{R,i}^{NN} + M_0)} - \rm{log(M_{R,i}^{d} + M_0)}}{2\sigma_N}\Big)^2 $$ </div> -->
+				<!-- 			</div>																 -->
+							
+				<!-- 			<div class="col" > -->
+				<!-- 			<\!-- <div class="col"> -\-> -->
+				<!-- 				<img class="fragment" data-fragment-index="1" data-src="assets/nnnoisefield.png" height="200"/> -->
+				<!-- 				<img class="fragment" data-fragment-index="2" data-src="assets/nnnoisehist.png" height="200"/> -->
+				<!-- 			</div> -->
+				<!-- 			<div class="fragment" data-fragment-index="1" style="position:relative; float:right; left:-200px; font-size: 20px; margin:0 auto">Modi et al. 2018</div> -->
+
+				<!-- 		</div> -->
+				<!-- 		<br><br> -->
+
+				<!-- 	</section> -->
+
+
+				<!-- 	<\!-------------------------------------------------------------------------------\-> -->
+				<!-- 	<section> -->
+				<!-- 		<h2 class='slide-title'> Adiabatic Optimization </h2> -->
+
+				<!-- 		<div class="container"> -->
+							
+				<!-- 			<div class="col"> -->
+				<!-- 				<ul> -->
+				<!-- 					<li class="fragment" data-fragment-index="1"> <b>Problem </b>: Simple optimization leads to poor results </li> -->
+				<!-- 					<br> -->
+				<!-- 					<ul> -->
+				<!-- 						<li class="fragment" data-fragment-index="2"> Volume effect : Number of modes scale as $k^3$ </li> -->
+				<!-- 						<li class="fragment" data-fragment-index="3"> Evolution moves information from large to small scales</li>											 -->
+				<!-- 						<li class="fragment" data-fragment-index="4"> Large scales are linear </li> -->
+				<!-- 					</ul> -->
+				<!-- 					<br> -->
+				<!-- 					<br>									 -->
+				<!-- 					<br> -->
+				<!-- 					<li class="fragment" data-fragment-index="5"><b>Solution </b>: Smooth residual $\mathcal{E}$ on small scales to fit the large scales first </li> -->
+				<!-- 					<br> -->
+				<!-- 					<br> -->
+				<!-- 					<br> -->
+				<!-- 					<br> -->
+				<!-- 					<br> -->
+				<!-- 				</ul> -->
+				<!-- 			</div>		 -->
+														
+				<!-- 			<div class="col" style="flex: 0 0 25em;"> -->
+				<!-- 				<\!-- <div class="col"> -\-> -->
+				<!-- 				<div style="position:relative; width:500px; height:300px; margin:0 auto;"> -->
+				<!-- 					<img class="fragment current-visible" data-fragment-index="0" style="position:absolute;top:0;left:0;" data-src="assets/annealinit.png" height="300"/> -->
+				<!-- 					<img class="fragment" data-fragment-index="1" style="position:absolute;top:0;left:0;" data-src="assets/noanneal.png" height="300"/> -->
+				<!-- 				</div> -->
+				<!-- 				<div style="position:relative; width:500px; height:300px; margin:0 auto;"> -->
+				<!-- 					<img class="fragment current-visible" data-fragment-index="5" style="position:absolute;top:0;left:0;" data-src="assets/annealinit.png" height="300"/> -->
+				<!-- 					<img class="fragment current-visible" data-fragment-index="6" style="position:absolute;top:0;left:0;" data-src="assets/anneal4.png" height="300"/> -->
+				<!-- 					<img class="fragment current-visible" data-fragment-index="7" style="position:absolute;top:0;left:0;" data-src="assets/anneal2.png" height="300"/> -->
+				<!-- 					<img class="fragment current-visible" data-fragment-index="8" style="position:absolute;top:0;left:0;" data-src="assets/anneal0.png" height="300"/> -->
+				<!-- 				</div> -->
+				<!-- 			</div> -->
+				<!-- 		</div> -->
+				<!-- 		<br><br> -->
+
+				<!-- 	</section> -->
+
+
+
+
+
+
+
+
+
+
+								
+					<!--We can have a link to the project, an showcase an iframe with the
+              small simulation running on the right-->
+
+					<!-- <section> -->
+
+					<!-- 	<h3 class='slide-title'> the fast Particle-Mesh Simulations </h3> -->
+					<!-- 	<h4> <b> The idea </b> : move particles with approximate gravitational forces by estimating densities on grid -->
+					<!-- 	<br><br> -->
+						
+					<!-- 	<div class="container"> -->
+					<!-- 		<div class="col"> -->
+
+					<!-- 			<div class="block fragment" data-fragment-index="0"> -->
+					<!-- 				<div class="block-title"> -->
+					<!-- 					Drift Operator -->
+					<!-- 				</div> -->
+					<!-- 				<div class="block-content"> -->
+					<!-- 					$x(t_1) = x(t_0) + p(t_r) \mathcal{D}_\mathrm{PM} $ -->
+
+					<!-- 				</div>							 -->
+					<!-- 			</div> -->
+					<!-- 		</div> -->
+					<!-- 		<div class="col"> -->
+					<!-- 			<div class="block fragment" data-fragment-index="1"> -->
+					<!-- 				<div class="block-title"> -->
+					<!-- 					Kick Operator -->
+					<!-- 				</div> -->
+					<!-- 				<div class="block-content"> -->
+					<!-- 					$p(t_1) = p(t_0) + f(t_r) \mathcal{K}_\mathrm{PM}$ -->
+					<!-- 				</div>							 -->
+					<!-- 			</div> -->
+					<!-- 		</div> -->
+					<!-- 	</div> -->
+					<!-- 	<br> -->
+					<!-- 	<div class="block fragment" data-fragment-index="2"> -->
+					<!-- 		<div class="block-title"> -->
+					<!-- 			Gravitational Force Calculation -->
+					<!-- 		</div> -->
+					<!-- 		<div class="block-content"> -->
+					<!-- 			<div class="container"> -->
+					<!-- 				<div class="col"> -->
+					<!-- 					<ul> -->
+					<!-- 						<li class="fragment" data-fragment-index="3"> Particles are interpolated to the grid to estimate mass</li> -->
+					<!-- 						<br> -->
+					<!-- 						<li class="fragment" data-fragment-index="4"> Poisson Equation to estimate potential </li> -->
+					<!-- 						<br> -->
+					<!-- 						<li class="fragment" data-fragment-index="5"> Green's function approach in Fourier space to estimate force</li> -->
+					<!-- 						<br> -->
+					<!-- 						<li class="fragment" data-fragment-index="6"> Interpolate the force back to particle positions </li> -->
+											
+					<!-- 					</ul> -->
+					<!-- 				</div> -->
+					<!-- 				<div class="col"> -->
+					<!-- 					<div class="fragment" data-fragment-index="3"> -->
+					<!-- 						$ W(r) = \begin{cases}  -->
+					<!-- 						1 - \frac{r}{d} & r\leq d \\ -->
+					<!-- 						0 & otherwise -->
+					<!-- 						\end{cases} -->
+					<!-- 						$ -->
+					<!-- 						<img class="plain" style="position:relative; float:right" data-src="assets/cic.png" height="100"/> -->
+											
+					<!-- 					</div> -->
+					<!-- 					<br> -->
+					<!-- 					<div class="fragment" data-fragment-index="4"> -->
+					<!-- 						$\nabla^2 \phi = - 4\pi G \rho$ -->
+					<!-- 					</div> -->
+					<!-- 					<br> -->
+					<!-- 					<div class="fragment" data-fragment-index="5"> -->
+					<!-- 						$\vec{\nabla} \nabla^2  = i\vec{k}k^{-2}$ <br> -->
+					<!-- 						$f(\vec{k})  = i\vec{k}k^{-2} \delta(\vec{k})$ -->
+					<!-- 					</div> -->
+					<!-- 				</div> -->
+					<!-- 			</div> -->
+					<!-- 		</div> -->
+					<!-- 	</div> -->
+					<!-- </section> -->
+					
+					<!-- <section> -->
+					<!-- 	<h2 class='slide-title'> Generating Initial Conditions </h2> -->
+					<!-- 	<div class="container"> -->
+					<!-- 		<div class="col"> -->
+					<!-- 			<ul> -->
+					<!-- 				<li class="fragment"> Generate a Gaussian random field </li> -->
+					<!-- 				<br> -->
+					<!-- 				<li class="fragment"> Scale the amplitude to correct power - initial density field</li> -->
+					<!-- 				<br> -->
+					<!-- 				<li class="fragment"> Generate initial conditions of displacement and velocity </li> -->
+					<!-- 				<br><br><br><br><br><br> -->
+					<!-- 			</ul> -->
+					<!-- 		</div> -->
+					<!-- 		<div class="col"> -->
+					<!-- 			<\!-- <img class="fragment" style="position:relative; float:right" data-src="assets/lpt_depth2.PNG" height="620"/> -\-> -->
+					<!-- 			<img class="fragment"  data-src="assets/lpt_depth2.PNG" height="620"/> -->
+					<!-- 		</div> -->
+					<!-- 	</div> -->
+					<!-- </section> -->
+					
+				<!-------------------------------------------------------------------------------->
