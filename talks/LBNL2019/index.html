@@ -232,13 +232,13 @@
 									</div>
 									<div class="block-content">
 										<ul>
-											<li class="fragment" data-fragment-index="2">How to combine different cosmological probes </li>
+											<li class="fragment" data-fragment-index="1">How to combine different cosmological probes </li>
 											<br>
-											<li class="fragment" data-fragment-index="3">What are the optimal summary statistics? <br>
+											<li class="fragment" data-fragment-index="2">What are the optimal summary statistics? <br>
 												$\rightarrow$ <b>2 point function</b>, 3 point function, peak counts ...
 											</li>
 											<br>
-											<li class="fragment" data-fragment-index="4"> MCMC to recover a posterior on model parameters <br>
+											<li class="fragment" data-fragment-index="3"> MCMC to recover a posterior on model parameters <br>
 												$\rightarrow$  <b class="alert">analytic likelihood</b> : 
 												$p(\theta | x ) \propto \underbrace{p(x | \theta)}_{\mathrm{likelihood}}  \  \underbrace{p(\theta)}_{\mathrm{prior}}$
 											</li>
@@ -251,12 +251,13 @@
 							</div>
 							<div class="col" >
 								<div style="position:relative; width:480px; height:420px; margin:0 auto;">
-									<img class="fragment current-visible plain"  data-src="assets/cov.png" style="position:absolute;top:0;left:0;" data-fragment-index="2" />
-									<img class="fragment current-visible plain" data-src="assets/nbody.png"  data-fragment-index="3" />
-									  <img class="fragment  plain" data-src="assets/hsc_constraints.png" style="position:absolute;top:0;left:0;" data-fragment-index="4" />
+									<img class="fragment current-visible"  data-src="assets/lsst_y10_forecast2.png" style="position:absolute;top:0;left:0;" data-fragment-index="0" />
+									<img class="fragment current-visible plain"  data-src="assets/cov.png" style="position:absolute;top:0;left:0;" data-fragment-index="1" />
+									<img class="fragment current-visible plain" data-src="assets/nbody.png"  data-fragment-index="2" />
+									  <img class="fragment  plain" data-src="assets/hsc_constraints.png" style="position:absolute;top:0;left:0;" data-fragment-index="3" />
 								</div>
-								<div class="fragment current-visible" data-fragment-index="2" style="position:relative; float:right; font-size: 20px">Krause &amp; Eifler 2016</div>
-								<div class="fragment"  data-fragment-index="4" style="position:relative; float:right; font-size: 20px; top:-50px; left:200px">(Hikage,..., Lanusse, et al. 2018)</div>
+								<div class="fragment current-visible" data-fragment-index="1" style="position:relative; float:right; font-size: 20px">Krause &amp; Eifler 2016</div>
+								<div class="fragment"  data-fragment-index="3" style="position:relative; float:right; font-size: 20px; top:-50px; left:200px">(Hikage,..., Lanusse, et al. 2018)</div>
 							</div>
 						</div>
 						<br>
@@ -318,7 +319,7 @@
 						<h3 class='slide-title'> Bayesian Reconstruction of Cosmological Fields </h3>
 
 						<br>
-						<div> <b> Idea : </b> Reconstruct latent fields for analysis by maximizing the posterior of the initial conditions </div>
+						<div> <b> Idea : </b> Given a forward model for the observed data, reconstruct latent fields for analysis by maximizing the posterior of the initial conditions  $(s)$ of the Universe </div>
 						$$ \mathcal{L}(s) = \underbrace{[d - \mathcal{F}(s)]^\dagger N ^{-1} [d - \mathcal{F}(s)]}_{likelihood} + \underbrace{s^\dagger \mathcal{S}^{-1} s}_{prior} $$
 
 						<div class="container">
@@ -330,7 +331,7 @@
 									</div>
 									<div class="block-content">
 										<ul>
-											<li >High Dimensional Optimization (&gt $10^7$ parameters)<br>
+											<li >High Dimensional Optimization (&gt $10^8$ parameters)<br>
 											$\rightarrow$ Gradient Based Algorithm <br>
 												$\rightarrow$ Differentiable Forward Models</li>
 											<li > Correct Likelihood and noise model 
@@ -349,6 +350,7 @@
 											<li> <b> vmad </b> : A simple autodiff &amp library of operators  </li>
 											<li> <b> abopt </b> : optimization of generic numerical models </li>
 										</ul>
+										<em> Developers : <b>Yu Feng</b>,  Grigor Aslanyan, Chirag Modi &amp others </em> <!-- -->
 									</div>
 									
 								</div>								
@@ -363,7 +365,7 @@
 										<ul>
 											<li> Dark Matter <br> $\rightarrow$ Seljak et al. 2017, Feng et al. 2017 </li>
 											<li> Galaxies  <br> $\rightarrow$  Modi et al. 2018 </li>
-											<li> Weak Lensing  <br> $\rightarrow$  Boehm et al. 2017, Horowitz et al. 2018 </li>
+											<li> Weak Lensing  <br> $\rightarrow$  B&oumlhm et al. 2017, Horowitz et al. 2018 </li>
 											<li> 21 cm intensity mapping  <br> $\rightarrow$  Modi et al. 2019 </li>
 											<li> Lyman-$\alpha$ forests  <br> $\rightarrow$  Horowitz et al. 2019 </li>
 										</ul>
@@ -488,11 +490,11 @@
 						<h4> Differentiable forward models </h4>
 						
 						<div style="position:relative; width:1000px; height:300px; margin:0 auto;">
-							<img  style="position:absolute;top:0;left:0;" data-src="assets/recontruth.png" height="500"/>
+							<img  style="position:absolute;top:0;left:0;" data-src="assets/recontruth.png" height="300"/>
 						</div>
 						<div style="position:relative; width:1000px; height:300px; margin:0 auto;">
-							<img class="fragment " data-fragment-index="1"  style="position:absolute;top:0;left:0;" data-src="assets/reconinit.png" height="500"/>
-							<img class="fragment " data-fragment-index="2"  style="position:absolute;top:0;left:0;" data-src="assets/reconrecon.png" height="500"/>
+							<img class="fragment " data-fragment-index="1"  style="position:absolute;top:0;left:0;" data-src="assets/reconinit.png" height="300"/>
+							<img class="fragment " data-fragment-index="2"  style="position:absolute;top:0;left:0;" data-src="assets/reconrecon.png" height="300"/>
 						</div>
 						<div class="fragment" data-fragment-index="1" style="position:relative; float:right; left:-50px; font-size: 20px; margin:0 auto">Modi et al. 2018</div>
 
@@ -632,11 +634,12 @@
 								<div class="col">
 									<div style="position:relative; width:300px; height:200px; margin:0 auto;">
 										<div class="fragment current-visible" data-fragment-index="3" style="position:absolute;top:0;right:200;">
+											Cloud-in-cell (CIC) binning
 											$$ W(r) = \begin{cases} 
 											1 - \frac{r}{d} & r\leq d \\
 											0 & otherwise
 											\end{cases}
-											$$											
+											$$
 										<img class="plain" style="position:relative; float:right; top:700; left:500" data-src="assets/cic.png" height="100"/>
 										</div>
 
@@ -705,37 +708,39 @@
 							  </code></pre>
 						  </div>
 
-						  <div class='col fragment' data-fragment-index="1">
+						  <div class='col fragment' data-fragment-index="1" style="flex: 10 10 25em;">
 							  <br>
-							  <img data-src="assets/TF_FullColor_Horizontal.png" class='plain' style="height: 70px;"/>
+							  <img data-src="assets/TF_FullColor_Horizontal.png" class='plain' style="height: 80px;"/>
 							  <div class="fragment" data-fragment-index="1"> Gradients readily available &amp interfacing DL elements
 							  </div>
-							  <pre><code data-trim data-noescape>
+							  <pre  ><code data-trim data-noescape style="height:70em;width:50em;">
 							  import tensorflow as tf
 							  import flowpm
 
 							  linear = tf.get_variable('linmesh', shape=(nc, nc, nc),
 										 initializer=tf.random_normal_initializer(), trainable=True)
-							  icstate = flowpm.lpt_init(linear, name='icstate')
-							  fnstate = flowpm.nbody(icstate, stages, nc, name='fnstate')
+							  initial_conds = flowpm.lpt_init(linear, name='icstate')
+							  final_state = flowpm.nbody(initial_conds, stages, nc, name='fnstate')
 
 							  #Likelihood term of data
 							  final = tf.zeros_like(linear)
-							  final = tfpf.cic_paint(final, fnstate[0], boxsize=bs, name='final')
+							  final = flowpm.cic_paint(final, final_state[0], boxsize=bs, name='final')
 							  residual = tf.multiply(tf.subtract(final, data), 1/sigma)
-							  chisq = tf.reduce_sum(tf.multiply(residual, residual)) #Deep learning likelihood
+							  likelihood = tf.reduce_sum(tf.multiply(residual, residual)) 
+							  #likelihood = module(dict(features=final, labels=data), as_dict=True)[loss] ##DL
 							  #Prior
-							  lineark = tfpf.r2c3d(linear, norm=nc**3)
+							  lineark = flowpm.r2c3d(linear, norm=nc**3)
 							  priormesh = tf.square(tf.cast(tf.abs(lineark), tf.float32))
 							  prior = tf.reduce_sum(tf.multiply(priormesh, 1/priorwt))
-
 							  #Loss
-							  loss = tf.add(chisq, prior, name='loss')
+							  loss = tf.add(likelihood, prior, name='loss')
 							  optimizer = ScipyOptimizerInterface(loss, var_list=[linear], 'L-BFGS-B')
 
 							  with tf.Session() as session:
 							      optimizer.minimize(session)
 							      recon = session.run(linmesh)
+
+							  
 							  </code></pre>
 						  </div>
 					  </div>
@@ -743,82 +748,146 @@
 
 
 
-        <section>
+				<section>
 					<h1>Towards Large Scale Inference</h1>
+					
+					<!--- Or, distributed  --->
+				</section>
+				
+				<section>
+					<h3 class='slide-title'>The practical challenges</h3>
+					
+					<br>
+					<br>
+					
+					<div class="container">
+          					<div class="col">
+							<ul>
+								<li> Simulations of scientifically interesting sizes <b>do not fit on a single GPU RAM</b> <br>
+									e.g. $128^3$ operational, need $1024^3$ for survey volumes <br>
+									$\Longrightarrow$ We need for a distributed Machine Learning Framework <br>
+									
+								</li>
+								
+								<br>
 
-          <!--- Or, distributed  --->
-        </section>
+								<li class="fragment" data-fragment-index="1">Most common form of distribution is <b>data-parallelism</b>
+									$\Longrightarrow$ Reached Exascale on scientific deep learning applications
+								</li>
+								
+								<br>
+								
+								<li class="fragment"> What we need is <b>model-parallelism</b> on HPC environments
+								</li>
+							</ul>
+						</div>
+						
+          					<div class="col">
+							<img data-src="assets/summit.png" class="fragment" data-fragment-index="1">
+						</div>
+					</div>
+					
+					<br>
+					<br>
+					
+					<div class="fragment">
+						$\Longrightarrow$ We have started investigating <b class="alert">Mesh TensorFlow at NERSC</b>.
+					</div>
+				</section>
+				
+				<section>
+					<h3 class='slide-title'>Mesh TensorFlow in a few words</h3>
+					Redefines the TensorFlow API in terms of abstract <em>logical tensors</em> to operate on a
+					<br> <em> mesh </em> : an n-dimensional array of processors, conneced by a network
+					<br>
+					<br>
+					
+					<ul  style="list-style-type:none;">
+						<li> Each tensor is distributed (split/replicated) across all processors in the mesh. To instantiate this :
+							<ul>
+								<br>
+								<li class="fragment" data-fragment-index="2" > Specify the mesh layout of computing devices with <em> named dimensions </em></li>
+								<li class="fragment" data-fragment-index="3" > Specify names of tensor dimensions (to allow for <em>logical dimensions</em>)</li>
+								<li class="fragment" data-fragment-index="4" > 	<em>Computation layout</em> : tensor dimension $\rightarrow$ mesh-dimension</li>
+							</ul>
+							 </li>
+					</ul>
+							<br>
+							<br>
+					<div class="container">
+						<div class="col">
+							<div style="position:relative; width:480px; height:220px; margin:0 auto;">
+								<pre class="fragment current-visible" data-fragment-index="5" style="position:absolute;top:0;left:0;"><code data-trim data-noescape style="width:45em">
+								#A simple 2 layer fully connected network
+								#y=Relu(xw+bias)v
 
-        <section>
-          <h3 class='slide-title'>The practical challenges</h3>
-
-          <br>
-          <br>
-
-          <div class="container">
-          		<div class="col">
-              <ul>
-                <li> Simulations of scientifically interesting sizes <b>do not fit on a single GPU RAM</b>.<br>
-                  $\Longrightarrow$ We need for a distributed Machine Learning Framework
-                </li>
-
-                <br>
-
-                <li class="fragment" data-fragment-index="1">Most common form of distribution is <b>data-parallelism</b>
-                  $\Longrightarrow$ Reached Exascale on scientific deep learning applications
-                </li>
-
-                <br>
-
-                <li class="fragment"> What we need is <b>model-parallelism</b> on HPC environments
-                </li>
-              </ul>
-            </div>
-
-          	<div class="col">
-              <img data-src="assets/summit.png" class="fragment" data-fragment-index="1">
-            </div>
-          </div>
-
-          <br>
-          <br>
-
-            <div class="fragment">
-              $\Longrightarrow$ We have started investigating <b class="alert">Mesh TensorFlow at NERSC</b>.
-            </div>
-        </section>
-
-        <section>
-          <h3 class='slide-title'>Mesh TensorFlow in a few words</h3>
-          <ul>
-            <li> Redefines the TensorFlow API, in terms of abstract <em>logical tensors</em>
-              <ul> The actual instantiation of the memory on multiple devices depends on:
-                  <li class="fragment" data-fragment-index="1" > The specification of the mesh of computing devices
-                  </li>
-                  <li class="fragment" data-fragment-index="2" > The specification of rules for which dimensions can be splitted
-                  </li>
-              </ul>
-            </li>
-          </ul>
-
-          <img class="fragment"  data-fragment-index="3" data-src="assets/mesh_tensorflow.png"/><br>
-          <div class="fragment"  data-fragment-index="3" style="float:right; font-size: 20px">(Gholami et al. 2018)</div>
-        </section>
-
-        <section>
-          <h3 class='slide-title'>Mesh FlowPM</h3>
-          <br>
-          <img data-src="assets/mesh_flopwm.png" class="plain" style="height:450px;"/>
-
-          <ul>
-            <li> Technically working as of a few days ago, this is an example of a 128**3 simulation.
-            </li>
-            <li> Successfully ran on multiple Cori-GPU nodes, and on TPUv3-32 slice
-            </li>
-          </ul>
-        </section>
-
-
+								#Define dimensions
+								batch = mtf.Dimension("batch", b)
+								io = mtf.Dimension("io", d_io)
+								hidden = mtf.Dimension("hidden", d_h)
+								# x.shape == [batch, io]
+								#Get tensors
+								w = mtf.get_variable("w", shape=[io, hidden])
+								bias = mtf.get_variable("bias", shape=[hidden])
+								v = mtf.get_variable("v", shape=[hidden, io])
+								#Define operations
+								h = mtf.relu(mtf.einsum(x, w, output_shape=[batch, hidden]) + bias)
+								y = mtf.einsum(h, v, output_shape=[batch, io])
+								
+								</code></pre>
+								<pre class="fragment current-visible" data-fragment-index="6" style="position:absolute;top:0;left:0;"><code data-trim data-noescape style="width:45em">
+								batch = mtf.Dimension("batch", b)
+								io = mtf.Dimension("io", d_io)
+								hidden = mtf.Dimension("hidden", d_h)
+								#Define mesh dimensions and layout
+								mesh_shape = [("all_processors", 2)]
+								layout_rules = [("batch", "all_processors")]
+								</code></pre>
+								<pre class="fragment current-visible" data-fragment-index="7" style="position:absolute;top:0;left:0;"><code data-trim data-noescape style="width:45em">
+								batch = mtf.Dimension("batch", b)
+								io = mtf.Dimension("io", d_io)
+								hidden = mtf.Dimension("hidden", d_h)
+								#Define mesh dimensions and layout
+								mesh_shape = [("all_processors", 2)]
+								layout_rules = [("hidden", "all_processors")]
+								</code></pre>
+								<pre class="fragment " data-fragment-index="8" style="position:absolute;top:0;left:0;"><code data-trim data-noescape style="width:45em">
+								batch = mtf.Dimension("batch", b)
+								io = mtf.Dimension("io", d_io)
+								hidden = mtf.Dimension("hidden", d_h)
+								#Define mesh dimensions and layout
+								mesh_shape = [("processor_rows", 2), ("processor_cols", 2)]
+								layout_rules = [("batch", "processor_rows"), ("hidden", "processor_cols")]
+								</code></pre>
+							</div>
+						</div>
+						<div class="col">
+							<div style="position:relative; width:480px; height:220px; margin:0 auto; top:6px">
+								<img class="fragment current-visible"  data-fragment-index="5" style="position:absolute;top:0;left:0;" data-src="assets/matmul.png"/>
+								<img class="fragment current-visible"  data-fragment-index="6" style="position:absolute;top:0;left:0;" data-src="assets/matmulbatch.png"/>
+								<img class="fragment current-visible"  data-fragment-index="7" style="position:absolute;top:0;left:0;" data-src="assets/matmulmodel.png"/>
+								<img class="fragment "  data-fragment-index="8" style="position:absolute;top:0;left:0;" data-src="assets/matmul2d.png"/>
+							</div>
+						</div>
+						
+					<!-- <img class="fragment"  data-fragment-index="3" data-src="assets/mesh_tensorflow.png"/><br> -->
+					<!-- <div class="fragment"  data-fragment-index="3" style="float:right; font-size: 20px">(Gholami et al. 2018)</div> -->
+				</section>
+				
+				<section>
+					<h3 class='slide-title'>Mesh FlowPM</h3>
+					<br>
+					<img data-src="assets/mesh_flopwm.png" class="plain" style="height:450px;"/>
+					
+					<ul>
+						<li> Technically working as of a few days ago, this is an example of a 128**3 simulation.
+						</li>
+						<li> Successfully ran on multiple Cori-GPU nodes, and on TPUv3-32 slice
+						</li>
+					</ul>
+				</section>
+				
+				
 	
 				<!-------------------------------------------------------------------------------->
 				<!-------------------------------------------------------------------------------->
