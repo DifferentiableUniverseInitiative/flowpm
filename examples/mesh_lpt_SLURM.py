@@ -34,9 +34,9 @@ def lpt_prototype(nc=64, batch_size=8, a=1.0, nproc=2):
   pt = PerturbationGrowth(cosmology, a=[a], a_normalize=1.0)
   # Generate a batch of 3D initial conditions
   initial_conditions = flowpm.linear_field(nc,          # size of the cube
-                                         200,         # Physical size of the cube
-                                         ipklin,      # Initial power spectrum
-                                         batch_size=batch_size)
+                                           200,         # Physical size of the cube
+                                           ipklin,      # Initial power spectrum
+                                           batch_size=batch_size)
   # Sample particles uniformly on the grid
   particle_positions = tf.cast(tf.stack(tf.meshgrid(tf.range(nc), tf.range(nc), tf.range(nc)), axis=-1), dtype=tf.float32)
   particle_positions = tf.tile(tf.expand_dims(particle_positions, axis=0), [batch_size, 1, 1, 1, 1])
@@ -87,18 +87,7 @@ def lpt_prototype(nc=64, batch_size=8, a=1.0, nproc=2):
 
   # Paint the particles onto a new field, taking care of border effects
   nproc = int(math.sqrt(nproc))
-  lpt_field = mtf.slicewise(lambda x,y: cic_paint(x,y, shift=nc//2//nproc),
-                            [mtf.zeros_like(rfield), mfstate],
-                            output_dtype=tf.float32,
-                            output_shape=[batch_dim,x_dim,y_dim, z_dim],
-                            splittable_dims=rfield.shape[:])
-  lpt_field = mtf.shift(lpt_field, -nc//nproc, x_dim, wrap=True)
-  lpt_field = mtf.slicewise(lambda x,y: cic_paint(x,y, shift=-nc//2//nproc),
-                            [lpt_field, mfstate],
-                            output_dtype=tf.float32,
-                            output_shape=[batch_dim,x_dim,y_dim, z_dim],
-                            splittable_dims=rfield.shape[:])
-  mesh_final_field = mtf.shift(lpt_field, nc//2//nproc, x_dim, wrap=True)
+  mesh_final_field = mpm.cic_paint(mtf.zeros_like(rfield), mfstate, [x_dim], [nproc])
 
   return initial_conditions, final_field, mesh_final_field
 
@@ -131,8 +120,7 @@ def main(_):
 
   # Instantiate the mesh implementation
   mesh_impl = mtf.placement_mesh_impl.PlacementMeshImpl(mesh_shape,
-                                                        layout_rules,
-                                                        devices)
+                                                        layout_rules, devices)
 
   # Create computational graphs
   initial_conditions, final_field, mesh_final_field = lpt_prototype(nc=FLAGS.nc,
