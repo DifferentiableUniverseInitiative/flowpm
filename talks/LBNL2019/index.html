@@ -18,7 +18,7 @@
 
 		<!-- Theme used for syntax highlighting of code -->
 		<link rel="stylesheet" href="reveal.js/lib/css/monokai.css">
-		
+
 		<script>
 			var link = document.createElement( 'link' );
 			link.rel = 'stylesheet';
@@ -53,9 +53,9 @@
 										<h3>Chirag Modi<br>
 										François Lanusse, Uroš Seljak</h3>
 										<p>	University of California, Berkeley</p>
-										
+
 										<br>
-										
+
 									</div>
 								</div>
 								<div class="col">
@@ -70,7 +70,7 @@
 				</section>
 				<!-------------------------------------------------------------------------------->
 				<!-------------------------------------------------------------------------------->
-				
+
 				<!-- <section data-background-image="assets/WMAP_timeline.jpg" data-background-size="1100px" data-background-color="black"> -->
 				<!-- 	<\!-- <h2 class='slide-title' style="position:absolute;top:0;"> the $\Lambda$CDM view of the Universe </h3> -\-> -->
 				<!-- 	<h2 class='slide-title' style="position:relative;top:0;"> the $\Lambda$CDM view of the Universe </h2> -->
@@ -82,10 +82,10 @@
 
 				<!-- </section> -->
 
-				
+
 				<!-------------------------------------------------------------------------------->
 				<!-------------------------------------------------------------------------------->
-				<section data-background-color="black"> 
+				<section data-background-color="black">
 
 					<h2 class='slide-title' style="position:absolute;top:0;"> the $\Lambda$CDM view of the Universe </h2>
 
@@ -94,10 +94,10 @@
 							<img class="plain" src="assets/WMAP_timeline.jpg" height="700px"/>
 						</div>
 						<div class="col" style="flex: 0 0 22em;">
-							
+
 							<div class="fragment" data-fragment-index="1" style="text-align:left"> 6 fundamental parameters: </div>
-							<br>						
-							
+							<br>
+
 							<ol class="fragment" data-fragment-index="1">
 								<li>physical baryon density parameter</li>
 								<li>physical dark matter density parameter</li>
@@ -106,11 +106,11 @@
 								<li>curvature fluctuation amplitude</li>
 								<li>reionization optical depth</li>
 							</ol>
-							
+
 						</div>
 					</div>
 				</section>
-				
+
 				<!-------------------------------------------------------------------------------->
 				<section>
 					<section data-background-image="assets/cmb.png" data-background-size="1400px" data-background-color="black">
@@ -121,7 +121,7 @@
 									Galaxy Clustering
 									<br>
 									<br>
-									
+
 									<img src="assets/sdss_pie2.jpg" class="plain" height="250"></img>
 									<br>
 								</div>
@@ -132,21 +132,21 @@
 									<br>
 									<img src="assets/supernova2.jpg" class="plain" height="250"></img>
 								</div>
-								
+
 								<div class="fragment fade-up">
 									Gravitational Lensing
 									<br>
 									<img src="assets/lensing.jpg" class="plain" height="250"></img>
 									<br>
 								</div>
-								
+
 							</div>
 						</div>
 					</section>
 					<!-------------------------------------------------------------------------------->
 					<section data-background-image="assets/Mayall.jpg">
 						<font color='white'>
-						<h3 class='slide-title'> <font color='white'> the Dark Energy Spectroscopic Instrument </font></h3>						
+						<h3 class='slide-title'> <font color='white'> the Dark Energy Spectroscopic Instrument </font></h3>
 						<div class="container">
 							<div class="col">
 								<ul>
@@ -166,7 +166,7 @@
 						<br>
 						<br>
 						<br>
-							
+
 						</font >
 					</section>
 					<!-------------------------------------------------------------------------------->
@@ -199,9 +199,9 @@
 						<br>
 						<br>
 					</section>
-					
+
 				</section>
-				
+
 				<!-------------------------------------------------------------------------------->
 				<!-------------------------------------------------------------------------------->
 				<section>
@@ -209,7 +209,7 @@
 						<h3 class='slide-title'> modern cosmological surveys </h3>
 						<div class="container">
 							<div class="col" style="flex: 0 0 30em;">
-								
+
 								<div class="block fragment" data-fragment-index="0">
 									<div class="block-title">
 										A Blessing
@@ -224,7 +224,7 @@
 										</ul>
 									</div>
 								</div>
-								
+
 								<br>
 								<div class="block fragment" data-fragment-index="1">
 									<div class="block-title">
@@ -239,7 +239,7 @@
 											</li>
 											<br>
 											<li class="fragment" data-fragment-index="3"> MCMC to recover a posterior on model parameters <br>
-												$\rightarrow$  <b class="alert">analytic likelihood</b> : 
+												$\rightarrow$  <b class="alert">analytic likelihood</b> :
 												$p(\theta | x ) \propto \underbrace{p(x | \theta)}_{\mathrm{likelihood}}  \  \underbrace{p(\theta)}_{\mathrm{prior}}$
 											</li>
 
@@ -265,16 +265,16 @@
 							$\Longrightarrow$ Dire need for <b class="alert">novel analysis techniques</b> to fully realize the potential of modern surveys.
 						</div>
 
-						
+
 					</section>
 					<!-------------------------------------------------------------------------------->
 
 					<section>
 						<h3  class='slide-title'>A different road: forward modeling</h3>
-						
+
 						<div class='container'>
 								<div class='col'>
-									
+
 									<ul>
 										<li> Instead of trying to analytically evaluate the likelihood,
 											let us build a forward model of the observables.</li>
@@ -305,7 +305,7 @@
 										-> They require fast, accurate, differentiable forward simulations
 									</div>
 								</div>
-								
+
 								<div class='col'>
 									<img data-src="assets/pgm_lensing.png" class="plain" style="height:550px;"/>
 									<div style="float:right; font-size: 20px">(Schneider et al. 2015)</div>
@@ -314,7 +314,7 @@
 					</section>
 					<!-------------------------------------------------------------------------------->
 
-				
+
 					<section>
 						<h3 class='slide-title'> Bayesian Reconstruction of Cosmological Fields </h3>
 
@@ -334,11 +334,11 @@
 											<li >High Dimensional Optimization (&gt $10^8$ parameters)<br>
 											$\rightarrow$ Gradient Based Algorithm <br>
 												$\rightarrow$ Differentiable Forward Models</li>
-											<li > Correct Likelihood and noise model 
+											<li > Correct Likelihood and noise model
 										</ul>
 									</div>
-									
-								</div>								
+
+								</div>
 								<br>
 								<div class="block fragment " data-fragment-index="4">
 									<div class="block-title">
@@ -352,9 +352,9 @@
 										</ul>
 										<em> Developers : <b>Yu Feng</b>,  Grigor Aslanyan, Chirag Modi &amp others </em> <!-- -->
 									</div>
-									
-								</div>								
-								
+
+								</div>
+
 							</div>
 							<div class="col">
 								<div class="block fragment " data-fragment-index="5">
@@ -370,12 +370,12 @@
 											<li> Lyman-$\alpha$ forests  <br> $\rightarrow$  Horowitz et al. 2019 </li>
 										</ul>
 									</div>
-									
+
 								</div>
 							</div>
-						
+
 					</section>
-					
+
 				</section>
 
 				<!-------------------------------------------------------------------------------->
@@ -383,7 +383,7 @@
 
 				<section>
 					<section>
-						 <h3 class='slide-title'> Forward Models in Cosmology</h3> 
+						 <h3 class='slide-title'> Forward Models in Cosmology</h3>
 
 						<!-- <div class="container fragment"> -->
 						<!-- 	<\!-- <div class="col"> <h3> 1 </h3> </div> -\-> -->
@@ -404,7 +404,7 @@
 						<!-- 			</div> -->
 						<!-- 			<img class="plain" data-src="assets/fieldfin.png" height="100"/> -->
 						<!-- 		</div> -->
-								
+
 						<!-- 	</div> -->
 						<!-- </div> -->
 						<!-- <br><br> -->
@@ -426,7 +426,7 @@
 						<!-- 			</div> -->
 						<!-- 			<img class="plain" data-src="assets/fieldhalo.png" height="100"/> -->
 						<!-- 		</div> -->
-								
+
 						<!-- 	</div> -->
 						<!-- </div> -->
 
@@ -449,11 +449,11 @@
 						<!-- 			</div> -->
 						<!-- 			<img class="plain" data-src="assets/fieldgal.png" height="100"/> -->
 						<!-- 		</div> -->
-								
+
 						<!-- 	</div> -->
 						<!-- </div> -->
 
-						<div class="container"'>
+						<div class="container">
 							<div class='col'>
 								<img data-src="assets/fieldinit.png" class="plain" style="height:300px;"/>
 								<b class="alert"> Linear Field </b>
@@ -472,7 +472,7 @@
 								<b class="alert"> Galaxies </b>
 							</div>
 						</div>
-						<div class="container" style="position:relative; width:1000px; height:50px; margin:0 auto;">							
+						<div class="container" style="position:relative; width:1000px; height:50px; margin:0 auto;">
 							<div class='col fragment'  data-fragment-index='2'> <font size="10"> $\longrightarrow$ </font> <br> N-body simulations </div>
 							<div class='col fragment' data-fragment-index='3'>  <font size="10"> $\longrightarrow$ </font> <br> Group Finding <br> algorithms </div>
 							<div class='col fragment' data-fragment-index='4'>  <font size="10"> $\longrightarrow$ </font> <br> Semi-analytic &amp <br> distribution models </div>
@@ -488,7 +488,7 @@
 					<section>
 						<h3 class='slide-title'> Extending Dark Matter Simulations with Deep Learning : I </h3>
 						<h4> Differentiable forward models </h4>
-						
+
 						<div style="position:relative; width:1000px; height:300px; margin:0 auto;">
 							<img  style="position:absolute;top:0;left:0;" data-src="assets/recontruth.png" height="300"/>
 						</div>
@@ -504,7 +504,7 @@
 					<section>
 						<h3 class='slide-title'> Extending Dark Matter Simulations with Deep Learning : II </h3>
 						<h4> How to model p( galaxies | dark matter)? <h4>
-												
+
 						<div class="container">
 							<div class="col"  style="flex: 0 0 30em;">
 								<ul>
@@ -513,7 +513,7 @@
 									<ul class="fragment" data-fragment-index="2"> <b>Pixel CNN++ </b>: Models the probability $p(x)$ of an image $x$ given latent input $h$ <br>
 										$$p_{\theta}(x|h) = \prod_{i=0}^{n} p_{\theta}(x_i | x_{i-1} \ldots x_0, h) $$
 									</ul>
-									
+
 									<!-- <li class="fragment" data-fragment-index="6">Adiabatic Optimization for deep networks </li> -->
 									<!-- <br> -->
 									<!-- <ul class="fragment" data-fragment-index="7"> $\rightarrow$ <b>Recurrent Inference Machine</b> : RNN to learn inference algorithm -->
@@ -533,7 +533,7 @@
 
 							</div>
 							<br>
-						</div>					
+						</div>
 						<div class="fragment" style="position:relative; top:-20px">
 							<img data-src="assets/halo_sampling.png"  class="plain" style="height:250px;"/><br>
 							MDN model predicting distribution of halo positions (left truth, right sample)
@@ -542,7 +542,7 @@
 
 					</section>
 
-					
+
 					<!-------------------------------------------------------------------------------->
 					<!-- <section> -->
 					<!-- 	<h2 class='slide-title'> Baryon Acoustic Oscillations </h2> -->
@@ -551,7 +551,7 @@
 
 					<!-- 	<br> -->
 					<!-- 	<br> -->
-						
+
 					<!-- 	<div class="container"> -->
 
 					<!-- 		<div class="col"> -->
@@ -568,7 +568,7 @@
 					<!-- 				<br> -->
 					<!-- 			</ul> -->
 					<!-- 		</div>		 -->
-														
+
 					<!-- 		<div class="col" style="flex: 0 0 1em;"> -->
 					<!-- 			<\!-- <div class="col"> -\-> -->
 					<!-- 			<div style="position:relative; width:600px; height:300px; left:20px; top:80px; margin:1 auto"> -->
@@ -580,7 +580,7 @@
 					<!-- 			<div class="fragment current-visible" data-fragment-index="4" style="position:relative; float:right;  top:50px; font-size: 20px; margin:0 auto">Modi et al. 2018</div> -->
 
 					<!-- 		</div> -->
-						
+
 					<!-- 	</div> -->
 					<!-- 	<br><br> -->
 
@@ -588,7 +588,7 @@
 
 
 
-				
+
 				</section>
 				<!-------------------------------------------------------------------------------->
 				<!-------------------------------------------------------------------------------->
@@ -629,13 +629,13 @@
 										<li class="fragment" data-fragment-index="7"> Drift : Update the position of the particles </li>
 										<br>
 										<div class="fragment" data-fragment-index='8'> $\longrightarrow$ Repeat! </div>
-									</ul>							
+									</ul>
 								</div>
 								<div class="col">
 									<div style="position:relative; width:300px; height:200px; margin:0 auto;">
 										<div class="fragment current-visible" data-fragment-index="3" style="position:absolute;top:0;right:200;">
 											Cloud-in-cell (CIC) binning
-											$$ W(r) = \begin{cases} 
+											$$ W(r) = \begin{cases}
 											1 - \frac{r}{d} & r\leq d \\
 											0 & otherwise
 											\end{cases}
@@ -726,7 +726,7 @@
 							  final = tf.zeros_like(linear)
 							  final = flowpm.cic_paint(final, final_state[0], boxsize=bs, name='final')
 							  residual = tf.multiply(tf.subtract(final, data), 1/sigma)
-							  likelihood = tf.reduce_sum(tf.multiply(residual, residual)) 
+							  likelihood = tf.reduce_sum(tf.multiply(residual, residual))
 							  #likelihood = module(dict(features=final, labels=data), as_dict=True)[loss] ##DL
 							  #Prior
 							  lineark = flowpm.r2c3d(linear, norm=nc**3)
@@ -740,7 +740,7 @@
 							      optimizer.minimize(session)
 							      recon = session.run(linmesh)
 
-							  
+
 							  </code></pre>
 						  </div>
 					  </div>
@@ -750,58 +750,58 @@
 
 				<section>
 					<h1>Towards Large Scale Inference</h1>
-					
+
 					<!--- Or, distributed  --->
 				</section>
-				
+
 				<section>
 					<h3 class='slide-title'>The practical challenges</h3>
-					
+
 					<br>
 					<br>
-					
+
 					<div class="container">
           					<div class="col">
 							<ul>
 								<li> Simulations of scientifically interesting sizes <b>do not fit on a single GPU RAM</b> <br>
 									e.g. $128^3$ operational, need $1024^3$ for survey volumes <br>
 									$\Longrightarrow$ We need for a distributed Machine Learning Framework <br>
-									
+
 								</li>
-								
+
 								<br>
 
 								<li class="fragment" data-fragment-index="1">Most common form of distribution is <b>data-parallelism</b>
 									$\Longrightarrow$ Reached Exascale on scientific deep learning applications
 								</li>
-								
+
 								<br>
-								
+
 								<li class="fragment"> What we need is <b>model-parallelism</b> on HPC environments
 								</li>
 							</ul>
 						</div>
-						
+
           					<div class="col">
 							<img data-src="assets/summit.png" class="fragment" data-fragment-index="1">
 						</div>
 					</div>
-					
+
 					<br>
 					<br>
-					
+
 					<div class="fragment">
 						$\Longrightarrow$ We have started investigating <b class="alert">Mesh TensorFlow at NERSC</b>.
 					</div>
 				</section>
-				
+
 				<section>
 					<h3 class='slide-title'>Mesh TensorFlow in a few words</h3>
 					Redefines the TensorFlow API in terms of abstract <em>logical tensors</em> to operate on a
 					<br> <em> mesh </em> : an n-dimensional array of processors, conneced by a network
 					<br>
 					<br>
-					
+
 					<ul  style="list-style-type:none;">
 						<li> Each tensor is distributed (split/replicated) across all processors in the mesh. To instantiate this :
 							<ul>
@@ -833,7 +833,7 @@
 								#Define operations
 								h = mtf.relu(mtf.einsum(x, w, output_shape=[batch, hidden]) + bias)
 								y = mtf.einsum(h, v, output_shape=[batch, io])
-								
+
 								</code></pre>
 								<pre class="fragment current-visible" data-fragment-index="6" style="position:absolute;top:0;left:0;"><code data-trim data-noescape style="width:45em">
 								batch = mtf.Dimension("batch", b)
@@ -869,16 +869,16 @@
 								<img class="fragment "  data-fragment-index="8" style="position:absolute;top:0;left:0;" data-src="assets/matmul2d.png"/>
 							</div>
 						</div>
-						
+
 					<!-- <img class="fragment"  data-fragment-index="3" data-src="assets/mesh_tensorflow.png"/><br> -->
 					<!-- <div class="fragment"  data-fragment-index="3" style="float:right; font-size: 20px">(Gholami et al. 2018)</div> -->
 				</section>
-				
+
 				<section>
 					<h3 class='slide-title'>Mesh FlowPM</h3>
 					<br>
 					<img data-src="assets/mesh_flopwm.png" class="plain" style="height:450px;"/>
-					
+
 					<ul>
 						<li> Technically working as of a few days ago, this is an example of a 128**3 simulation.
 						</li>
@@ -886,18 +886,32 @@
 						</li>
 					</ul>
 				</section>
-				
-				
-	
+
+        <section>
+					<h3 class='slide-title'>Benchmarking on TPU</h3>
+
+
+						<div class='container'>
+								<div class='col'>
+
+                </div>
+
+                <div class='col'>
+                  <img data-src='assets/TPU_profile.png'/>
+                  <img data-src='assets/TPU_profile2.png'/>
+                </div>
+
+        </section>
+
 				<!-------------------------------------------------------------------------------->
 				<!-------------------------------------------------------------------------------->
 				<!-------------------------------------------------------------------------------->
 				<!-------------------------------------------------------------------------------->
 
-				
+
 				</div>
 			</div>
-			
+
 
 		<style>
 		/* .reveal .slides {
@@ -919,7 +933,7 @@
   		font-weight: bold;
 		}
 
-		
+
 		.reveal .block {
 			background-color: #191919;
 			margin-left: 20px;
@@ -1017,7 +1031,7 @@
 				<!-- 		<br><br> -->
 
 				<!-- 		<div class="container"> -->
-							
+
 				<!-- 			<div class="col"> -->
 				<!-- 				<ul> -->
 				<!-- 					<li class="fragment" data-fragment-index="1" >Friends of friends is non-differentiable</li> -->
@@ -1032,9 +1046,9 @@
 				<!-- 					<li class="fragment" data-fragment-index="4" > Neural networks to learn halo formation</li> -->
 				<!-- 					<br> -->
 				<!-- 				</ul> -->
-								
+
 				<!-- 			</div> -->
-														
+
 				<!-- 			<div class="col" > -->
 				<!-- 				<div style="position:relative; width:480px; height:220px; margin:0 auto;"> -->
 				<!-- 					<img class="fragment current-visible" data-fragment-index="1" style="position:absolute;top:0;left:0;" data-src="assets/FOFgroups.png" height="200"/> -->
@@ -1054,7 +1068,7 @@
 				<!-- 		<h2 class='slide-title'> Neural Halo Model </h2> -->
 				<!-- 		<br><br> -->
 				<!-- 		<div class="container"> -->
-							
+
 				<!-- 			<div class="col"> -->
 				<!-- 				<ul> -->
 				<!-- 					<li class="fragment" data-fragment-index="1" >Classification network learns position mask</li> -->
@@ -1064,9 +1078,9 @@
 				<!-- 					<li class="fragment" data-fragment-index="3" > Combination is the halo model </li> -->
 				<!-- 					<br> -->
 				<!-- 				</ul> -->
-								
+
 				<!-- 			</div> -->
-														
+
 				<!-- 			<div class="col" > -->
 				<!-- 				<div style="position:relative; width:480px; height:220px; margin:0 auto;"> -->
 				<!-- 					<img class="fragment current-visible" data-fragment-index="1" style="position:absolute;top:0;left:0;" data-src="assets/nnpos.png" height="200"/> -->
@@ -1092,7 +1106,7 @@
 				<!-- 		<div class="fragment" data-fragment-index="0" style="text-align:center"> $\boxed{ \mathcal{L}(s) = [d - \mathcal{F}(s)]^\dagger N ^{-1} [d - \mathcal{F}(s)] + s^\dagger S^{-1} s}$ </div> -->
 				<!-- 		<br> -->
 				<!-- 		<div class="container"> -->
-							
+
 				<!-- 			<div class="col"> -->
 				<!-- 				<div  class="fragment" data-fragment-index="1"  style="text-align:center"> Smooth the fields to estimate error</div> -->
 				<!-- 				<br> -->
@@ -1105,7 +1119,7 @@
 				<!-- 				<br> -->
 				<!-- 				<div class="fragment" data-fragment-index="2" style="text-align:center"> $$ \mathcal{E} = \sum_i \Big(\frac{\mu_N + \rm{log(M_{R,i}^{NN} + M_0)} - \rm{log(M_{R,i}^{d} + M_0)}}{2\sigma_N}\Big)^2 $$ </div> -->
 				<!-- 			</div>																 -->
-							
+
 				<!-- 			<div class="col" > -->
 				<!-- 			<\!-- <div class="col"> -\-> -->
 				<!-- 				<img class="fragment" data-fragment-index="1" data-src="assets/nnnoisefield.png" height="200"/> -->
@@ -1124,7 +1138,7 @@
 				<!-- 		<h2 class='slide-title'> Adiabatic Optimization </h2> -->
 
 				<!-- 		<div class="container"> -->
-							
+
 				<!-- 			<div class="col"> -->
 				<!-- 				<ul> -->
 				<!-- 					<li class="fragment" data-fragment-index="1"> <b>Problem </b>: Simple optimization leads to poor results </li> -->
@@ -1145,7 +1159,7 @@
 				<!-- 					<br> -->
 				<!-- 				</ul> -->
 				<!-- 			</div>		 -->
-														
+
 				<!-- 			<div class="col" style="flex: 0 0 25em;"> -->
 				<!-- 				<\!-- <div class="col"> -\-> -->
 				<!-- 				<div style="position:relative; width:500px; height:300px; margin:0 auto;"> -->
@@ -1173,7 +1187,7 @@
 
 
 
-								
+
 					<!--We can have a link to the project, an showcase an iframe with the
               small simulation running on the right-->
 
@@ -1182,7 +1196,7 @@
 					<!-- 	<h3 class='slide-title'> the fast Particle-Mesh Simulations </h3> -->
 					<!-- 	<h4> <b> The idea </b> : move particles with approximate gravitational forces by estimating densities on grid -->
 					<!-- 	<br><br> -->
-						
+
 					<!-- 	<div class="container"> -->
 					<!-- 		<div class="col"> -->
 
@@ -1223,7 +1237,7 @@
 					<!-- 						<li class="fragment" data-fragment-index="5"> Green's function approach in Fourier space to estimate force</li> -->
 					<!-- 						<br> -->
 					<!-- 						<li class="fragment" data-fragment-index="6"> Interpolate the force back to particle positions </li> -->
-											
+
 					<!-- 					</ul> -->
 					<!-- 				</div> -->
 					<!-- 				<div class="col"> -->
@@ -1234,7 +1248,7 @@
 					<!-- 						\end{cases} -->
 					<!-- 						$ -->
 					<!-- 						<img class="plain" style="position:relative; float:right" data-src="assets/cic.png" height="100"/> -->
-											
+
 					<!-- 					</div> -->
 					<!-- 					<br> -->
 					<!-- 					<div class="fragment" data-fragment-index="4"> -->
@@ -1250,7 +1264,7 @@
 					<!-- 		</div> -->
 					<!-- 	</div> -->
 					<!-- </section> -->
-					
+
 					<!-- <section> -->
 					<!-- 	<h2 class='slide-title'> Generating Initial Conditions </h2> -->
 					<!-- 	<div class="container"> -->
@@ -1270,5 +1284,5 @@
 					<!-- 		</div> -->
 					<!-- 	</div> -->
 					<!-- </section> -->
-					
+
 				<!-------------------------------------------------------------------------------->
