@@ -3,9 +3,10 @@ from __future__ import division
 from __future__ import print_function
 
 import mesh_tensorflow as mtf
-import tensorflow as tf
-
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 from . import mesh_ops
+from . import mesh_kernels
 
 def _cic_indexing(mesh, part, weight=None, name=None):
   """
@@ -26,8 +27,9 @@ def _cic_indexing(mesh, part, weight=None, name=None):
   """
   with tf.name_scope(name, "cic_indexing", [mesh, part, weight]):
     shape = tf.shape(mesh)
-    batch_size, nx, ny, nz = shape[0], shape[1], shape[2], shape[3]
-    nc = nz
+    batch_size =shape[0]
+    nx, ny, nz = shape[-3], shape[-2], shape[-1]
+    part_shape = part.shape
 
     # Flatten part if it's not already done
     if len(part.shape) > 3:
@@ -41,8 +43,6 @@ def _cic_indexing(mesh, part, weight=None, name=None):
                                               [0., 1, 1],[1., 1, 1]]]), 0)
     neighboor_coords = floor + connection
     kernel = 1. - tf.abs(part - neighboor_coords)
-    # Replacing the reduce_prod op by manual multiplication
-    # TODO: figure out why reduce_prod was crashing the Hessian computation
     kernel = kernel[..., 0] * kernel[..., 1] * kernel[..., 2]
 
     if weight is not None: kernel = tf.multiply(tf.expand_dims(weight, axis=-1) , kernel)
@@ -54,7 +54,7 @@ def _cic_indexing(mesh, part, weight=None, name=None):
     batch_idx = tf.reshape(batch_idx, (batch_size, 1, 1, 1))
     b = tf.tile(batch_idx, [1] + list(neighboor_coords.get_shape()[1:-1]) + [1])
     neighboor_coords = tf.concat([b, neighboor_coords], axis=-1)
-    return tf.reshape(neighboor_coords, (batch_size, nx, ny, nz, 8,4)), tf.reshape(kernel, (batch_size, nx, ny, nz, 8))
+    return tf.reshape(neighboor_coords, part_shape[:-1]+[8, 4]),  tf.reshape(kernel, part_shape[:-1]+[8])
 
 def _cic_paint(mesh, neighboor_coords, kernel, shift, name=None):
   """
@@ -69,18 +69,18 @@ def _cic_paint(mesh, neighboor_coords, kernel, shift, name=None):
   """
   with tf.name_scope(name, "cic_update", [mesh, neighboor_coords, kernel]):
     shape = tf.shape(mesh)
-    batch_size, nx, ny, nz = shape[0], shape[1], shape[2], shape[3]
-    nc = nz
+    batch_size = shape[0]
+    nx, ny, nz = shape[-3], shape[-2], shape[-1]
 
     #TODO: Assert shift shape
     neighboor_coords = tf.reshape(neighboor_coords, (-1, 8,4))
     neighboor_coords = neighboor_coords + tf.reshape(tf.constant(shift), [1,1,4])
-    neighboor_coords = tf.math.mod(neighboor_coords , nc)
 
     update = tf.scatter_nd(neighboor_coords,
                            tf.reshape(kernel, (-1, 8)),
                            [batch_size, nx, ny, nz])
-    mesh = mesh + update
+
+    mesh = mesh + tf.reshape(update, mesh.shape)
     return mesh
 
 def _cic_readout(mesh, neighboor_coords, kernel, shift, name=None):
@@ -96,13 +96,12 @@ def _cic_readout(mesh, neighboor_coords, kernel, shift, name=None):
   """
   with tf.name_scope(name, "cic_readout", [mesh, neighboor_coords, kernel]):
     shape = tf.shape(mesh)
-    batch_size, nx, ny, nz = shape[0], shape[1], shape[2], shape[3]
-    nc = nz
+    batch_size = shape[0]
+    nx, ny, nz = shape[-3], shape[-2], shape[-1]
 
     #TODO: Assert shift shape
     neighboor_coords = tf.reshape(neighboor_coords, (-1, 8,4))
     neighboor_coords = neighboor_coords + tf.reshape(tf.constant(shift), [1,1,4])
-    neighboor_coords = tf.math.mod(neighboor_coords , nc)
 
     meshvals = tf.gather_nd(mesh, neighboor_coords)
     weightedvals = tf.multiply(meshvals, tf.reshape(kernel, (-1, 8)))
@@ -110,7 +109,7 @@ def _cic_readout(mesh, neighboor_coords, kernel, shift, name=None):
     value = tf.reshape(value, shape)
     return value
 
-def cic_paint(mesh, part, splitted_dims, nsplits, weight=None, name=None):
+def cic_paint(mesh, part, weight=None, name=None):
   """
   Distributed Cloud In Cell implementation.
 
@@ -134,65 +133,23 @@ def cic_paint(mesh, part, splitted_dims, nsplits, weight=None, name=None):
   part tensor with neighboring devices on the mesh to make sure particles
   displaced outside of their initial boundaries get a chance to be painted.
   """
-
   nk = mtf.Dimension("nk", 8)
   nl = mtf.Dimension("nl", 4)
-
   indices, values = mtf.slicewise(_cic_indexing,
                          [mesh, part],
                          output_dtype=[tf.float32, tf.float32],
                          output_shape=[mtf.Shape(part.shape.dims[:-1]+[nk, nl]),
                                        mtf.Shape(part.shape.dims[:-1]+[nk])],
-                         splittable_dims=mesh.shape[:-1])
+                         splittable_dims=mesh.shape[:-3])
 
-  dim_size = splitted_dims[0].size
-  slice_size = dim_size // nsplits[0]
-
-  # Implement simple split along one axis
-  if len(splitted_dims) == 1:
-    mesh = mtf.slicewise(lambda x,y,z: _cic_paint(x, y, z, shift=[0, slice_size//2, 0, 0]),
+  mesh = mtf.slicewise(lambda x,y,z: _cic_paint(x, y, z, shift=[0, halo_size, halo_size, halo_size]),
                          [mesh, indices, values],
                          output_dtype=tf.float32,
                          output_shape=mesh.shape,
-                         splittable_dims=mesh.shape[:-1])
-    mesh = mtf.shift(mesh, -slice_size, mesh.shape[-3], wrap=True)
-    mesh = mtf.slicewise(lambda x,y,z: _cic_paint(x, y, z, shift=[0, -slice_size//2, 0, 0]),
-                         [mesh, indices, values],
-                         output_dtype=tf.float32,
-                         output_shape=mesh.shape,
-                         splittable_dims=mesh.shape[:-1])
-    mesh = mtf.shift(mesh, slice_size//2, mesh.shape[-3], wrap=True)
-
-  elif len(splitted_dims) == 2:
-    mesh = mtf.slicewise(lambda x,y,z: _cic_paint(x, y, z, shift=[0, slice_size//2, slice_size//2, 0]),
-                         [mesh, indices, values],
-                         output_dtype=tf.float32,
-                         output_shape=mesh.shape,
-                         splittable_dims=mesh.shape[:-1])
-    mesh = mtf.shift(mesh, -slice_size, mesh.shape[-2], wrap=True)
-    mesh = mtf.slicewise(lambda x,y,z: _cic_paint(x, y, z, shift=[0, slice_size//2, -slice_size//2, 0]),
-                         [mesh, indices, values],
-                         output_dtype=tf.float32,
-                         output_shape=mesh.shape,
-                         splittable_dims=mesh.shape[:-1])
-    mesh = mtf.shift(mesh, slice_size//2, mesh.shape[-2], wrap=True)
-    mesh = mtf.shift(mesh, -slice_size, mesh.shape[-3], wrap=True)
-    mesh = mtf.slicewise(lambda x,y,z: _cic_paint(x, y, z, shift=[0, -slice_size//2, slice_size//2, 0]),
-                         [mesh, indices, values],
-                         output_dtype=tf.float32,
-                         output_shape=mesh.shape,
-                         splittable_dims=mesh.shape[:-1])
-    mesh = mtf.shift(mesh, -slice_size, mesh.shape[-2], wrap=True)
-    mesh = mtf.slicewise(lambda x,y,z: _cic_paint(x, y, z, shift=[0, -slice_size//2, -slice_size//2, 0]),
-                         [mesh, indices, values],
-                         output_dtype=tf.float32,
-                         output_shape=mesh.shape,
-                         splittable_dims=mesh.shape[:-1])
-    mesh = mtf.shift(mesh, slice_size//2, mesh.shape[-2], wrap=True)
-    mesh = mtf.shift(mesh, slice_size//2, mesh.shape[-3], wrap=True)
+                         splittable_dims=mesh.shape[:-3])
   return mesh
 
-def cic_readout(mesh, part, splitted_dims, nsplits, name=None):
+def cic_readout(mesh, part, name=None):
   nk = mtf.Dimension("nk", 8)
   nl = mtf.Dimension("nl", 4)
 
@@ -201,54 +158,54 @@ def cic_readout(mesh, part, splitted_dims, nsplits, name=None):
                          output_dtype=[tf.float32, tf.float32],
                          output_shape=[mtf.Shape(part.shape.dims[:-1]+[nk, nl]),
                                        mtf.Shape(part.shape.dims[:-1]+[nk])],
-                         splittable_dims=mesh.shape[:-1])
+                         splittable_dims=mesh.shape[:-3])
 
-  dim_size = splitted_dims[0].size
-  slice_size = dim_size // nsplits[0]
-
-  # Implement simple split along one axis
-  if len(splitted_dims) == 1:
-    value = mtf.slicewise(lambda x,y,z: _cic_readout(x, y, z, shift=[0, slice_size//2, 0, 0]),
+  value = mtf.slicewise(lambda x,y,z: _cic_readout(x, y, z, shift=[0, halo_size, halo_size, halo_size]),
                          [mesh, indices, values],
                          output_dtype=tf.float32,
                          output_shape=part.shape[:-1],
-                         splittable_dims=mesh.shape[:-1])
-    value = mtf.shift(value, slice_size, mesh.shape[-3], wrap=True)
-    value += mtf.slicewise(lambda x,y,z: _cic_readout(x, y, z, shift=[0, -slice_size//2, 0, 0]),
-                         [mesh, indices, values],
-                         output_dtype=tf.float32,
-                         output_shape=part.shape[:-1],
-                         splittable_dims=mesh.shape[:-1])
-    value = mtf.shift(value, -slice_size//2, mesh.shape[-3], wrap=True)
-
-  elif len(splitted_dims) == 2:
-    value += mtf.slicewise(lambda x,y,z: _cic_readout(x, y, z, shift=[0, slice_size//2, slice_size//2, 0]),
-                         [mesh, indices, values],
-                         output_dtype=tf.float32,
-                         output_shape=mesh.shape,
-                         splittable_dims=mesh.shape[:-1])
-    mesh = mtf.shift(mesh, -slice_size, mesh.shape[-2], wrap=True)
-    value += mtf.slicewise(lambda x,y,z: _cic_readout(x, y, z, shift=[0, slice_size//2, -slice_size//2, 0]),
-                         [mesh, indices, values],
-                         output_dtype=tf.float32,
-                         output_shape=mesh.shape,
-                         splittable_dims=mesh.shape[:-1])
-    mesh = mtf.shift(mesh, slice_size//2, mesh.shape[-2], wrap=True)
-    mesh = mtf.shift(mesh, -slice_size, mesh.shape[-3], wrap=True)
-    value += mtf.slicewise(lambda x,y,z: _cic_readout(x, y, z, shift=[0, -slice_size//2, slice_size//2, 0]),
-                         [mesh, indices, values],
-                         output_dtype=tf.float32,
-                         output_shape=mesh.shape,
-                         splittable_dims=mesh.shape[:-1])
-    mesh = mtf.shift(mesh, -slice_size, mesh.shape[-2], wrap=True)
-    value += mtf.slicewise(lambda x,y,z: _cic_readout(x, y, z, shift=[0, -slice_size//2, -slice_size//2, 0]),
-                         [mesh, indices, values],
-                         output_dtype=tf.float32,
-                         output_shape=mesh.shape,
-                         splittable_dims=mesh.shape[:-1])
-    mesh = mtf.shift(mesh, slice_size//2, mesh.shape[-2], wrap=True)
-    mesh = mtf.shift(mesh, slice_size//2, mesh.shape[-3], wrap=True)
+                         splittable_dims=mesh.shape[:-3])
   return value
+
+def downsample(field, downsampling_factor=2, antialias=True):
+  """
+  Performs a multiresolution decomposition of the input field.
+
+  The input field will be decomposed into a low resolution approximation,
+  and a details component.
+  """
+  low = field
+  for i in range(downsampling_factor):
+    kernel = mesh_kernels.get_bspline_kernel(low, mtf.Dimension('down_%d'%i,low.shape[-1].size), order=4)
+    low = mtf.Conv3dOperation(low, kernel, strides=(1,2,2,2,1), padding='SAME').outputs[0]
+  if antialias:
+    kernel = mesh_kernels.get_bspline_kernel(low, mtf.Dimension('dogwn_%d'%i,low.shape[-1].size), order=2)
+    low = mtf.Conv3dOperation(low, kernel, strides=(1,1,1,1,1), padding='SAME').outputs[0]
+  return low
+
+def upsample(low, downsampling_factor=2):
+  """
+  Performs a multiresolution reconstruction of the input field.
+
+  The input field will be decomposed into a low resolution approximation,
+  and a details component.
+  """
+  for i in range(downsampling_factor):
+    kernel = mesh_kernels.get_bspline_kernel(low, mtf.Dimension('out_%d'%i,low.shape[-1].size), transpose=True, order=4)
+    low = mtf.Conv3dTransposeOperation(low, kernel * 2.0**3, strides=(1,2,2,2,1), padding='SAME').outputs[0]
+  return low
+
+def split_scales(field, downsampling_factor=2., antialias=True):
+  """
+  Performs a multiresolution decomposition of the input field.
+
+  The input field will be decomposed into a low resolution approximation,
+  and a details component.
+  """
+  low = downsample(field, downsampling_factor, antialias)
+  high = upsample(low, downsampling_factor)
+  high = field - mtf.reshape(high, field.shape)
+  return low, high
 
 def r2c3d(rfield, norm=None, dtype=tf.complex64):
   """

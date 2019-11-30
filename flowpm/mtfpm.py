@@ -4,7 +4,8 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 import tensorflow_probability as tfp
 from astropy.cosmology import Planck15
 
@@ -20,51 +21,97 @@ PerturbationGrowth = lambda cosmo, *args, **kwargs: MatterDominated(Omega0_lambd
                                                                     Omega0_k = cosmo.Ok0,
                                                                     *args, **kwargs)
 
-def linear_field(mesh, shape, boxsize, pk, kvec, seed=None, dtype=tf.float32):
+def linear_field(mesh, hr_shape, lr_shape,
+                 boxsize, nc, pk, kvec_lr, kvec_hr, halo_size,
+                 post_filtering=True, downsampling_factor=2,
+                 seed=None, dtype=tf.float32, return_random_field=False):
   """Generates a linear field with a given linear power spectrum
-
-  Parameters:
-  -----------
-  nc: int
-    Number of cells in the field
-
-  boxsize: float
-    Physical size of the cube, in Mpc/h TODO: confirm units
-
-  pk: [batch size]
-    Power spectrum to use for the field
-
-  kvec: array
-    k_vector corresponding to the cube, optional
-
-  Returns
-  ------
-  linfield: tensor (batch_size, nc, nc, nc)
-    Realization of the linear field with requested power spectrum
   """
-  x_dim, y_dim, z_dim = shape[-3:]
-  nc = z_dim.size
-  field = mesh_ops.random_normal(mesh, shape=shape,
-                                 mean=0, stddev=nc**1.5, dtype=tf.float32)
-  kfield = mesh_utils.r2c3d(field)
-
   # Element-wise function that applies a Fourier kernel
   def _cwise_fn(kfield, pk, kx, ky, kz):
-    kx = tf.reshape(kx, [-1, 1, 1])
-    ky = tf.reshape(ky, [1, -1, 1])
-    kz = tf.reshape(kz, [1, 1, -1])
-    kk = tf.sqrt((kx / boxsize * nc)**2 + (ky/ boxsize * nc)**2 + (kz/ boxsize * nc)**2)
-    shape = kk.shape
-    kk = tf.reshape(kk, [-1])
-    pkmesh = tfp.math.interp_regular_1d_grid(x=kk, x_ref_min=1e-05, x_ref_max=1000.0,
-                                             y_ref=pk, grid_regularizing_transform=tf.log)
-    pkmesh = tf.reshape(pkmesh, shape)
-    kfield = kfield * tf.cast((pkmesh/boxsize**3)**0.5, tf.complex64)
-    return kfield
-  kfield = mtf.cwise(_cwise_fn,
-                     [kfield, pk] + kvec,
-                     output_dtype=tf.complex64)
-  return mesh_utils.c2r3d(kfield)
+      kx = tf.reshape(kx, [-1, 1, 1])
+      ky = tf.reshape(ky, [1, -1, 1])
+      kz = tf.reshape(kz, [1, 1, -1])
+      kk = tf.sqrt((kx / boxsize * nc)**2 + (ky/ boxsize * nc)**2 + (kz/ boxsize * nc)**2)
+      shape = kk.shape
+      kk = tf.reshape(kk, [-1])
+      pkmesh = tfp.math.interp_regular_1d_grid(x=kk, x_ref_min=1e-05, x_ref_max=1000.0,
+                                               y_ref=pk, grid_regularizing_transform=tf.log)
+      pkmesh = tf.reshape(pkmesh, shape)
+      kfield = kfield * tf.cast((pkmesh/boxsize**3)**0.5, tf.complex64)
+      return kfield
+
+  # Generates the random field
+  random_field = mesh_ops.random_normal(mesh, shape=hr_shape,
+                                        mean=0, stddev=nc**1.5,
+                                        dtype=tf.float32)
+  field = random_field
+  # Apply padding and perform halo exchange with neighbors
+  # TODO: Figure out how to deal with the tensor size limitations
+  for block_size_dim in hr_shape[-3:]:
+    field = mtf.pad(field, [halo_size, halo_size], block_size_dim.name)
+  for blocks_dim, block_size_dim in zip(hr_shape[1:3]+[hr_shape[2]] , field.shape[-3:]):
+    field = mesh_ops.halo_reduce(field, blocks_dim, block_size_dim, halo_size)
+
+  # We have two strategies to separate scales, before or after filtering
+  field = mtf.reshape(field, field.shape+[mtf.Dimension('h_dim', 1)])
+  if post_filtering:
+    high = field
+    low = mesh_utils.downsample(field, downsampling_factor, antialias=True)
+  else:
+    low, high = mesh_utils.split_scales(field, downsampling_factor, antialias=True)
+  low = mtf.reshape(low, low.shape[:-1])
+  high = mtf.reshape(high, high.shape[:-1])
+
+  # Remove padding and redistribute the low resolution cube accross processes
+  for block_size_dim in hr_shape[-3:]:
+    low = mtf.slice(low, halo_size//2**downsampling_factor, block_size_dim.size//2**downsampling_factor, block_size_dim.name)
+  low_hr_shape = low.shape
+  low = mtf.reshape(low, lr_shape)
+
+  # Apply power spectrum on both grids
+  klow = mesh_utils.r2c3d(low)
+  khigh = mesh_utils.r2c3d(high)
+  klow = mtf.cwise(_cwise_fn, [klow, pk] + kvec_lr, output_dtype=tf.complex64)
+  khigh = mtf.cwise(_cwise_fn, [khigh, pk] + kvec_hr, output_dtype=tf.complex64)
+  low = mesh_utils.c2r3d(klow)
+  high = mesh_utils.c2r3d(khigh)
+
+  # Now we need to resplit the low resolution into local arrays
+  low = mtf.slicewise(lambda x:tf.expand_dims(tf.expand_dims(x, axis=1),axis=1),
+                      [low],
+                      output_dtype=tf.float32,
+                      output_shape=low_hr_shape,
+                      name='my_reshape',
+                      splittable_dims=low.shape[:-1]+low_hr_shape[1:3])
+
+  # We reapply padding and upsample
+  for block_size_dim in hr_shape[-3:]:
+    low = mtf.pad(low, [halo_size//2**downsampling_factor, halo_size//2**downsampling_factor], block_size_dim.name)
+  low = mtf.reshape(low, low.shape+[mtf.Dimension('h_dim', 1)])
+  low = mtf.reshape(mesh_utils.upsample(low, downsampling_factor), high.shape)
+
+  # And to make sure everything is ok, we perform a halo exchange
+  for blocks_dim, block_size_dim in zip(hr_shape[1:3]+[hr_shape[2]], low.shape[-3:]):
+    low = mesh_ops.halo_reduce(low, blocks_dim, block_size_dim, halo_size)
+
+  if post_filtering:
+    high = mtf.reshape(high, high.shape+[mtf.Dimension('h_dim', 1)])
+    _low = mesh_utils.downsample(high, downsampling_factor)
+    high = high - mtf.reshape(mesh_utils.upsample(_low, downsampling_factor), high.shape)
+    high = mtf.reshape(high, low.shape)
+
+  # Combining the two components
+  field = high + low
+
+  # All done, we now just need to remove the padding
+  for block_size_dim in hr_shape[-3:]:
+    field = mtf.slice(field, halo_size, block_size_dim.size, block_size_dim.name)
+
+  if return_random_field:
+    return field, random_field
+  else:
+    return field
 
 def lpt1(kfield, pos, kvec, splitted_dims, nsplits):
   # First apply Laplace Kernel

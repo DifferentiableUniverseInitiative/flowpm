@@ -4,7 +4,8 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 from astropy.cosmology import Planck15
 
 from .utils import white_noise, c2r3d, r2c3d, cic_paint, cic_readout

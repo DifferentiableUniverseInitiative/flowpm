@@ -3,8 +3,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from six.moves import xrange  # pylint: disable=redefined-builtin
 import mesh_tensorflow as mtf
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 
 class IndicesOperation(mtf.Operation):
   """Distributed equivalent of np.indices"""
@@ -27,6 +29,43 @@ class IndicesOperation(mtf.Operation):
 
 def mtf_indices(mesh, shape, dtype, name=None):
   return IndicesOperation(mesh, shape, dtype, name).outputs[0]
+
+def halo_reduce(x, blocks_dim, block_size_dim, halo_size, wrap=True):
+  """Reduce each block with the margins of adjacent blocks.
+
+  Get left and right blocks_dim and sum overlap along block_size_dim.
+  Only supports halo size smaller than block_size/2
+
+  Args:
+    x: a Tensor.
+    blocks_dim: a Dimension in x.shape
+    block_size_dim: a Dimension in x.shape
+    halo_size: an integer
+    wrap: a boolean
+
+  Returns:
+    a Tensor with the same shape as x, other than in block_size_dim, whose
+    size is increased by 2*halo_size.
+  """
+  if halo_size == 0:
+    return x
+  block_size = block_size_dim.size
+  assert halo_size <= block_size//2
+
+  left_margin = mtf.slice(x, 0, 2*halo_size, block_size_dim.name)
+  right_margin = mtf.slice(x, block_size_dim.size - 2*halo_size, 2*halo_size, block_size_dim.name)
+  center =  mtf.slice(x, 2*halo_size, block_size_dim.size - 4*halo_size, block_size_dim.name)
+
+  # Perform halo exchange sum margins
+  left =  mtf.shift(right_margin, 1, blocks_dim, wrap) + left_margin
+  right = mtf.shift(left_margin, -1, blocks_dim, wrap) + right_margin
+
+  # Recompose block
+  left = mtf.pad(left, [0, block_size_dim.size- 2*halo_size], block_size_dim.name)
+  right = mtf.pad(right, [block_size_dim.size- 2*halo_size, 0], block_size_dim.name)
+  center = mtf.pad(center, [2*halo_size, 2*halo_size], block_size_dim.name)
+  x = left + center + right
+  return x
 
 def fft3d(x):
   """
