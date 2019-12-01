@@ -21,6 +21,8 @@ def get_bspline_kernel(x, channels, transpose=False, dtype=tf.float32, order=4):
   num_channels = channels.size
   if order == 8:
     kernel = np.array(( 1., 8., 28., 56., 70., 56., 28., 8., 1.), dtype=dtype.as_numpy_dtype())
+  elif order == 6:
+    kernel = np.array(( 1., 6., 15., 20., 15., 6., 1.), dtype=dtype.as_numpy_dtype())
   elif order==2:
     kernel = np.array(( 1., 2., 1.), dtype=dtype.as_numpy_dtype())
   else:

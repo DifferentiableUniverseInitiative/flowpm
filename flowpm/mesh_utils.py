@@ -98,18 +98,23 @@ def _cic_readout(mesh, neighboor_coords, kernel, shift, name=None):
     shape = tf.shape(mesh)
     batch_size = shape[0]
     nx, ny, nz = shape[-3], shape[-2], shape[-1]
+    mesh = mesh[:,0,0]
+    shape_part = tf.shape(neighboor_coords)
 
     #TODO: Assert shift shape
     neighboor_coords = tf.reshape(neighboor_coords, (-1, 8,4))
     neighboor_coords = neighboor_coords + tf.reshape(tf.constant(shift), [1,1,4])
 
     meshvals = tf.gather_nd(mesh, neighboor_coords)
+
     weightedvals = tf.multiply(meshvals, tf.reshape(kernel, (-1, 8)))
+
     value = tf.reduce_sum(weightedvals, axis=-1)
-    value = tf.reshape(value, shape)
+
+    value = tf.reshape(value, shape_part[:-2])
     return value
 
-def cic_paint(mesh, part, weight=None, name=None):
+def cic_paint(mesh, part, halo_size, weight=None, name=None):
   """
   Distributed Cloud In Cell implementation.
 
@@ -140,16 +145,16 @@ def cic_paint(mesh, part, weight=None, name=None):
                          output_dtype=[tf.float32, tf.float32],
                          output_shape=[mtf.Shape(part.shape.dims[:-1]+[nk, nl]),
                                        mtf.Shape(part.shape.dims[:-1]+[nk])],
-                         splittable_dims=mesh.shape[:-3])
+                         splittable_dims=mesh.shape[:-3]+part.shape[1:-1])
 
   mesh = mtf.slicewise(lambda x,y,z: _cic_paint(x, y, z, shift=[0, halo_size, halo_size, halo_size]),
                          [mesh, indices, values],
                          output_dtype=tf.float32,
                          output_shape=mesh.shape,
-                         splittable_dims=mesh.shape[:-3])
+                         splittable_dims=mesh.shape[:-3]+part.shape[1:-1])
   return mesh
 
-def cic_readout(mesh, part, name=None):
+def cic_readout(mesh, part, halo_size, name=None):
   nk = mtf.Dimension("nk", 8)
   nl = mtf.Dimension("nl", 4)
 
@@ -158,13 +163,13 @@ def cic_readout(mesh, part, name=None):
                          output_dtype=[tf.float32, tf.float32],
                          output_shape=[mtf.Shape(part.shape.dims[:-1]+[nk, nl]),
                                        mtf.Shape(part.shape.dims[:-1]+[nk])],
-                         splittable_dims=mesh.shape[:-3])
+                         splittable_dims=mesh.shape[:-3]+part.shape[1:-1])
 
   value = mtf.slicewise(lambda x,y,z: _cic_readout(x, y, z, shift=[0, halo_size, halo_size, halo_size]),
                          [mesh, indices, values],
                          output_dtype=tf.float32,
                          output_shape=part.shape[:-1],
-                         splittable_dims=mesh.shape[:-3])
+                         splittable_dims=mesh.shape[:-3]+part.shape[1:-1])
   return value
 
 def downsample(field, downsampling_factor=2, antialias=True):
@@ -176,7 +181,7 @@ def downsample(field, downsampling_factor=2, antialias=True):
   """
   low = field
   for i in range(downsampling_factor):
-    kernel = mesh_kernels.get_bspline_kernel(low, mtf.Dimension('down_%d'%i,low.shape[-1].size), order=4)
+    kernel = mesh_kernels.get_bspline_kernel(low, mtf.Dimension('down_%d'%i,low.shape[-1].size), order=6)
     low = mtf.Conv3dOperation(low, kernel, strides=(1,2,2,2,1), padding='SAME').outputs[0]
   if antialias:
     kernel = mesh_kernels.get_bspline_kernel(low, mtf.Dimension('dogwn_%d'%i,low.shape[-1].size), order=2)
@@ -191,7 +196,7 @@ def upsample(low, downsampling_factor=2):
   and a details component.
   """
   for i in range(downsampling_factor):
-    kernel = mesh_kernels.get_bspline_kernel(low, mtf.Dimension('out_%d'%i,low.shape[-1].size), transpose=True, order=4)
+    kernel = mesh_kernels.get_bspline_kernel(low, mtf.Dimension('out_%d'%i,low.shape[-1].size), transpose=True, order=6)
     low = mtf.Conv3dTransposeOperation(low, kernel * 2.0**3, strides=(1,2,2,2,1), padding='SAME').outputs[0]
   return low
 
@@ -206,6 +211,19 @@ def split_scales(field, downsampling_factor=2., antialias=True):
   high = upsample(low, downsampling_factor)
   high = field - mtf.reshape(high, field.shape)
   return low, high
+
+def slicewise_r2c3d(rfield):
+  cfield = mtf.slicewise(lambda x: tf.signal.fft3d(tf.cast(x, tf.complex64)), [rfield],
+                         output_dtype=tf.complex64,
+                         splittable_dims=rfield.shape[:-3])
+  return cfield
+
+def slicewise_c2r3d(cfield):
+  rfield = mtf.slicewise(lambda x: tf.cast(tf.signal.ifft3d(x), tf.float32),
+                         [cfield],
+                         output_dtype=tf.float32,
+                         splittable_dims=cfield.shape[:-3])
+  return rfield
 
 def r2c3d(rfield, norm=None, dtype=tf.complex64):
   """

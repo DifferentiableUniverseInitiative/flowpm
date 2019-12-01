@@ -46,7 +46,7 @@ def laplace_kernel(kvec):
   wts *= imask
   return wts
 
-def gradient_kernel(kvec, direction, order=0):
+def gradient_kernel(kvec, direction, order=1):
   """
   Computes the gradient kernel in the requested direction
 
