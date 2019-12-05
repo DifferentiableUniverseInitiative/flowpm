@@ -98,7 +98,7 @@ def _cic_readout(mesh, neighboor_coords, kernel, shift, name=None):
     shape = tf.shape(mesh)
     batch_size = shape[0]
     nx, ny, nz = shape[-3], shape[-2], shape[-1]
-    mesh = mesh[:,0,0]
+    mesh = mesh[:,0,0,0]
     shape_part = tf.shape(neighboor_coords)
 
     #TODO: Assert shift shape

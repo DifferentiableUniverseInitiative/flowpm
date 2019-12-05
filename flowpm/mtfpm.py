@@ -50,7 +50,7 @@ def linear_field(mesh, hr_shape, lr_shape,
   # TODO: Figure out how to deal with the tensor size limitations
   for block_size_dim in hr_shape[-3:]:
     field = mtf.pad(field, [halo_size, halo_size], block_size_dim.name)
-  for blocks_dim, block_size_dim in zip(hr_shape[1:3]+[hr_shape[2]] , field.shape[-3:]):
+  for blocks_dim, block_size_dim in zip(hr_shape[1:4], field.shape[-3:]):
     field = mesh_ops.halo_reduce(field, blocks_dim, block_size_dim, halo_size)
 
   # We have two strategies to separate scales, before or after filtering
@@ -104,18 +104,18 @@ def lpt_init(lr_field, hr_field, a0,kvec_lr, kvec_hr, halo_size,hr_shape, lr_sha
   displacement = []
   for f,g in zip(grad_kfield_lr,grad_kfield_hr):
       f = mesh_utils.c2r3d(f)
-      f = mtf.slicewise(lambda x:tf.expand_dims(tf.expand_dims(x, axis=1),axis=1),
+      f = mtf.slicewise(lambda x:tf.expand_dims(tf.expand_dims(tf.expand_dims(x, axis=1),axis=1),axis=1),
                         [f],
                         output_dtype=tf.float32,
-                        output_shape=mtf.Shape(hr_shape[0:3]+[
+                        output_shape=mtf.Shape(hr_shape[0:4]+[
                                                 mtf.Dimension('sx_block', lnc//hr_shape[1].size),
                                                 mtf.Dimension('sy_block', lnc//hr_shape[2].size),
-                                                mtf.Dimension('sz_block', lnc)]),
+                                                mtf.Dimension('sz_block', lnc//hr_shape[3].size)]),
                         name='my_reshape',
-                        splittable_dims=lr_shape[:-1]+hr_shape[1:3]+part_shape[1:3])
+                        splittable_dims=lr_shape[:-1]+hr_shape[1:4]+part_shape[1:3])
       for block_size_dim in hr_shape[-3:]:
           f = mtf.pad(f, [halo_size//2**downsampling_factor, halo_size//2**downsampling_factor], block_size_dim.name)
-      for blocks_dim, block_size_dim in zip(hr_shape[1:3]+[hr_shape[2]], f.shape[-3:]):
+      for blocks_dim, block_size_dim in zip(hr_shape[1:4], f.shape[-3:]):
           f = mesh_ops.halo_reduce(f, blocks_dim, block_size_dim, halo_size//2**downsampling_factor)
       f = mtf.reshape(f, f.shape+[mtf.Dimension('h_dim', 1)])
       f = mesh_utils.upsample(f, downsampling_factor)
@@ -209,7 +209,7 @@ def force(state, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size, cosmology=Plan
   for block_size_dim in hr_shape[-3:]:
     field = mtf.pad(field, [halo_size, halo_size], block_size_dim.name)
   field = mesh_utils.cic_paint(field, X, halo_size)
-  for blocks_dim, block_size_dim in zip(hr_shape[1:3]+[hr_shape[2]], field.shape[-3:]):
+  for blocks_dim, block_size_dim in zip(hr_shape[1:4], field.shape[-3:]):
     field = mesh_ops.halo_reduce(field, blocks_dim, block_size_dim, halo_size)
 
   # Split the field into low and high resolution
@@ -233,18 +233,18 @@ def force(state, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size, cosmology=Plan
   displacement = []
   for f,g in zip(kfield_lr, kfield_hr):
       f = mesh_utils.c2r3d(f)
-      f = mtf.slicewise(lambda x:tf.expand_dims(tf.expand_dims(x, axis=1),axis=1),
+      f = mtf.slicewise(lambda x:tf.expand_dims(tf.expand_dims(tf.expand_dims(x, axis=1),axis=1),axis=1),
                         [f],
                         output_dtype=tf.float32,
-                        output_shape=mtf.Shape(hr_shape[0:3]+[
+                        output_shape=mtf.Shape(hr_shape[0:4]+[
                                                 mtf.Dimension('sx_block', lnc//hr_shape[1].size),
                                                 mtf.Dimension('sy_block', lnc//hr_shape[2].size),
-                                                mtf.Dimension('sz_block', lnc)]),
+                                                mtf.Dimension('sz_block', lnc//hr_shape[3].size)]),
                         name='my_reshape',
-                        splittable_dims=lr_shape[:-1]+hr_shape[1:3]+part_shape[1:3])
+                        splittable_dims=lr_shape[:-1]+hr_shape[1:4]+part_shape[1:3])
       for block_size_dim in hr_shape[-3:]:
           f = mtf.pad(f, [halo_size//2**downsampling_factor, halo_size//2**downsampling_factor], block_size_dim.name)
-      for blocks_dim, block_size_dim in zip(hr_shape[1:3]+[hr_shape[2]], f.shape[-3:]):
+      for blocks_dim, block_size_dim in zip(hr_shape[1:4], f.shape[-3:]):
           f = mesh_ops.halo_reduce(f, blocks_dim, block_size_dim, halo_size//2**downsampling_factor)
       f = mtf.reshape(f, f.shape+[mtf.Dimension('h_dim', 1)])
       f = mesh_utils.upsample(f, downsampling_factor)
