@@ -5,5 +5,5 @@
 #SBATCH --time=5
 #SBATCH --gres=gpu:8
 #SBATCH --exclusive -A m1759
-module purge && module load tensorflow/gpu-1.15.0-rc1-py37 esslurm gcc/7.3.0 cuda
+module purge && module load  tensorflow/gpu-2.0.0-py37 esslurm gcc/7.3.0
 srun python mesh_lpt_SLURM.py --nc=128 > log
