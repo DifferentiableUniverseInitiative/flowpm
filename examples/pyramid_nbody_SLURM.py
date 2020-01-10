@@ -66,7 +66,7 @@ def lpt_prototype(nc=64, bs=200, batch_size=8, a0=0.1, a=1.0, nsteps=5, nproc=2)
     n_block_x = 2
     n_block_y = 1
     n_block_z = 1
-    halo_size = 16
+    halo_size = 32
 
     # Parameters of the large scales decomposition
     downsampling_factor = 2
@@ -211,7 +211,8 @@ def main(_):
     # Retrieve output of computation
     result = lowering.export_to_tf_tensor(mesh_final_field)
 
-    with tf.Session(server.target) as sess:
+    with tf.Session(server.target, config=tf.ConfigProto(
+      allow_soft_placement=True, log_device_placement=True)) as sess:
         a,b,c = sess.run([initial_conditions, final_field, result])
     np.save('init', a)
     np.save('reference', b)
