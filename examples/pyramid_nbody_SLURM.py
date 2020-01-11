@@ -187,7 +187,9 @@ def main(_):
       server.join()
 
     # Otherwise we are the main task, let's define the devices
-    devices = ["/job:mesh/task:%d/device:GPU:%d"%(i,j) for i in range(cluster_spec.num_tasks("mesh")) for j in range(FLAGS.gpus_per_task)]
+    #devices = ["/job:mesh/task:%d/device:GPU:%d"%(i,j) for i in range(cluster_spec.num_tasks("mesh")) for j in range(FLAGS.gpus_per_task)]
+    devices = ["/job:mesh/replica:0/task:%d/device:XLA_GPU:%d"%(i,j) for i in range(cluster_spec.num_tasks("mesh")) for j in range(FLAGS.gpus_per_task)]
+
     print("List of devices", devices)
 
     # Let's have a look!
@@ -212,11 +214,11 @@ def main(_):
     result = lowering.export_to_tf_tensor(mesh_final_field)
 
     with tf.Session(server.target, config=tf.ConfigProto(
-      allow_soft_placement=True, log_device_placement=True)) as sess:
+            allow_soft_placement=True, log_device_placement=False)) as sess:
         a,b,c = sess.run([initial_conditions, final_field, result])
     np.save('init', a)
-    np.save('reference', b)
-    np.save('pyramid', c)
+    np.save('reference_final', b)
+    np.save('mesh_pyramid', c)
     
     
     plt.figure(figsize=(15,3))
