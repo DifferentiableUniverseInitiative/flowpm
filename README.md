@@ -47,7 +47,7 @@ $ salloc -C gpu -N 1 -t 30 -c 10 --gres=gpu:1 -A m1759
 
 1) First install dependencies
 ```
-$ module purge && module load tensorflow/gpu-1.15.0-rc1-py37 esslurm gcc/7.3.0 cuda
+$ module purge && module load  tensorflow/gpu-2.0.0-py37 esslurm gcc/7.3.0 
 $ pip install --user mesh-tensorflow
 ```
 
