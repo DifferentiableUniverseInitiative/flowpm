@@ -16,7 +16,7 @@ from matplotlib import pyplot as plt
 cosmology=Planck15
 
 tf.flags.DEFINE_integer("gpus_per_node", 8, "Number of GPU on each node")
-tf.flags.DEFINE_integer("gpus_per_task", 2, "Number of GPU in each task")
+tf.flags.DEFINE_integer("gpus_per_task", 8, "Number of GPU in each task")
 tf.flags.DEFINE_integer("tasks_per_node", 1, "Number of task in each node")
 
 tf.flags.DEFINE_integer("nc", 64, "Size of the cube")
@@ -63,8 +63,8 @@ def lpt_prototype(nc=64, bs=200, batch_size=8, a0=0.1, a=1.0, nsteps=5, nproc=2)
 
     # Define the named dimensions
     # Parameters of the small scales decomposition
-    n_block_x = 2
-    n_block_y = 1
+    n_block_x = 4
+    n_block_y = 2
     n_block_z = 1
     halo_size = 32
 
@@ -120,7 +120,8 @@ def lpt_prototype(nc=64, bs=200, batch_size=8, a0=0.1, a=1.0, nsteps=5, nproc=2)
     part_shape = [batch_dim, fx_dim, fy_dim, fz_dim]
 
 
-    initc = tf.reshape(initial_conditions, [1, 2, 1, 1, nc//2, nc, nc])
+    initc = tf.reshape(initial_conditions, [1, n_block_x, n_block_y, 1, 
+                                               nc//n_block_x, nc//n_block_y, nc])
 
     field = mtf.import_tf_tensor(mesh, initc, shape=hr_shape)
 
@@ -140,7 +141,17 @@ def lpt_prototype(nc=64, bs=200, batch_size=8, a0=0.1, a=1.0, nsteps=5, nproc=2)
 
     for block_size_dim in hr_shape[-3:]:
         low = mtf.slice(low, halo_size//2**downsampling_factor, block_size_dim.size//2**downsampling_factor, block_size_dim.name)
-    low = mtf.reshape(low, lr_shape)
+    # Hack usisng  custom reshape because mesh is pretty dumb
+    low = mtf.slicewise(lambda x: x[:,0,0,0],
+                        [low],
+                        output_dtype=tf.float32,
+                        output_shape=lr_shape,
+                        name='my_dumb_reshape',
+                        splittable_dims=lr_shape[:-1]+hr_shape[:4])
+        
+    # Hack to handle reshape acrosss multiple dimensions
+    #low = mtf.reshape(low, [batch_dim, x_dim, low.shape[2], low.shape[5], z_dim])
+    #low = mtf.reshape(low, lr_shape)
 
     state = mtfpm.lpt_init(low, high, 0.1, kv_lr, kv_hr, halo_size, hr_shape, lr_shape, part_shape[1:],
                             downsampling_factor=downsampling_factor, antialias=True,)
@@ -160,7 +171,14 @@ def lpt_prototype(nc=64, bs=200, batch_size=8, a0=0.1, a=1.0, nsteps=5, nproc=2)
     for block_size_dim in hr_shape[-3:]:
         final_field = mtf.slice(final_field, halo_size, block_size_dim.size, block_size_dim.name)
 
-    final_field = mtf.reshape(final_field,  [batch_dim, fx_dim, fy_dim, fz_dim])
+    #final_field = mtf.reshape(final_field,  [batch_dim, fx_dim, fy_dim, fz_dim])
+     # Hack usisng  custom reshape because mesh is pretty dumb
+    final_field = mtf.slicewise(lambda x: x[:,0,0,0],
+                        [final_field],
+                        output_dtype=tf.float32,
+                        output_shape=[batch_dim, fx_dim, fy_dim, fz_dim],
+                        name='my_dumb_reshape',
+                        splittable_dims=part_shape[:-1]+hr_shape[:4])
 
     return initial_conditions, tfinal_field, final_field
   
@@ -193,7 +211,7 @@ def main(_):
     print("List of devices", devices)
 
     # Let's have a look!
-    mesh_shape = [("row", 2), ("col", 1)]
+    mesh_shape = [("row", 4), ("col", 2)]
     layout_rules = [("nx_lr", "row"), ("ny_lr", "col"),
                     ("nx", "row"), ("ny", "col"),
                     ("nx_block","row"), ("ny_block","col")]
