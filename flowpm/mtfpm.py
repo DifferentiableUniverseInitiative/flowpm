@@ -68,7 +68,14 @@ def linear_field(mesh, hr_shape, lr_shape,
     low = mtf.slice(low, halo_size//2**downsampling_factor, block_size_dim.size//2**downsampling_factor, block_size_dim.name)
 
   low_hr_shape = low.shape
-  low = mtf.reshape(low, lr_shape)
+  # Reshape hack
+  low = mtf.slicewise(lambda x: x[:,0,0,0],
+                    [low],
+                    output_dtype=tf.float32,
+                    output_shape=lr_shape,
+                    name='my_dumb_reshape',
+                    splittable_dims=lr_shape[:-1]+hr_shape[:4])
+  #low = mtf.reshape(low, lr_shape)
 
   # Apply power spectrum on both grids
   klow = mesh_utils.r2c3d(low)
