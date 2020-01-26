@@ -220,7 +220,15 @@ def force(state, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size, cosmology=Plan
   hr_field = mtf.reshape(high, high.shape[:-1])
   for block_size_dim in hr_shape[-3:]:
     low = mtf.slice(low, halo_size//2**downsampling_factor, block_size_dim.size//2**downsampling_factor, block_size_dim.name)
-  lr_field = mtf.reshape(low, lr_shape)
+
+  # Hack usisng  custom reshape because mesh is pretty dumb
+  lr_field = mtf.slicewise(lambda x: x[:,0,0,0],
+                        [low],
+                        output_dtype=tf.float32,
+                        output_shape=lr_shape,
+                        name='my_dumb_reshape',
+                        splittable_dims=lr_shape[:-1]+hr_shape[:4])
+  #lr_field = mtf.reshape(low, lr_shape)
 
   lr_kfield = mesh_utils.r2c3d(lr_field)
   hr_kfield = mesh_utils.slicewise_r2c3d(hr_field)
