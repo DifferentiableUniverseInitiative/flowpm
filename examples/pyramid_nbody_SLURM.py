@@ -81,6 +81,10 @@ def lpt_prototype(nc=64, bs=200, batch_size=8, a0=0.1, a=1.0, nsteps=5, nproc=2)
     y_dim = mtf.Dimension("ny_lr", lnc)
     z_dim = mtf.Dimension("nz_lr", lnc)
 
+    tx_dim = mtf.Dimension("tx_lr", lnc)
+    ty_dim = mtf.Dimension("ty_lr", lnc)
+    tz_dim = mtf.Dimension("tz_lr", lnc)
+
     nx_dim = mtf.Dimension('nx_block', n_block_x)
     ny_dim = mtf.Dimension('ny_block', n_block_y)
     nz_dim = mtf.Dimension('nz_block', n_block_z)
@@ -88,6 +92,8 @@ def lpt_prototype(nc=64, bs=200, batch_size=8, a0=0.1, a=1.0, nsteps=5, nproc=2)
     sx_dim = mtf.Dimension('sx_block', nc//n_block_x)
     sy_dim = mtf.Dimension('sy_block', nc//n_block_y)
     sz_dim = mtf.Dimension('sz_block', nc//n_block_z)
+
+    k_dims = [tx_dim, ty_dim, tz_dim]
 
     batch_dim = mtf.Dimension("batch", batch_size)
     pk_dim = mtf.Dimension("npk", len(plin))
@@ -97,10 +103,10 @@ def lpt_prototype(nc=64, bs=200, batch_size=8, a0=0.1, a=1.0, nsteps=5, nproc=2)
     # kvec for low resolution grid
     kvec_lr = flowpm.kernels.fftk([lnc, lnc, lnc], symmetric=False)
 
-    kx_lr = mtf.import_tf_tensor(mesh, kvec_lr[0].squeeze().astype('float32')/ 2**downsampling_factor, shape=[x_dim])
-    ky_lr = mtf.import_tf_tensor(mesh, kvec_lr[1].squeeze().astype('float32')/ 2**downsampling_factor, shape=[y_dim])
-    kz_lr = mtf.import_tf_tensor(mesh, kvec_lr[2].squeeze().astype('float32')/ 2**downsampling_factor, shape=[z_dim])
-    kv_lr = [kx_lr, ky_lr, kz_lr]
+    kx_lr = mtf.import_tf_tensor(mesh, kvec_lr[0].squeeze().astype('float32')/ 2**downsampling_factor, shape=[tx_dim])
+    ky_lr = mtf.import_tf_tensor(mesh, kvec_lr[1].squeeze().astype('float32')/ 2**downsampling_factor, shape=[ty_dim])
+    kz_lr = mtf.import_tf_tensor(mesh, kvec_lr[2].squeeze().astype('float32')/ 2**downsampling_factor, shape=[tz_dim])
+    kv_lr = [ky_lr, kz_lr, kx_lr]
 
     # kvec for high resolution blocks
     padded_sx_dim = mtf.Dimension('padded_sx_block', nc//n_block_x+2*halo_size)
@@ -151,11 +157,11 @@ def lpt_prototype(nc=64, bs=200, batch_size=8, a0=0.1, a=1.0, nsteps=5, nproc=2)
     #low = mtf.reshape(low, [batch_dim, x_dim, low.shape[2], low.shape[5], z_dim])
     #low = mtf.reshape(low, lr_shape)
 
-    state = mtfpm.lpt_init(low, high, 0.1, kv_lr, kv_hr, halo_size, hr_shape, lr_shape, part_shape[1:],
-                            downsampling_factor=downsampling_factor, antialias=True,)
+    state = mtfpm.lpt_init(low, high, 0.1, kv_lr, kv_hr, halo_size, hr_shape, lr_shape, k_dims,
+                           part_shape[1:], downsampling_factor=downsampling_factor, antialias=True,)
 
     # Here we can run our nbody
-    final_state = mtfpm.nbody(state, stages, lr_shape, hr_shape, kv_lr, kv_hr, halo_size, downsampling_factor=downsampling_factor)
+    final_state = mtfpm.nbody(state, stages, lr_shape, hr_shape, k_dims, kv_lr, kv_hr, halo_size, downsampling_factor=downsampling_factor)
 
     # paint the field
     final_field = mtf.zeros(mesh, shape=hr_shape)
