@@ -103,8 +103,6 @@ def lpt_init(lr_field, hr_field, a0,kvec_lr, kvec_hr, halo_size,hr_shape, lr_sha
   X = mtf.einsum([mtf.ones(hr_field.mesh, [batch_dim]), mstate], output_shape=[batch_dim] + mstate.shape[:])
 
   lr_kfield = mesh_utils.r2c3d(lr_field, k_dims)
-  print(lr_kfield)
-  print(kvec_lr)
   hr_kfield = mesh_utils.slicewise_r2c3d(hr_field)
 
   grad_kfield_lr = mesh_kernels.apply_gradient_laplace_kernel(lr_kfield, kvec_lr)
@@ -249,6 +247,9 @@ def force(state, lr_shape, hr_shape, k_dims, kvec_lr, kvec_hr, halo_size, cosmol
   kfield_lr = mesh_kernels.apply_gradient_laplace_kernel(lr_kfield, kvec_lr)
   kfield_hr = mesh_kernels.apply_longrange_kernel(hr_kfield, kvec_hr, r_split=0)
   kfield_hr = mesh_kernels.apply_gradient_laplace_kernel(kfield_hr, kvec_hr)
+
+  # Reorder the low res FFTs which where transposed# y,z,x
+  kfield_lr = [kfield_lr[2], kfield_lr[0], kfield_lr[1]]
 
   displacement = []
   for f,g in zip(kfield_lr, kfield_hr):
