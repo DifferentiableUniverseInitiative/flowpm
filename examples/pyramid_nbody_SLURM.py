@@ -218,6 +218,7 @@ def main(_):
     mesh_shape = [("row", 4), ("col", 2)]
     layout_rules = [("nx_lr", "row"), ("ny_lr", "col"),
                     ("nx", "row"), ("ny", "col"),
+                    ("ty_lr", "row"), ("tz_lr", "col"),
                     ("nx_block","row"), ("ny_block","col")]
 
     mesh_impl = mtf.placement_mesh_impl.PlacementMeshImpl(mesh_shape, layout_rules, devices)
