@@ -89,6 +89,7 @@ class FFT3DOperation(mtf.Operation):
   def lower(self, lowering):
     mesh_impl = lowering.mesh_impl(self)
     x = self.inputs[0]
+    naxes = len(x.shape)
     slices = lowering.tensors[self.inputs[0]]
     # Before performing any operations, we check the splitting
     split_axes = []
@@ -103,8 +104,7 @@ class FFT3DOperation(mtf.Operation):
         # Before transposing the array, making sure the new last dimension will
         # be contiguous
         if split_axes[-2] is not None:
-            print("FFT changing split", split_axes[-2])
-            slices = mesh_impl.alltoall(slices, split_axes[-2], -1, -2)
+            slices = mesh_impl.alltoall(slices, split_axes[-2],  naxes-1,  naxes-2)
             split_axes[-1] = split_axes[-2]
             split_axes[-2] = None
         perm = np.arange(len(x.shape))
@@ -139,6 +139,7 @@ class iFFT3DOperation(mtf.Operation):
   def lower(self, lowering):
     mesh_impl = lowering.mesh_impl(self)
     x = self.inputs[0]
+    naxes = len(x.shape)
     slices = lowering.tensors[self.inputs[0]]
     # Before performing any operations, we check the splitting
     split_axes = []
@@ -153,8 +154,7 @@ class iFFT3DOperation(mtf.Operation):
         # Before transposing the array, making sure the new last dimension will
         # be contiguous
         if split_axes[0] is not None:
-            print("iFFT changing split", split_axes[0])
-            slices = mesh_impl.alltoall(slices, split_axes[0], -1, -3)
+            slices = mesh_impl.alltoall(slices, split_axes[0],  naxes-1,  naxes-3)
             split_axes[-1] = split_axes[0]
             split_axes[0] = None
         perm = np.arange(len(x.shape))

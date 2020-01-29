@@ -53,11 +53,15 @@ def benchmark_model(mesh):
   y_dim = mtf.Dimension("ny", FLAGS.cube_size)
   z_dim = mtf.Dimension("nz", FLAGS.cube_size)
 
+  tx_dim = mtf.Dimension("tnx", FLAGS.cube_size)
+  ty_dim = mtf.Dimension("tny", FLAGS.cube_size)
+  tz_dim = mtf.Dimension("tnz", FLAGS.cube_size)
+
   # Create field
   field = mtf.random_uniform(mesh, [batch_dim, x_dim, y_dim, z_dim])
 
   # Apply FFT
-  fft_field = mpm.fft3d(field)
+  fft_field = mpm.fft3d(mtf.cast(field, tf.complex64), [tx_dim, ty_dim, tz_dim])
 
   # Inverse FFT
   rfield = mtf.cast(mpm.ifft3d(fft_field), tf.float32)
