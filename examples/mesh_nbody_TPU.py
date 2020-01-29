@@ -50,7 +50,7 @@ tf.flags.DEFINE_integer("batch_size", 128,
                         "is the global batch size and not the per-shard batch.")
 
 tf.flags.DEFINE_string("mesh_shape", "b1:8,b2:4", "mesh shape")
-tf.flags.DEFINE_string("layout", "nx:b1,ny:b2,nx_lr:b1,ny_lr:b2,tny_lr:b1,tnz_lr:b2,nx_block:b1,ny_block:b2", "layout rules")
+tf.flags.DEFINE_string("layout", "nx:b1,ny:b2,nx_lr:b1,ny_lr:b2,ty_lr:b1,tz_lr:b2,nx_block:b1,ny_block:b2", "layout rules")
 
 FLAGS = tf.flags.FLAGS
 
