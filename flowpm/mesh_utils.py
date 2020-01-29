@@ -225,7 +225,7 @@ def slicewise_c2r3d(cfield):
                          splittable_dims=cfield.shape[:-3])
   return rfield
 
-def r2c3d(rfield, norm=None, dtype=tf.complex64):
+def r2c3d(rfield, k_dims, norm=None, dtype=tf.complex64):
   """
   Converts a real field to its complex Fourier Transform
 
@@ -248,10 +248,10 @@ def r2c3d(rfield, norm=None, dtype=tf.complex64):
   x_dim, y_dim, z_dim = rfield.shape[-3:]
   if norm is None:
     norm = mtf.constant(rfield.mesh, x_dim.size*y_dim.size*z_dim.size)
-  cfield = mesh_ops.fft3d(mtf.cast(rfield / norm, dtype))
+  cfield = mesh_ops.fft3d(mtf.cast(rfield / norm, dtype), k_dims)
   return cfield
 
-def c2r3d(cfield, norm=None, dtype=tf.float32, name=None):
+def c2r3d(cfield, dims, norm=None, dtype=tf.float32, name=None):
   """
   Converts a complex Fourier domain field to a real field
 
@@ -274,5 +274,5 @@ def c2r3d(cfield, norm=None, dtype=tf.float32, name=None):
   x_dim, y_dim, z_dim = cfield.shape[-3:]
   if norm is None:
     norm = mtf.constant(cfield.mesh, x_dim.size*y_dim.size*z_dim.size)
-  rfield = mtf.cast(mesh_ops.ifft3d(cfield), dtype) * norm
+  rfield = mtf.cast(mesh_ops.ifft3d(cfield, dims), dtype) * norm
   return rfield

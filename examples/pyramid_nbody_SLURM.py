@@ -44,7 +44,7 @@ def lpt_prototype(nc=64, bs=200, batch_size=8, a0=0.1, a=1.0, nsteps=5, nproc=2)
                                            ipklin,      # Initial power spectrum
                                            batch_size=batch_size)
 
-    state = lpt_init(initial_conditions, a0=a0, order=1) 
+    state = lpt_init(initial_conditions, a0=a0, order=1)
     final_state = nbody(state,  stages, nc)
     tfinal_field = cic_paint(tf.zeros_like(initial_conditions), final_state[0])
 
@@ -70,7 +70,7 @@ def lpt_prototype(nc=64, bs=200, batch_size=8, a0=0.1, a=1.0, nsteps=5, nproc=2)
 
     # Parameters of the large scales decomposition
     downsampling_factor = 2
-    lnc = nc // 2**downsampling_factor 
+    lnc = nc // 2**downsampling_factor
 
     fx_dim = mtf.Dimension("nx", nc)
     fy_dim = mtf.Dimension("ny", nc)
@@ -81,6 +81,10 @@ def lpt_prototype(nc=64, bs=200, batch_size=8, a0=0.1, a=1.0, nsteps=5, nproc=2)
     y_dim = mtf.Dimension("ny_lr", lnc)
     z_dim = mtf.Dimension("nz_lr", lnc)
 
+    tx_dim = mtf.Dimension("tx_lr", lnc)
+    ty_dim = mtf.Dimension("ty_lr", lnc)
+    tz_dim = mtf.Dimension("tz_lr", lnc)
+
     nx_dim = mtf.Dimension('nx_block', n_block_x)
     ny_dim = mtf.Dimension('ny_block', n_block_y)
     nz_dim = mtf.Dimension('nz_block', n_block_z)
@@ -89,18 +93,20 @@ def lpt_prototype(nc=64, bs=200, batch_size=8, a0=0.1, a=1.0, nsteps=5, nproc=2)
     sy_dim = mtf.Dimension('sy_block', nc//n_block_y)
     sz_dim = mtf.Dimension('sz_block', nc//n_block_z)
 
+    k_dims = [tx_dim, ty_dim, tz_dim]
+
     batch_dim = mtf.Dimension("batch", batch_size)
     pk_dim = mtf.Dimension("npk", len(plin))
     pk = mtf.import_tf_tensor(mesh, plin.astype('float32'), shape=[pk_dim])
 
 
     # kvec for low resolution grid
-    kvec_lr = flowpm.kernels.fftk([lnc, lnc, lnc], symmetric=False) 
+    kvec_lr = flowpm.kernels.fftk([lnc, lnc, lnc], symmetric=False)
 
-    kx_lr = mtf.import_tf_tensor(mesh, kvec_lr[0].squeeze().astype('float32')/ 2**downsampling_factor, shape=[x_dim])
-    ky_lr = mtf.import_tf_tensor(mesh, kvec_lr[1].squeeze().astype('float32')/ 2**downsampling_factor, shape=[y_dim])
-    kz_lr = mtf.import_tf_tensor(mesh, kvec_lr[2].squeeze().astype('float32')/ 2**downsampling_factor, shape=[z_dim])
-    kv_lr = [kx_lr, ky_lr, kz_lr]
+    kx_lr = mtf.import_tf_tensor(mesh, kvec_lr[0].squeeze().astype('float32')/ 2**downsampling_factor, shape=[tx_dim])
+    ky_lr = mtf.import_tf_tensor(mesh, kvec_lr[1].squeeze().astype('float32')/ 2**downsampling_factor, shape=[ty_dim])
+    kz_lr = mtf.import_tf_tensor(mesh, kvec_lr[2].squeeze().astype('float32')/ 2**downsampling_factor, shape=[tz_dim])
+    kv_lr = [ky_lr, kz_lr, kx_lr]
 
     # kvec for high resolution blocks
     padded_sx_dim = mtf.Dimension('padded_sx_block', nc//n_block_x+2*halo_size)
@@ -119,12 +125,10 @@ def lpt_prototype(nc=64, bs=200, batch_size=8, a0=0.1, a=1.0, nsteps=5, nproc=2)
 
     part_shape = [batch_dim, fx_dim, fy_dim, fz_dim]
 
-
-    initc = tf.reshape(initial_conditions, [1, n_block_x, n_block_y, 1, 
-                                               nc//n_block_x, nc//n_block_y, nc])
+    initc = tf.reshape(initial_conditions, [1, n_block_x, nc//n_block_x, n_block_y, nc//n_block_y, 1, nc])
+    initc = tf.transpose(initc, [0, 1, 3, 5, 2, 4, 6])
 
     field = mtf.import_tf_tensor(mesh, initc, shape=hr_shape)
-
 
     for block_size_dim in hr_shape[-3:]:
         field = mtf.pad(field, [halo_size, halo_size], block_size_dim.name)
@@ -148,16 +152,16 @@ def lpt_prototype(nc=64, bs=200, batch_size=8, a0=0.1, a=1.0, nsteps=5, nproc=2)
                         output_shape=lr_shape,
                         name='my_dumb_reshape',
                         splittable_dims=lr_shape[:-1]+hr_shape[:4])
-        
+
     # Hack to handle reshape acrosss multiple dimensions
     #low = mtf.reshape(low, [batch_dim, x_dim, low.shape[2], low.shape[5], z_dim])
     #low = mtf.reshape(low, lr_shape)
 
-    state = mtfpm.lpt_init(low, high, 0.1, kv_lr, kv_hr, halo_size, hr_shape, lr_shape, part_shape[1:],
-                            downsampling_factor=downsampling_factor, antialias=True,)
+    state = mtfpm.lpt_init(low, high, 0.1, kv_lr, kv_hr, halo_size, hr_shape, lr_shape, k_dims,
+                           part_shape[1:], downsampling_factor=downsampling_factor, antialias=True,)
 
     # Here we can run our nbody
-    final_state = mtfpm.nbody(state, stages, lr_shape, hr_shape, kv_lr, kv_hr, halo_size, downsampling_factor=downsampling_factor)
+    final_state = mtfpm.nbody(state, stages, lr_shape, hr_shape, k_dims, kv_lr, kv_hr, halo_size, downsampling_factor=downsampling_factor)
 
     # paint the field
     final_field = mtf.zeros(mesh, shape=hr_shape)
@@ -181,14 +185,14 @@ def lpt_prototype(nc=64, bs=200, batch_size=8, a0=0.1, a=1.0, nsteps=5, nproc=2)
                         splittable_dims=part_shape[:-1]+hr_shape[:4])
 
     return initial_conditions, tfinal_field, final_field
-  
+
     ##
 
-    
+
 def main(_):
     num_tasks = int(os.environ['SLURM_NTASKS'])
     print('num_tasks : ', num_tasks)
-        
+
     # Resolve the cluster from SLURM environment
     cluster = tf.distribute.cluster_resolver.SlurmClusterResolver({"mesh": num_tasks},
                                                                 port_base=8822,
@@ -200,7 +204,7 @@ def main(_):
     # Create a server for all mesh members
     server = tf.distribute.Server(cluster_spec, "mesh", cluster.task_id)
     print(server)
-    
+
     if cluster.task_id >0:
       server.join()
 
@@ -214,11 +218,12 @@ def main(_):
     mesh_shape = [("row", 4), ("col", 2)]
     layout_rules = [("nx_lr", "row"), ("ny_lr", "col"),
                     ("nx", "row"), ("ny", "col"),
+                    ("ty_lr", "row"), ("tz_lr", "col"),
                     ("nx_block","row"), ("ny_block","col")]
 
     mesh_impl = mtf.placement_mesh_impl.PlacementMeshImpl(mesh_shape, layout_rules, devices)
-    
-    
+
+
     # Create computational graphs
     initial_conditions, final_field, mesh_final_field = lpt_prototype(nc=FLAGS.nc,
                                                                     batch_size=FLAGS.batch_size,
@@ -237,8 +242,8 @@ def main(_):
     np.save('init', a)
     np.save('reference_final', b)
     np.save('mesh_pyramid', c)
-    
-    
+
+
     plt.figure(figsize=(15,3))
     plt.subplot(141)
     plt.imshow(a[0].sum(axis=2))

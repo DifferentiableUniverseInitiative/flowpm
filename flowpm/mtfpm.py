@@ -90,7 +90,7 @@ def linear_field(mesh, hr_shape, lr_shape,
   else:
     return low, high
 
-def lpt_init(lr_field, hr_field, a0,kvec_lr, kvec_hr, halo_size,hr_shape, lr_shape,
+def lpt_init(lr_field, hr_field, a0,kvec_lr, kvec_hr, halo_size,hr_shape, lr_shape, k_dims,
               part_shape,
               antialias=True, downsampling_factor=2,
              order=1, post_filtering=True, cosmology=Planck15):
@@ -102,15 +102,18 @@ def lpt_init(lr_field, hr_field, a0,kvec_lr, kvec_hr, halo_size,hr_shape, lr_sha
   mstate = mesh_ops.mtf_indices(hr_field.mesh, shape=part_shape, dtype=tf.float32)
   X = mtf.einsum([mtf.ones(hr_field.mesh, [batch_dim]), mstate], output_shape=[batch_dim] + mstate.shape[:])
 
-  lr_kfield = mesh_utils.r2c3d(lr_field)
+  lr_kfield = mesh_utils.r2c3d(lr_field, k_dims)
   hr_kfield = mesh_utils.slicewise_r2c3d(hr_field)
 
   grad_kfield_lr = mesh_kernels.apply_gradient_laplace_kernel(lr_kfield, kvec_lr)
   grad_kfield_hr = mesh_kernels.apply_gradient_laplace_kernel(hr_kfield, kvec_hr)
 
+  # Reorder the low res FFTs which where transposed# y,z,x
+  grad_kfield_lr = [grad_kfield_lr[2], grad_kfield_lr[0], grad_kfield_lr[1]]
+
   displacement = []
   for f,g in zip(grad_kfield_lr,grad_kfield_hr):
-      f = mesh_utils.c2r3d(f)
+      f = mesh_utils.c2r3d(f, lr_shape[-3:])
       f = mtf.slicewise(lambda x:tf.expand_dims(tf.expand_dims(tf.expand_dims(x, axis=1),axis=1),axis=1),
                         [f],
                         output_dtype=tf.float32,
@@ -186,7 +189,7 @@ def drift(state, ai, ac, af, cosmology=Planck15, **kwargs):
   X += fac * P
   return X, P, F
 
-def force(state, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size, cosmology=Planck15,
+def force(state, lr_shape, hr_shape, k_dims, kvec_lr, kvec_hr, halo_size, cosmology=Planck15,
           downsampling_factor=2, pm_nc_factor=1, antialias=True, **kwargs):
   """
   Estimate force on the particles given a state.
@@ -237,7 +240,7 @@ def force(state, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size, cosmology=Plan
                         splittable_dims=lr_shape[:-1]+hr_shape[:4])
   #lr_field = mtf.reshape(low, lr_shape)
 
-  lr_kfield = mesh_utils.r2c3d(lr_field)
+  lr_kfield = mesh_utils.r2c3d(lr_field, k_dims)
   hr_kfield = mesh_utils.slicewise_r2c3d(hr_field)
 
   kfield_lr = mesh_kernels.apply_longrange_kernel(lr_kfield, kvec_lr, r_split=0)
@@ -245,9 +248,12 @@ def force(state, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size, cosmology=Plan
   kfield_hr = mesh_kernels.apply_longrange_kernel(hr_kfield, kvec_hr, r_split=0)
   kfield_hr = mesh_kernels.apply_gradient_laplace_kernel(kfield_hr, kvec_hr)
 
+  # Reorder the low res FFTs which where transposed# y,z,x
+  kfield_lr = [kfield_lr[2], kfield_lr[0], kfield_lr[1]]
+
   displacement = []
   for f,g in zip(kfield_lr, kfield_hr):
-      f = mesh_utils.c2r3d(f)
+      f = mesh_utils.c2r3d(f, lr_shape[-3:])
       f = mtf.slicewise(lambda x:tf.expand_dims(tf.expand_dims(tf.expand_dims(x, axis=1),axis=1),axis=1),
                         [f],
                         output_dtype=tf.float32,
@@ -282,7 +288,7 @@ def force(state, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size, cosmology=Plan
   F = F * 1.5 * cosmology.Om0
   return X, P, F
 
-def nbody(state, stages, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size, cosmology=Planck15,
+def nbody(state, stages, lr_shape, hr_shape, k_dims, kvec_lr, kvec_hr, halo_size, cosmology=Planck15,
           pm_nc_factor=1, downsampling_factor=2):
   """
   Integrate the evolution of the state across the givent stages
@@ -315,7 +321,7 @@ def nbody(state, stages, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size, cosmol
   ai = stages[0]
 
   # first force calculation for jump starting
-  state = force(state, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size,
+  state = force(state, lr_shape, hr_shape, k_dims, kvec_lr, kvec_hr, halo_size,
                 pm_nc_factor=pm_nc_factor, cosmology=cosmology,
                 downsampling_factor=downsampling_factor)
 
@@ -335,7 +341,7 @@ def nbody(state, stages, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size, cosmol
     x = a1
 
     # Force
-    state = force(state, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size,
+    state = force(state, lr_shape, hr_shape, k_dims, kvec_lr, kvec_hr, halo_size,
                   pm_nc_factor=pm_nc_factor, cosmology=cosmology,
                   downsampling_factor=downsampling_factor)
     f = a1

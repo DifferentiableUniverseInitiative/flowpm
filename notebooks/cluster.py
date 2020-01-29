@@ -1,6 +1,6 @@
 from mpi4py import MPI
 import mesh_tensorflow as mtf
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 import os
 
 FLAGS = None
