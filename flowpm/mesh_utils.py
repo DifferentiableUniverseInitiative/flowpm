@@ -213,7 +213,8 @@ def split_scales(field, downsampling_factor=2., antialias=True):
   return low, high
 
 def slicewise_r2c3d(rfield):
-  cfield = mtf.slicewise(lambda x: tf.signal.fft3d(tf.cast(x, tf.complex64)), [rfield],
+  cfield = mtf.slicewise(lambda x: tf.signal.fft3d(tf.cast(x, tf.complex64)),
+                         [rfield],
                          output_dtype=tf.complex64,
                          splittable_dims=rfield.shape[:-3])
   return cfield
