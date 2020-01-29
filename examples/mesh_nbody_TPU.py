@@ -41,7 +41,7 @@ tf.flags.DEFINE_string("model_dir", None, "Estimator model_dir")
 tf.flags.DEFINE_string("output_dir", None, "Output directory for simulations")
 
 tf.flags.DEFINE_integer("cube_size", 256, "Size of the 3D volume.")
-tf.flags.DEFINE_float("box_size", 1000., "Physical size of the 3D volume.")
+tf.flags.DEFINE_float("box_size", 200., "Physical size of the 3D volume.")
 tf.flags.DEFINE_float("a0", 0.1, "Scale factor of linear field.")
 tf.flags.DEFINE_integer("pm_steps", 10, "Number of PM steps.")
 
@@ -59,6 +59,7 @@ def nbody_model(mesh):
   Initializes a 3D volume with random noise, and execute a forward FFT
   """
   # Setup parameters
+  bs = FLAGS.box_size
   nc = FLAGS.cube_size
   batch_size = FLAGS.batch_size
   a0 = FLAGS.a0
