@@ -351,3 +351,57 @@ def nbody(state, stages, lr_shape, hr_shape, k_dims, kvec_lr, kvec_hr, halo_size
     p = a1
 
   return state
+
+
+
+def lpt_init_single(lr_field, a0, kvec_lr, halo_size, lr_shape, hr_shape, k_dims,
+              part_shape, antialias=True, order=1, post_filtering=True, cosmology=Planck15):
+  a = a0
+  batch_dim = lr_field.shape[0]
+  lnc = lr_shape[-1].size
+
+  # Create particles on the high resolution grid
+  mstate = mesh_ops.mtf_indices(lr_field.mesh, shape=part_shape, dtype=tf.float32)
+  X = mtf.einsum([mtf.ones(lr_field.mesh, [batch_dim]), mstate], output_shape=[batch_dim] + mstate.shape[:])
+
+  
+  lr_kfield = mesh_utils.r2c3d(lr_field, k_dims)
+
+  grad_kfield_lr = mesh_kernels.apply_gradient_laplace_kernel(lr_kfield, kvec_lr)
+
+  # Reorder the low res FFTs which where transposed# y,z,x
+  grad_kfield_lr = [grad_kfield_lr[2], grad_kfield_lr[0], grad_kfield_lr[1]]
+
+
+  displacement = []
+  for f in grad_kfield_lr:
+    f = mesh_utils.c2r3d(f, lr_shape[-3:])
+    f = mtf.slicewise(lambda x:tf.expand_dims(tf.expand_dims(tf.expand_dims(x, axis=1),axis=1),axis=1),
+                      [f],
+                      output_dtype=tf.float32,
+                      output_shape=mtf.Shape(hr_shape[0:4]+[
+                        mtf.Dimension('sx_block', lnc//hr_shape[1].size),
+                        mtf.Dimension('sy_block', lnc//hr_shape[2].size),
+                        mtf.Dimension('sz_block', lnc//hr_shape[3].size)]),
+                      name='my_reshape',
+                      splittable_dims=lr_shape[:-1]+hr_shape[1:4]+part_shape[1:3])
+
+    for block_size_dim in hr_shape[-3:]:
+      f = mtf.pad(f, [halo_size, halo_size], block_size_dim.name)
+    for blocks_dim, block_size_dim in zip(hr_shape[1:4], f.shape[-3:]):
+      f = mesh_ops.halo_reduce(f, blocks_dim, block_size_dim, halo_size)
+    d =  mesh_utils.cic_readout(f, X, halo_size)
+    displacement.append(d)
+  # Readout to particle positions
+  displacement = mtf.stack([ d for d in displacement],"ndim",axis=4)
+
+  pt = PerturbationGrowth(cosmology, a=[a], a_normalize=1.0)
+  DX = pt.D1(a) * displacement
+  P = (a ** 2 * pt.f1(a) * pt.E(a)) * DX
+  F = (a ** 2 * pt.E(a) * pt.gf(a) / pt.D1(a)) * DX
+  # TODO: Implement 2nd order LPT
+
+  # Moves the particles according to displacement
+  X = X + DX
+
+  return X, P, F
