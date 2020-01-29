@@ -7,15 +7,18 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 from tensorflow.python.lib.io import file_io
 import mesh_tensorflow as mtf
 from tensorflow.python.tpu import tpu_config  # pylint: disable=g-direct-tensorflow-import
 from tensorflow.python.tpu import tpu_estimator  # pylint: disable=g-direct-tensorflow-import
 from tensorflow_estimator.python.estimator import estimator as estimator_lib
+from scipy.interpolate import InterpolatedUnivariateSpline as iuspline
 
 import flowpm
-import flowpm.mesh_utils as mpu
-import flowpm.mtfpm as fpm
+import flowpm.mesh_ops as mpm
+import flowpm.mtfpm as mtfpm
+import flowpm.mesh_utils as mesh_utils
 
 # Cloud TPU Cluster Resolver flags
 tf.flags.DEFINE_string(
