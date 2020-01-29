@@ -64,7 +64,7 @@ def benchmark_model(mesh):
   fft_field = mpm.fft3d(mtf.cast(field, tf.complex64), [tx_dim, ty_dim, tz_dim])
 
   # Inverse FFT
-  rfield = mtf.cast(mpm.ifft3d(fft_field), tf.float32)
+  rfield = mtf.cast(mpm.ifft3d(fft_field, [x_dim, y_dim, z_dim]), tf.float32)
 
   # Compute errors
   err = mtf.reduce_max(mtf.abs(field - rfield))
