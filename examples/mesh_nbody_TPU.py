@@ -152,7 +152,7 @@ def nbody_model(mesh):
 
   part_shape = [batch_dim, fx_dim, fy_dim, fz_dim]
 
-  initc = tf.reshape(initial_conditions, [1, n_block_x, nc//n_block_x,
+  initc = tf.reshape(initial_conditions, [batch_size, n_block_x, nc//n_block_x,
                                              n_block_y, nc//n_block_y,
                                           1, nc])
 
