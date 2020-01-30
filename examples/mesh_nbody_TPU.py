@@ -12,7 +12,7 @@ from tensorflow.python.lib.io import file_io
 import mesh_tensorflow as mtf
 from tensorflow.python.tpu import tpu_config  # pylint: disable=g-direct-tensorflow-import
 from tensorflow.python.tpu import tpu_estimator  # pylint: disable=g-direct-tensorflow-import
-from tensorflow_estimator.python.estimator import estimator as estimator_lib
+from tensorflow_estimator.python.estimator import estimator as estimator_libs
 from scipy.interpolate import InterpolatedUnivariateSpline as iuspline
 
 import flowpm
@@ -50,7 +50,7 @@ tf.flags.DEFINE_integer("batch_size", 128,
                         "is the global batch size and not the per-shard batch.")
 
 tf.flags.DEFINE_string("mesh_shape", "b1:8,b2:4", "mesh shape")
-tf.flags.DEFINE_string("layout", "nx:b1,ny:b2,nx_lr:b1,ny_lr:b2,ty_lr:b1,tz_lr:b2,nx_block:b1,ny_block:b2", "layout rules")
+tf.flags.DEFINE_string("layout", "nx:b1,ny:b2,nx_lr:b1,ny_lr:b2,y_lr_t:b1,z_lr_t:b2,nx_block:b1,ny_block:b2", "layout rules")
 
 FLAGS = tf.flags.FLAGS
 
@@ -109,9 +109,9 @@ def nbody_model(mesh):
   y_dim = mtf.Dimension("ny_lr", lnc)
   z_dim = mtf.Dimension("nz_lr", lnc)
 
-  tx_dim = mtf.Dimension("tx_lr", lnc)
-  ty_dim = mtf.Dimension("ty_lr", lnc)
-  tz_dim = mtf.Dimension("tz_lr", lnc)
+  x_dim_t = mtf.Dimension("x_lr_t", lnc)
+  y_dim_t = mtf.Dimension("y_lr_t", lnc)
+  z_dim_t = mtf.Dimension("z_lr_t", lnc)
 
   nx_dim = mtf.Dimension('nx_block', n_block_x)
   ny_dim = mtf.Dimension('ny_block', n_block_y)
@@ -121,18 +121,15 @@ def nbody_model(mesh):
   sy_dim = mtf.Dimension('sy_block', nc//n_block_y)
   sz_dim = mtf.Dimension('sz_block', nc//n_block_z)
 
-  k_dims = [tx_dim, ty_dim, tz_dim]
-
   batch_dim = mtf.Dimension("batch", batch_size)
   pk_dim = mtf.Dimension("npk", len(plin))
   pk = mtf.import_tf_tensor(mesh, plin.astype('float32'), shape=[pk_dim])
 
   # kvec for low resolution grid
   kvec_lr = flowpm.kernels.fftk([lnc, lnc, lnc], symmetric=False)
-
-  kx_lr = mtf.import_tf_tensor(mesh, kvec_lr[0].squeeze().astype('float32')/ 2**downsampling_factor, shape=[tx_dim])
-  ky_lr = mtf.import_tf_tensor(mesh, kvec_lr[1].squeeze().astype('float32')/ 2**downsampling_factor, shape=[ty_dim])
-  kz_lr = mtf.import_tf_tensor(mesh, kvec_lr[2].squeeze().astype('float32')/ 2**downsampling_factor, shape=[tz_dim])
+  kx_lr = mtf.import_tf_tensor(mesh, kvec_lr[0].squeeze().astype('float32')/ 2**downsampling_factor, shape=[x_dim_t])
+  ky_lr = mtf.import_tf_tensor(mesh, kvec_lr[1].squeeze().astype('float32')/ 2**downsampling_factor, shape=[y_dim_t])
+  kz_lr = mtf.import_tf_tensor(mesh, kvec_lr[2].squeeze().astype('float32')/ 2**downsampling_factor, shape=[z_dim_t])
   kv_lr = [ky_lr, kz_lr, kx_lr]
 
   # kvec for high resolution blocks
@@ -140,22 +137,18 @@ def nbody_model(mesh):
   padded_sy_dim = mtf.Dimension('padded_sy_block', nc//n_block_y+2*halo_size)
   padded_sz_dim = mtf.Dimension('padded_sz_block', nc//n_block_z+2*halo_size)
   kvec_hr = flowpm.kernels.fftk([nc//n_block_x+2*halo_size, nc//n_block_y+2*halo_size, nc//n_block_z+2*halo_size], symmetric=False)
-
   kx_hr = mtf.import_tf_tensor(mesh, kvec_hr[0].squeeze().astype('float32'), shape=[padded_sx_dim])
   ky_hr = mtf.import_tf_tensor(mesh, kvec_hr[1].squeeze().astype('float32'), shape=[padded_sy_dim])
   kz_hr = mtf.import_tf_tensor(mesh, kvec_hr[2].squeeze().astype('float32'), shape=[padded_sz_dim])
-  kv_hr = [kx_hr, ky_hr, kz_hr]
+  kv_hr = [ky_hr, kz_hr, kx_hr]
 
   lr_shape = [batch_dim, x_dim, y_dim, z_dim]
-
   hr_shape = [batch_dim, nx_dim, ny_dim, nz_dim, sx_dim, sy_dim, sz_dim]
-
   part_shape = [batch_dim, fx_dim, fy_dim, fz_dim]
 
   initc = tf.reshape(initial_conditions, [batch_size, n_block_x, nc//n_block_x,
-                                             n_block_y, nc//n_block_y,
+                                                      n_block_y, nc//n_block_y,
                                           1, nc])
-
   initc = tf.transpose(initc, [0, 1, 3, 5, 2, 4, 6])
 
   field = mtf.import_tf_tensor(mesh, initc, shape=hr_shape)
@@ -183,11 +176,11 @@ def nbody_model(mesh):
                       name='my_dumb_reshape',
                       splittable_dims=lr_shape[:-1]+hr_shape[:4])
 
-  state = mtfpm.lpt_init(low, high, 0.1, kv_lr, kv_hr, halo_size, hr_shape, lr_shape, k_dims,
+  state = mtfpm.lpt_init(low, high, 0.1, kv_lr, kv_hr, halo_size, hr_shape, lr_shape,
                          part_shape[1:], downsampling_factor=downsampling_factor, antialias=True,)
 
   # Here we can run our nbody
-  final_state = mtfpm.nbody(state, stages, lr_shape, hr_shape, k_dims, kv_lr, kv_hr, halo_size, downsampling_factor=downsampling_factor)
+  final_state = mtfpm.nbody(state, stages, lr_shape, hr_shape, kv_lr, kv_hr, halo_size, downsampling_factor=downsampling_factor)
 
   # paint the field
   final_field = mtf.zeros(mesh, shape=hr_shape)
