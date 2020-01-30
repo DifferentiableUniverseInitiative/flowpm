@@ -50,7 +50,7 @@ tf.flags.DEFINE_integer("batch_size", 128,
                         "is the global batch size and not the per-shard batch.")
 
 tf.flags.DEFINE_string("mesh_shape", "b1:8,b2:4", "mesh shape")
-tf.flags.DEFINE_string("layout", "nx:b1,ny:b2,nx_lr:b1,ny_lr:b2,ty_lr:b1,tz_lr:b2,nx_block:b1,ny_block:b2", "layout rules")
+tf.flags.DEFINE_string("layout", "nx:b1,ny:b2,nx_lr:b1,ny_lr:b2,y_lr_t:b1,z_lr_t:b2,nx_block:b1,ny_block:b2", "layout rules")
 
 FLAGS = tf.flags.FLAGS
 
@@ -109,9 +109,9 @@ def nbody_model(mesh):
   y_dim = mtf.Dimension("ny_lr", lnc)
   z_dim = mtf.Dimension("nz_lr", lnc)
 
-  x_dim = mtf.Dimension("x_lr_t", lnc)
-  y_dim = mtf.Dimension("y_lr_t", lnc)
-  z_dim = mtf.Dimension("z_lr_t", lnc)
+  x_dim_t = mtf.Dimension("x_lr_t", lnc)
+  y_dim_t = mtf.Dimension("y_lr_t", lnc)
+  z_dim_t = mtf.Dimension("z_lr_t", lnc)
 
   nx_dim = mtf.Dimension('nx_block', n_block_x)
   ny_dim = mtf.Dimension('ny_block', n_block_y)
