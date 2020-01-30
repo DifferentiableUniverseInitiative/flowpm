@@ -113,7 +113,7 @@ def lpt_init(lr_field, hr_field, a0, kvec_lr, kvec_hr, halo_size, hr_shape, lr_s
 
   # Reorder the low res FFTs which where transposed# y,z,x
   grad_kfield_lr = [grad_kfield_lr[2], grad_kfield_lr[0], grad_kfield_lr[1]]
-  grad_kfield_hr = [grad_kfield_lr[2], grad_kfield_lr[0], grad_kfield_lr[1]]
+  grad_kfield_hr = [grad_kfield_hr[2], grad_kfield_hr[0], grad_kfield_hr[1]]
 
   displacement = []
   for f,g in zip(grad_kfield_lr,grad_kfield_hr):
