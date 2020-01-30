@@ -96,8 +96,8 @@ def lpt_init(lr_field, hr_field, a0, kvec_lr, kvec_hr, halo_size, hr_shape, lr_s
   a = a0
   batch_dim = hr_field.shape[0]
   lnc = lr_shape[-1].size
-  k_dims_lr = [d for d in kvec_lr]
-  k_dims_hr = [d for d in kvec_hr]
+  k_dims_lr = [d.shape[0] for d in kvec_lr]
+  k_dims_hr = [d.shape[0] for d in kvec_hr]
 
   # Create particles on the high resolution grid
   mstate = mesh_ops.mtf_indices(hr_field.mesh, shape=part_shape, dtype=tf.float32)
@@ -215,8 +215,8 @@ def force(state, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size, cosmology=Plan
   assert pm_nc_factor ==1
   lnc = lr_shape[-1].size
   part_shape = X.shape
-  k_dims_lr = [d for d in kvec_lr]
-  k_dims_hr = [d for d in kvec_hr]
+  k_dims_lr = [d.shape[0] for d in kvec_lr]
+  k_dims_hr = [d.shape[0] for d in kvec_hr]
 
   # Paint the particles on the high resolution mesh
   field = mtf.zeros(X.mesh, shape=hr_shape)
