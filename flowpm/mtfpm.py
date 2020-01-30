@@ -275,7 +275,7 @@ def force(state, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size, cosmology=Plan
       f = mesh_utils.upsample(f, downsampling_factor)
       f = mtf.reshape(f, f.shape[:-1])
 
-      g = mesh_utils.c2r3d(g, f.shape[:-3])
+      g = mesh_utils.c2r3d(g, f.shape[-3:])
       high_shape = g.shape
       # And now we remove the large scales
       g = mtf.reshape(g, g.shape+[mtf.Dimension('h_dim', 1)])
