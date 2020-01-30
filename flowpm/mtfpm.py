@@ -98,6 +98,8 @@ def lpt_init(lr_field, hr_field, a0, kvec_lr, kvec_hr, halo_size, hr_shape, lr_s
   lnc = lr_shape[-1].size
   k_dims_lr = [d.shape[0] for d in kvec_lr]
   k_dims_hr = [d.shape[0] for d in kvec_hr]
+  kfield_lr = [k_dims_lr[2], k_dims_lr[0], k_dims_lr[1]]
+  kfield_hr = [k_dims_hr[2], k_dims_hr[0], k_dims_hr[1]]
 
   # Create particles on the high resolution grid
   mstate = mesh_ops.mtf_indices(hr_field.mesh, shape=part_shape, dtype=tf.float32)
@@ -217,6 +219,9 @@ def force(state, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size, cosmology=Plan
   part_shape = X.shape
   k_dims_lr = [d.shape[0] for d in kvec_lr]
   k_dims_hr = [d.shape[0] for d in kvec_hr]
+  # Reorder the FFTs which where transposed# y,z,x
+  kfield_lr = [k_dims_lr[2], k_dims_lr[0], k_dims_lr[1]]
+  kfield_hr = [k_dims_hr[2], k_dims_hr[0], k_dims_hr[1]]
 
   # Paint the particles on the high resolution mesh
   field = mtf.zeros(X.mesh, shape=hr_shape)
