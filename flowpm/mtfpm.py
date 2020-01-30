@@ -21,11 +21,10 @@ PerturbationGrowth = lambda cosmo, *args, **kwargs: MatterDominated(Omega0_lambd
                                                                     Omega0_k = cosmo.Ok0,
                                                                     *args, **kwargs)
 
-def linear_field(mesh, hr_shape, lr_shape,
-                 boxsize, nc, pk, kvec_lr, kvec_hr, halo_size,
-                 post_filtering=True, downsampling_factor=2, antialias=True,
-                 seed=None, dtype=tf.float32, return_random_field=False):
-  """Generates a linear field with a given linear power spectrum
+def linear_field(mesh, shape, boxsize, nc, pk, kvec,
+                 seed=None, dtype=tf.float32):
+  """Generates a linear field with a given linear power spectrum, in a
+  distributed fashion
   """
   # Element-wise function that applies a Fourier kernel
   def _cwise_fn(kfield, pk, kx, ky, kz):
@@ -41,54 +40,18 @@ def linear_field(mesh, hr_shape, lr_shape,
       kfield = kfield * tf.cast((pkmesh/boxsize**3)**0.5, tf.complex64)
       return kfield
 
+  k_dims = [d.shape[0] for d in kvec]
+  k_dims = [k_dims[2], k_dims[0], k_dims[1]]
+
   # Generates the random field
-  random_field = mesh_ops.random_normal(mesh, shape=hr_shape,
-                                        mean=0, stddev=nc**1.5,
-                                        dtype=tf.float32)
-  field = random_field
-  # Apply padding and perform halo exchange with neighbors
-  # TODO: Figure out how to deal with the tensor size limitations
-  for block_size_dim in hr_shape[-3:]:
-    field = mtf.pad(field, [halo_size, halo_size], block_size_dim.name)
-  for blocks_dim, block_size_dim in zip(hr_shape[1:4], field.shape[-3:]):
-    field = mesh_ops.halo_reduce(field, blocks_dim, block_size_dim, halo_size)
-
-  # We have two strategies to separate scales, before or after filtering
-  field = mtf.reshape(field, field.shape+[mtf.Dimension('h_dim', 1)])
-  if post_filtering:
-    high = field
-    low = mesh_utils.downsample(field, downsampling_factor, antialias=antialias)
-  else:
-    low, high = mesh_utils.split_scales(field, downsampling_factor, antialias=antialias)
-  low = mtf.reshape(low, low.shape[:-1])
-  high = mtf.reshape(high, high.shape[:-1])
-
-  # Remove padding and redistribute the low resolution cube accross processes
-  for block_size_dim in hr_shape[-3:]:
-    low = mtf.slice(low, halo_size//2**downsampling_factor, block_size_dim.size//2**downsampling_factor, block_size_dim.name)
-
-  low_hr_shape = low.shape
-  # Reshape hack
-  low = mtf.slicewise(lambda x: x[:,0,0,0],
-                    [low],
-                    output_dtype=tf.float32,
-                    output_shape=lr_shape,
-                    name='my_dumb_reshape',
-                    splittable_dims=lr_shape[:-1]+hr_shape[:4])
-  #low = mtf.reshape(low, lr_shape)
+  field = mesh_ops.random_normal(mesh, shape=shape,
+                                 mean=0, stddev=nc**1.5, dtype=tf.float32)
 
   # Apply power spectrum on both grids
-  klow = mesh_utils.r2c3d(low)
-  khigh = mesh_utils.r2c3d(high)
-  klow = mtf.cwise(_cwise_fn, [klow, pk] + kvec_lr, output_dtype=tf.complex64)
-  khigh = mtf.cwise(_cwise_fn, [khigh, pk] + kvec_hr, output_dtype=tf.complex64)
-  low = mesh_utils.c2r3d(klow)
-  high = mesh_utils.c2r3d(khigh)
-
-  if return_random_field:
-    return low, high, random_field
-  else:
-    return low, high
+  cfield = mesh_utils.r2c3d(field, k_dims)
+  cfield = mtf.cwise(_cwise_fn, [cfield, pk] + kvec, output_dtype=tf.complex64)
+  field = mesh_utils.c2r3d(cfield, field.shape[-3:])
+  return field
 
 def lpt_init(lr_field, hr_field, a0, kvec_lr, kvec_hr, halo_size, hr_shape, lr_shape,
               part_shape, antialias=True, downsampling_factor=2,
