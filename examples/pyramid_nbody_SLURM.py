@@ -226,8 +226,7 @@ def main(_):
     final_state = nbody(state,  stages, FLAGS.nc)
     tfinal_field = cic_paint(tf.zeros_like(initc), final_state[0])
 
-    with tf.Session(server.target, config=tf.ConfigProto(
-            allow_soft_placement=True, log_device_placement=False)) as sess:
+    with tf.Session(server.target) as sess:
         a,b,c = sess.run([initc, tfinal_field, result])
     np.save('init', a)
     np.save('reference_final', b)
