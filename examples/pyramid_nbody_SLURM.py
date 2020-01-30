@@ -223,7 +223,7 @@ def main(_):
 
     # Run normal flowpm
     state = lpt_init(initc, a0=0.1, order=1)
-    final_state = nbody(state,  stages, nc)
+    final_state = nbody(state,  stages, FLAGS.nc)
     tfinal_field = cic_paint(tf.zeros_like(initc), final_state[0])
 
     with tf.Session(server.target, config=tf.ConfigProto(
