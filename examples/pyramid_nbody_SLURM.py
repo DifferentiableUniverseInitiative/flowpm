@@ -113,7 +113,7 @@ def nbody_prototype(nc=64, bs=200, batch_size=8, a0=0.1, a=1.0, nsteps=5):
     part_shape = [batch_dim, fx_dim, fy_dim, fz_dim]
 
     # Compute initial initial conditions distributed
-    initc = mtfpm.linear_field(mesh, shape, boxsize, nc, pk, kv)
+    initc = mtfpm.linear_field(mesh, shape, bs, nc, pk, kv)
 
     # Reshaping array into high resolution mesh
     field = mtf.slicewise(lambda x:tf.expand_dims(tf.expand_dims(tf.expand_dims(x, axis=1),axis=1),axis=1),
