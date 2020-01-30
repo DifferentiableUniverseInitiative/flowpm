@@ -25,7 +25,7 @@ tf.flags.DEFINE_integer("batch_size", 1, "Batch Size")
 FLAGS = tf.flags.FLAGS
 
 
-def lpt_prototype(nc=64, bs=200, batch_size=8, a0=0.1, a=1.0, nsteps=5, nproc=2):
+def nbody_prototype(nc=64, bs=200, batch_size=8, a0=0.1, a=1.0, nsteps=5):
     """
     Prototype of function computing LPT deplacement.
 
@@ -34,32 +34,10 @@ def lpt_prototype(nc=64, bs=200, batch_size=8, a0=0.1, a=1.0, nsteps=5, nproc=2)
     # Compute a few things first, using simple tensorflow
     klin = np.loadtxt('../flowpm/data/Planck15_a1p00.txt').T[0]
     plin = np.loadtxt('../flowpm/data/Planck15_a1p00.txt').T[1]
-    ipklin = iuspline(klin, plin)
     stages = np.linspace(a0, a, nsteps, endpoint=True)
 
-    #pt = PerturbationGrowth(cosmology, a=[a], a_normalize=1.0)
-    # Generate a batch of 3D initial conditions
-    initial_conditions = flowpm.linear_field(nc,          # size of the cube
-                                           bs,         # Physical size of the cube
-                                           ipklin,      # Initial power spectrum
-                                           batch_size=batch_size)
-
-    state = lpt_init(initial_conditions, a0=a0, order=1)
-    final_state = nbody(state,  stages, nc)
-    tfinal_field = cic_paint(tf.zeros_like(initial_conditions), final_state[0])
-
-    ### Ok, now we implement the same thing but using Mesh TensorFlow ###
     graph = mtf.Graph()
     mesh = mtf.Mesh(graph, "my_mesh")
-
-    # Compute necessary Fourier kernels
-    kvec = flowpm.kernels.fftk((nc, nc, nc), symmetric=False)
-    from flowpm.kernels import laplace_kernel, gradient_kernel
-    lap = tf.cast(laplace_kernel(kvec), tf.complex64)
-    grad_x = gradient_kernel(kvec, 0)
-    grad_y = gradient_kernel(kvec, 1)
-    grad_z = gradient_kernel(kvec, 2)
-
 
     # Define the named dimensions
     # Parameters of the small scales decomposition
@@ -75,6 +53,10 @@ def lpt_prototype(nc=64, bs=200, batch_size=8, a0=0.1, a=1.0, nsteps=5, nproc=2)
     fx_dim = mtf.Dimension("nx", nc)
     fy_dim = mtf.Dimension("ny", nc)
     fz_dim = mtf.Dimension("nz", nc)
+
+    tfx_dim = mtf.Dimension("tx", nc)
+    tfy_dim = mtf.Dimension("ty", nc)
+    tfz_dim = mtf.Dimension("tz", nc)
 
     # Dimensions of the low resolution grid
     x_dim = mtf.Dimension("nx_lr", lnc)
@@ -99,6 +81,12 @@ def lpt_prototype(nc=64, bs=200, batch_size=8, a0=0.1, a=1.0, nsteps=5, nproc=2)
     pk_dim = mtf.Dimension("npk", len(plin))
     pk = mtf.import_tf_tensor(mesh, plin.astype('float32'), shape=[pk_dim])
 
+    # Compute necessary Fourier kernels
+    kvec = flowpm.kernels.fftk((nc, nc, nc), symmetric=False)
+    kx = mtf.import_tf_tensor(mesh, kvec[0].squeeze().astype('float32'), shape=[tfx_dim])
+    ky = mtf.import_tf_tensor(mesh, kvec[1].squeeze().astype('float32'), shape=[tfy_dim])
+    kz = mtf.import_tf_tensor(mesh, kvec[2].squeeze().astype('float32'), shape=[tfz_dim])
+    kv = [ky, kz, kx]
 
     # kvec for low resolution grid
     kvec_lr = flowpm.kernels.fftk([lnc, lnc, lnc], symmetric=False)
@@ -117,18 +105,23 @@ def lpt_prototype(nc=64, bs=200, batch_size=8, a0=0.1, a=1.0, nsteps=5, nproc=2)
     kx_hr = mtf.import_tf_tensor(mesh, kvec_hr[0].squeeze().astype('float32'), shape=[padded_sx_dim])
     ky_hr = mtf.import_tf_tensor(mesh, kvec_hr[1].squeeze().astype('float32'), shape=[padded_sy_dim])
     kz_hr = mtf.import_tf_tensor(mesh, kvec_hr[2].squeeze().astype('float32'), shape=[padded_sz_dim])
-    kv_hr = [kx_hr, ky_hr, kz_hr]
+    kv_hr = [ky_hr, kz_hr, kx_hr]
 
+    shape = [batch_dim, fx_dim, fy_dim, fz_dim]
     lr_shape = [batch_dim, x_dim, y_dim, z_dim]
-
     hr_shape = [batch_dim, nx_dim, ny_dim, nz_dim, sx_dim, sy_dim, sz_dim]
-
     part_shape = [batch_dim, fx_dim, fy_dim, fz_dim]
 
-    initc = tf.reshape(initial_conditions, [1, n_block_x, nc//n_block_x, n_block_y, nc//n_block_y, 1, nc])
-    initc = tf.transpose(initc, [0, 1, 3, 5, 2, 4, 6])
+    # Compute initial initial conditions distributed
+    initc = mtfpm.linear_field(mesh, shape, bs, nc, pk, kv)
 
-    field = mtf.import_tf_tensor(mesh, initc, shape=hr_shape)
+    # Reshaping array into high resolution mesh
+    field = mtf.slicewise(lambda x:tf.expand_dims(tf.expand_dims(tf.expand_dims(x, axis=1),axis=1),axis=1),
+                      [initc],
+                      output_dtype=tf.float32,
+                      output_shape=hr_shape,
+                      name='my_reshape',
+                      splittable_dims=lr_shape[:-1]+hr_shape[1:4]+part_shape[1:3])
 
     for block_size_dim in hr_shape[-3:]:
         field = mtf.pad(field, [halo_size, halo_size], block_size_dim.name)
@@ -153,15 +146,11 @@ def lpt_prototype(nc=64, bs=200, batch_size=8, a0=0.1, a=1.0, nsteps=5, nproc=2)
                         name='my_dumb_reshape',
                         splittable_dims=lr_shape[:-1]+hr_shape[:4])
 
-    # Hack to handle reshape acrosss multiple dimensions
-    #low = mtf.reshape(low, [batch_dim, x_dim, low.shape[2], low.shape[5], z_dim])
-    #low = mtf.reshape(low, lr_shape)
-
-    state = mtfpm.lpt_init(low, high, 0.1, kv_lr, kv_hr, halo_size, hr_shape, lr_shape, k_dims,
+    state = mtfpm.lpt_init(low, high, 0.1, kv_lr, kv_hr, halo_size, hr_shape, lr_shape,
                            part_shape[1:], downsampling_factor=downsampling_factor, antialias=True,)
 
     # Here we can run our nbody
-    final_state = mtfpm.nbody(state, stages, lr_shape, hr_shape, k_dims, kv_lr, kv_hr, halo_size, downsampling_factor=downsampling_factor)
+    final_state = mtfpm.nbody(state, stages, lr_shape, hr_shape, kv_lr, kv_hr, halo_size, downsampling_factor=downsampling_factor)
 
     # paint the field
     final_field = mtf.zeros(mesh, shape=hr_shape)
@@ -175,8 +164,6 @@ def lpt_prototype(nc=64, bs=200, batch_size=8, a0=0.1, a=1.0, nsteps=5, nproc=2)
     for block_size_dim in hr_shape[-3:]:
         final_field = mtf.slice(final_field, halo_size, block_size_dim.size, block_size_dim.name)
 
-    #final_field = mtf.reshape(final_field,  [batch_dim, fx_dim, fy_dim, fz_dim])
-     # Hack usisng  custom reshape because mesh is pretty dumb
     final_field = mtf.slicewise(lambda x: x[:,0,0,0],
                         [final_field],
                         output_dtype=tf.float32,
@@ -184,9 +171,7 @@ def lpt_prototype(nc=64, bs=200, batch_size=8, a0=0.1, a=1.0, nsteps=5, nproc=2)
                         name='my_dumb_reshape',
                         splittable_dims=part_shape[:-1]+hr_shape[:4])
 
-    return initial_conditions, tfinal_field, final_field
-
-    ##
+    return initc, final_field, stages
 
 
 def main(_):
@@ -218,16 +203,15 @@ def main(_):
     mesh_shape = [("row", 4), ("col", 2)]
     layout_rules = [("nx_lr", "row"), ("ny_lr", "col"),
                     ("nx", "row"), ("ny", "col"),
+                    ("ty", "row"), ("tz", "col"),
                     ("ty_lr", "row"), ("tz_lr", "col"),
                     ("nx_block","row"), ("ny_block","col")]
 
     mesh_impl = mtf.placement_mesh_impl.PlacementMeshImpl(mesh_shape, layout_rules, devices)
 
-
     # Create computational graphs
-    initial_conditions, final_field, mesh_final_field = lpt_prototype(nc=FLAGS.nc,
-                                                                    batch_size=FLAGS.batch_size,
-                                                                    nproc=len(devices))
+    initial_conditions, mesh_final_field, stages = nbody_prototype(nc=FLAGS.nc,
+                                                          batch_size=FLAGS.batch_size)
     # Lower mesh computation
     graph = mesh_final_field.graph
     mesh = mesh_final_field.mesh
@@ -235,10 +219,15 @@ def main(_):
 
     # Retrieve output of computation
     result = lowering.export_to_tf_tensor(mesh_final_field)
+    initc  = lowering.export_to_tf_tensor(initial_conditions)
 
-    with tf.Session(server.target, config=tf.ConfigProto(
-            allow_soft_placement=True, log_device_placement=False)) as sess:
-        a,b,c = sess.run([initial_conditions, final_field, result])
+    # Run normal flowpm
+    state = lpt_init(initc, a0=0.1, order=1)
+    final_state = nbody(state,  stages, FLAGS.nc)
+    tfinal_field = cic_paint(tf.zeros_like(initc), final_state[0])
+
+    with tf.Session(server.target) as sess:
+        a,b,c = sess.run([initc, tfinal_field, result])
     np.save('init', a)
     np.save('reference_final', b)
     np.save('mesh_pyramid', c)
