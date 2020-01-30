@@ -63,7 +63,7 @@ def lpt_prototype(mesh, initial_conditions, derivs,
     halo_size = FLAGS.hsize
 
     # Parameters of the large scales decomposition
-    downsampling_factor = 0
+    downsampling_factor = FLAGS.dsample
     lnc = nc // 2**downsampling_factor 
 
     #
@@ -72,10 +72,14 @@ def lpt_prototype(mesh, initial_conditions, derivs,
     fy_dim = mtf.Dimension("ny", nc)
     fz_dim = mtf.Dimension("nz", nc)
 
+    # Dimensions of the low resolution grid
+    x_dim = mtf.Dimension("nx_lr", lnc)
+    y_dim = mtf.Dimension("ny_lr", lnc)
+    z_dim = mtf.Dimension("nz_lr", lnc)
 
-    tx_dim = mtf.Dimension("tx_lr", nc)
-    ty_dim = mtf.Dimension("ty_lr", nc)
-    tz_dim = mtf.Dimension("tz_lr", nc)
+    tx_dim = mtf.Dimension("tx_lr", lnc)
+    ty_dim = mtf.Dimension("ty_lr", lnc)
+    tz_dim = mtf.Dimension("tz_lr", lnc)
 
     nx_dim = mtf.Dimension('nx_block', n_block_x)
     ny_dim = mtf.Dimension('ny_block', n_block_y)
@@ -93,23 +97,64 @@ def lpt_prototype(mesh, initial_conditions, derivs,
 
 
     # kvec for low resolution grid
-    kvec_lr = flowpm.kernels.fftk([nc, nc, nc], symmetric=False)
-    kx_lr = mtf.import_tf_tensor(mesh, kvec_lr[0].squeeze().astype('float32'), shape=[tx_dim])
-    ky_lr = mtf.import_tf_tensor(mesh, kvec_lr[1].squeeze().astype('float32'), shape=[ty_dim])
-    kz_lr = mtf.import_tf_tensor(mesh, kvec_lr[2].squeeze().astype('float32'), shape=[tz_dim])
+    kvec_lr = flowpm.kernels.fftk([lnc, lnc, lnc], symmetric=False)
+
+    kx_lr = mtf.import_tf_tensor(mesh, kvec_lr[0].squeeze().astype('float32')/ 2**downsampling_factor, shape=[tx_dim])
+    ky_lr = mtf.import_tf_tensor(mesh, kvec_lr[1].squeeze().astype('float32')/ 2**downsampling_factor, shape=[ty_dim])
+    kz_lr = mtf.import_tf_tensor(mesh, kvec_lr[2].squeeze().astype('float32')/ 2**downsampling_factor, shape=[tz_dim])
     kv_lr = [ky_lr, kz_lr, kx_lr]
 
-    lr_shape = [batch_dim, fx_dim, fy_dim, fz_dim]
+    # kvec for high resolution blocks
+    padded_sx_dim = mtf.Dimension('padded_sx_block', nc//n_block_x+2*halo_size)
+    padded_sy_dim = mtf.Dimension('padded_sy_block', nc//n_block_y+2*halo_size)
+    padded_sz_dim = mtf.Dimension('padded_sz_block', nc//n_block_z+2*halo_size)
+    kvec_hr = flowpm.kernels.fftk([nc//n_block_x+2*halo_size, nc//n_block_y+2*halo_size, nc//n_block_z+2*halo_size], symmetric=False)
+
+    kx_hr = mtf.import_tf_tensor(mesh, kvec_hr[0].squeeze().astype('float32'), shape=[padded_sx_dim])
+    ky_hr = mtf.import_tf_tensor(mesh, kvec_hr[1].squeeze().astype('float32'), shape=[padded_sy_dim])
+    kz_hr = mtf.import_tf_tensor(mesh, kvec_hr[2].squeeze().astype('float32'), shape=[padded_sz_dim])
+    kv_hr = [kx_hr, ky_hr, kz_hr]
+
+    lr_shape = [batch_dim, x_dim, y_dim, z_dim]
 
     hr_shape = [batch_dim, nx_dim, ny_dim, nz_dim, sx_dim, sy_dim, sz_dim]
 
     part_shape = [batch_dim, fx_dim, fy_dim, fz_dim]
 
-    field = mtf.import_tf_tensor(mesh, initial_conditions, shape=part_shape)
 
+    initc = tf.reshape(initial_conditions, [1, n_block_x, nc//n_block_x, n_block_y, nc//n_block_y, 1, nc])
+    initc = tf.transpose(initc, [0, 1, 3, 5, 2, 4, 6])
+    field = mtf.import_tf_tensor(mesh, initc, shape=hr_shape)
 
-    state = mtfpm.lpt_init_single(field, a0, kv_lr, halo_size, lr_shape, hr_shape, k_dims,
-                           part_shape[1:], antialias=True,)
+    for block_size_dim in hr_shape[-3:]:
+        field = mtf.pad(field, [halo_size, halo_size], block_size_dim.name)
+
+    for blocks_dim, block_size_dim in zip(hr_shape[1:4], field.shape[-3:]):
+        field = mpm.halo_reduce(field, blocks_dim, block_size_dim, halo_size)
+
+    field = mtf.reshape(field, field.shape+[mtf.Dimension('h_dim', 1)])
+    high = field
+    low = mesh_utils.downsample(field, downsampling_factor, antialias=True)
+
+    low = mtf.reshape(low, low.shape[:-1])
+    high = mtf.reshape(high, high.shape[:-1])
+
+    for block_size_dim in hr_shape[-3:]:
+        low = mtf.slice(low, halo_size//2**downsampling_factor, block_size_dim.size//2**downsampling_factor, block_size_dim.name)
+    # Hack usisng  custom reshape because mesh is pretty dumb
+    low = mtf.slicewise(lambda x: x[:,0,0,0],
+                        [low],
+                        output_dtype=tf.float32,
+                        output_shape=lr_shape,
+                        name='my_dumb_reshape',
+                        splittable_dims=lr_shape[:-1]+hr_shape[:4])
+
+    # Hack to handle reshape acrosss multiple dimensions
+    #low = mtf.reshape(low, [batch_dim, x_dim, low.shape[2], low.shape[5], z_dim])
+    #low = mtf.reshape(low, lr_shape)
+
+    state = mtfpm.lpt_init(low, high, a0, kv_lr, kv_hr, halo_size, hr_shape, lr_shape, k_dims,
+                           part_shape[1:], downsampling_factor=downsampling_factor, antialias=True,)
 
     # Here we can run our nbody
     final_state = state #mtfpm.nbody(state, stages, lr_shape, hr_shape, k_dims, kv_lr, kv_hr, halo_size, downsampling_factor=downsampling_factor)
@@ -231,7 +276,7 @@ def main(_):
 
     plt.subplot(143)
     plt.imshow(c[0].sum(axis=2))
-    plt.title('Mesh TensorFlow Single')
+    plt.title('Mesh TensorFlow')
     plt.colorbar()
 
     plt.subplot(144)
@@ -239,7 +284,7 @@ def main(_):
     plt.title('Residuals')
     plt.colorbar()
 
-    plt.savefig("comparison-single.png")
+    plt.savefig("comparison.png")
 
     exit(0)
 

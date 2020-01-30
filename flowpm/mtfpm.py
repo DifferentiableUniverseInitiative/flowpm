@@ -377,3 +377,153 @@ def lpt_init_single(lr_field, a0, kvec_lr, halo_size, lr_shape, hr_shape, k_dims
   X = X + DX
 
   return X, P, F
+
+
+
+
+
+
+def force_single(state, lr_shape, hr_shape, k_dims, kvec_lr, halo_size, cosmology=Planck15,
+          pm_nc_factor=1, **kwargs):
+  """
+  Estimate force on the particles given a state.
+
+  Parameters:
+  -----------
+  state: tensor
+    Input state tensor of shape (3, batch_size, npart, 3)
+
+  boxsize: float
+    Size of the simulation volume (Mpc/h) TODO: check units
+
+  cosmology: astropy.cosmology
+    Cosmology object
+
+  pm_nc_factor: int
+    TODO: @modichirag please add doc
+  """
+  X, P, F = state
+  #TODO: support different factor
+  assert pm_nc_factor ==1
+  lnc = lr_shape[-1].size
+  part_shape = X.shape
+
+
+  # Paint the particles on the high resolution mesh
+  field = mtf.zeros(X.mesh, shape=hr_shape)
+  for block_size_dim in hr_shape[-3:]:
+    field = mtf.pad(field, [halo_size, halo_size], block_size_dim.name)
+  field = mesh_utils.cic_paint(field, X, halo_size)
+  for blocks_dim, block_size_dim in zip(hr_shape[1:4], field.shape[-3:]):
+    field = mesh_ops.halo_reduce(field, blocks_dim, block_size_dim, halo_size)
+  # Remove borders
+  for block_size_dim in hr_shape[-3:]:
+    field = mtf.slice(field, halo_size, block_size_dim.size, block_size_dim.name)
+
+  
+  # Hack usisng  custom reshape because mesh is pretty dumb
+  lr_field = mtf.slicewise(lambda x: x[:,0,0,0],
+                        [field],
+                        output_dtype=tf.float32,
+                        output_shape=lr_shape,
+                        name='my_dumb_reshape',
+                        splittable_dims=lr_shape[:-1]+hr_shape[:4])
+
+  lr_kfield = mesh_utils.r2c3d(lr_field, k_dims)
+
+  kfield_lr = mesh_kernels.apply_gradient_laplace_kernel(lr_kfield, kvec_lr)
+
+  # Reorder the low res FFTs which where transposed# y,z,x
+  kfield_lr = [kfield_lr[2], kfield_lr[0], kfield_lr[1]]
+
+  displacement = []
+  for f in kfield_lr:
+      f = mesh_utils.c2r3d(f, lr_shape[-3:])
+      f = mtf.slicewise(lambda x:tf.expand_dims(tf.expand_dims(tf.expand_dims(x, axis=1),axis=1),axis=1),
+                        [f],
+                        output_dtype=tf.float32,
+                        output_shape=mtf.Shape(hr_shape[0:4]+[
+                                                mtf.Dimension('sx_block', lnc//hr_shape[1].size),
+                                                mtf.Dimension('sy_block', lnc//hr_shape[2].size),
+                                                mtf.Dimension('sz_block', lnc//hr_shape[3].size)]),
+                        name='my_reshape',
+                        splittable_dims=lr_shape[:-1]+hr_shape[1:4]+part_shape[1:3])
+
+
+      for block_size_dim in hr_shape[-3:]:
+        f = mtf.pad(f, [halo_size, halo_size], block_size_dim.name)
+      for blocks_dim, block_size_dim in zip(hr_shape[1:4], f.shape[-3:]):
+        f = mesh_ops.halo_reduce(f, blocks_dim, block_size_dim, halo_size)
+      d =  mesh_utils.cic_readout(f, X, halo_size)
+      displacement.append(d)
+
+  # Readout the force to particle positions
+  F = mtf.stack([ d for d in displacement],"ndim",axis=4)
+
+  F = F * 1.5 * cosmology.Om0
+  return X, P, F
+
+
+
+
+def nbody_single(state, stages, lr_shape, hr_shape, k_dims, kvec_lr, halo_size, cosmology=Planck15,
+          pm_nc_factor=1):
+  """
+  Integrate the evolution of the state across the givent stages
+
+  Parameters:
+  -----------
+  state: tensor (3, batch_size, npart, 3)
+    Input state
+
+  stages: array
+    Array of scale factors
+
+  nc: int
+    Number of cells
+
+  pm_nc_factor: int
+    Upsampling factor for computing
+
+  Returns
+  -------
+  state: tensor (3, batch_size, npart, 3)
+    Integrated state to final condition
+  """
+  assert pm_nc_factor == 1
+
+  # Unrolling leapfrog integration to make tf Autograph happy
+  if len(stages) == 0:
+    return state
+
+  ai = stages[0]
+
+  # first force calculation for jump starting
+  state = force_single(state, lr_shape, hr_shape, k_dims, kvec_lr, halo_size,
+                       pm_nc_factor=pm_nc_factor, cosmology=cosmology )
+
+  x, p, f = ai, ai, ai
+  # Loop through the stages
+  for i in range(len(stages) - 1):
+    a0 = stages[i]
+    a1 = stages[i + 1]
+    ah = (a0 * a1) ** 0.5
+
+    # Kick step
+    state = kick(state, p, f, ah, cosmology=cosmology)
+    p = ah
+
+    # Drift step
+    state = drift(state, x, p, a1, cosmology=cosmology)
+    x = a1
+
+    # Force
+    state = force_single(state, lr_shape, hr_shape, k_dims, kvec_lr, halo_size,
+                       pm_nc_factor=pm_nc_factor, cosmology=cosmology )
+    f = a1
+
+    # Kick again
+    state = kick(state, p, f, a1, cosmology=cosmology)
+    p = a1
+
+  return state
