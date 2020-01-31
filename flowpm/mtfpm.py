@@ -326,8 +326,7 @@ def nbody(state, stages, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size, cosmol
 
 
 
-def lpt_init_single(lr_field, a0, kvec_lr, halo_size, lr_shape, hr_shape, k_dims,
-              part_shape, antialias=True, order=1, post_filtering=True, cosmology=Planck15):
+def lpt_init_single(lr_field, a0, kvec_lr, halo_size, lr_shape, hr_shape, part_shape, antialias=True, order=1, post_filtering=True, cosmology=Planck15):
   a = a0
   batch_dim = lr_field.shape[0]
   lnc = lr_shape[-1].size
@@ -337,8 +336,11 @@ def lpt_init_single(lr_field, a0, kvec_lr, halo_size, lr_shape, hr_shape, k_dims
   X = mtf.einsum([mtf.ones(lr_field.mesh, [batch_dim]), mstate], output_shape=[batch_dim] + mstate.shape[:])
 
   
-  lr_kfield = mesh_utils.r2c3d(lr_field, k_dims)
-
+  k_dims_lr = [d.shape[0] for d in kvec_lr]
+  k_dims_lr = [k_dims_lr[2], k_dims_lr[0], k_dims_lr[1]]
+  
+  lr_kfield = mesh_utils.r2c3d(lr_field, k_dims_lr)
+  
   grad_kfield_lr = mesh_kernels.apply_gradient_laplace_kernel(lr_kfield, kvec_lr)
 
   # Reorder the low res FFTs which where transposed# y,z,x
@@ -383,7 +385,7 @@ def lpt_init_single(lr_field, a0, kvec_lr, halo_size, lr_shape, hr_shape, k_dims
 
 
 
-def force_single(state, lr_shape, hr_shape, k_dims, kvec_lr, halo_size, cosmology=Planck15,
+def force_single(state, lr_shape, hr_shape, kvec_lr, halo_size, cosmology=Planck15,
           pm_nc_factor=1, **kwargs):
   """
   Estimate force on the particles given a state.
@@ -429,7 +431,10 @@ def force_single(state, lr_shape, hr_shape, k_dims, kvec_lr, halo_size, cosmolog
                         name='my_dumb_reshape',
                         splittable_dims=lr_shape[:-1]+hr_shape[:4])
 
-  lr_kfield = mesh_utils.r2c3d(lr_field, k_dims)
+  
+  k_dims_lr = [d.shape[0] for d in kvec_lr]
+  k_dims_lr = [k_dims_lr[2], k_dims_lr[0], k_dims_lr[1]]  
+  lr_kfield = mesh_utils.r2c3d(lr_field, k_dims_lr)
 
   kfield_lr = mesh_kernels.apply_gradient_laplace_kernel(lr_kfield, kvec_lr)
 
@@ -466,7 +471,7 @@ def force_single(state, lr_shape, hr_shape, k_dims, kvec_lr, halo_size, cosmolog
 
 
 
-def nbody_single(state, stages, lr_shape, hr_shape, k_dims, kvec_lr, halo_size, cosmology=Planck15,
+def nbody_single(state, stages, lr_shape, hr_shape, kvec_lr, halo_size, cosmology=Planck15,
           pm_nc_factor=1):
   """
   Integrate the evolution of the state across the givent stages
@@ -499,7 +504,7 @@ def nbody_single(state, stages, lr_shape, hr_shape, k_dims, kvec_lr, halo_size, 
   ai = stages[0]
 
   # first force calculation for jump starting
-  state = force_single(state, lr_shape, hr_shape, k_dims, kvec_lr, halo_size,
+  state = force_single(state, lr_shape, hr_shape, kvec_lr, halo_size,
                        pm_nc_factor=pm_nc_factor, cosmology=cosmology )
 
   x, p, f = ai, ai, ai
@@ -518,7 +523,7 @@ def nbody_single(state, stages, lr_shape, hr_shape, k_dims, kvec_lr, halo_size, 
     x = a1
 
     # Force
-    state = force_single(state, lr_shape, hr_shape, k_dims, kvec_lr, halo_size,
+    state = force_single(state, lr_shape, hr_shape, kvec_lr, halo_size,
                        pm_nc_factor=pm_nc_factor, cosmology=cosmology )
     f = a1
 
