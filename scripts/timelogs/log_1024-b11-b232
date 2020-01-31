@@ -1,0 +1,39 @@
+Parsing Inputs...
+generating trace file.
+/job:mesh/replica:0/task:0/device:gpu:0 peak memory: 1207.96 MB
+/job:mesh/replica:0/task:0/device:gpu:1 peak memory: 931.14 MB
+/job:mesh/replica:0/task:0/device:gpu:2 peak memory: 1291.85 MB
+/job:mesh/replica:0/task:0/device:gpu:3 peak memory: 1384.12 MB
+/job:mesh/replica:0/task:0/device:gpu:4 peak memory: 1275.07 MB
+/job:mesh/replica:0/task:0/device:gpu:5 peak memory: 1056.97 MB
+/job:mesh/replica:0/task:0/device:gpu:6 peak memory: 1333.79 MB
+/job:mesh/replica:0/task:0/device:gpu:7 peak memory: 1417.68 MB
+/job:mesh/replica:0/task:1/device:gpu:0 peak memory: 1442.84 MB
+/job:mesh/replica:0/task:1/device:gpu:1 peak memory: 1191.18 MB
+/job:mesh/replica:0/task:1/device:gpu:2 peak memory: 1207.96 MB
+/job:mesh/replica:0/task:1/device:gpu:3 peak memory: 1400.90 MB
+/job:mesh/replica:0/task:1/device:gpu:4 peak memory: 1468.01 MB
+/job:mesh/replica:0/task:1/device:gpu:5 peak memory: 1065.35 MB
+/job:mesh/replica:0/task:1/device:gpu:6 peak memory: 780.14 MB
+/job:mesh/replica:0/task:1/device:gpu:7 peak memory: 1233.13 MB
+/job:mesh/replica:0/task:2/device:gpu:0 peak memory: 1518.34 MB
+/job:mesh/replica:0/task:2/device:gpu:1 peak memory: 1207.96 MB
+/job:mesh/replica:0/task:2/device:gpu:2 peak memory: 998.25 MB
+/job:mesh/replica:0/task:2/device:gpu:3 peak memory: 1182.80 MB
+/job:mesh/replica:0/task:2/device:gpu:4 peak memory: 1308.62 MB
+/job:mesh/replica:0/task:2/device:gpu:5 peak memory: 989.86 MB
+/job:mesh/replica:0/task:2/device:gpu:6 peak memory: 754.98 MB
+/job:mesh/replica:0/task:2/device:gpu:7 peak memory: 1249.90 MB
+/job:mesh/replica:0/task:3/device:gpu:0 peak memory: 838.86 MB
+/job:mesh/replica:0/task:3/device:gpu:1 peak memory: 1006.63 MB
+/job:mesh/replica:0/task:3/device:gpu:2 peak memory: 956.30 MB
+/job:mesh/replica:0/task:3/device:gpu:3 peak memory: 1308.62 MB
+/job:mesh/replica:0/task:3/device:gpu:4 peak memory: 1191.18 MB
+/job:mesh/replica:0/task:3/device:gpu:5 peak memory: 1073.74 MB
+/job:mesh/replica:0/task:3/device:gpu:6 peak memory: 947.91 MB
+/job:mesh/replica:0/task:3/device:gpu:7 peak memory: 796.92 MB
+
+******************************************************
+Timeline file is written to timeline-b11-b232_0.
+Open a Chrome browser, enter URL chrome://tracing and load the timeline file.
+******************************************************

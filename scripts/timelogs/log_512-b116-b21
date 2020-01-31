@@ -1,0 +1,32 @@
+Parsing Inputs...
+generating trace file.
+/job:mesh/replica:0/task:0/device:gpu:0 peak memory: 322.96 MB
+/job:mesh/replica:0/task:0/device:gpu:1 peak memory: 289.41 MB
+/job:mesh/replica:0/task:0/device:gpu:2 peak memory: 306.19 MB
+/job:mesh/replica:0/task:0/device:gpu:3 peak memory: 335.55 MB
+/job:mesh/replica:0/task:0/device:gpu:4 peak memory: 335.55 MB
+/job:mesh/replica:0/task:0/device:gpu:5 peak memory: 339.74 MB
+/job:mesh/replica:0/task:0/device:gpu:6 peak memory: 301.99 MB
+/job:mesh/replica:0/task:0/device:gpu:7 peak memory: 251.66 MB
+/job:mesh/replica:0/task:1/device:gpu:0 peak memory: 318.77 MB
+/job:mesh/replica:0/task:1/device:gpu:1 peak memory: 348.13 MB
+/job:mesh/replica:0/task:1/device:gpu:2 peak memory: 293.60 MB
+/job:mesh/replica:0/task:1/device:gpu:3 peak memory: 289.41 MB
+/job:mesh/replica:0/task:1/device:gpu:4 peak memory: 352.32 MB
+/job:mesh/replica:0/task:1/device:gpu:5 peak memory: 230.69 MB
+/job:mesh/replica:0/task:1/device:gpu:6 peak memory: 339.74 MB
+/job:mesh/replica:0/task:1/device:gpu:7 peak memory: 218.11 MB
+
+******************************************************
+Timeline file is written to timeline-b116-b21_0.
+Open a Chrome browser, enter URL chrome://tracing and load the timeline file.
+******************************************************
+mesh_shape :  Shape[b1=16, b2=1]
+layout_rules :  LayoutRules{('ny', 'b2'), ('nx', 'b1')}
+FLAGS.gpus_per_node :  8
+FLAGS.gpus_per_task :  8
+FLAGS.tasks_per_node :  1
+List of devices ['/job:mesh/task:0/device:GPU:0', '/job:mesh/task:0/device:GPU:1', '/job:mesh/task:0/device:GPU:2', '/job:mesh/task:0/device:GPU:3', '/job:mesh/task:0/device:GPU:4', '/job:mesh/task:0/device:GPU:5', '/job:mesh/task:0/device:GPU:6', '/job:mesh/task:0/device:GPU:7', '/job:mesh/task:1/device:GPU:0', '/job:mesh/task:1/device:GPU:1', '/job:mesh/task:1/device:GPU:2', '/job:mesh/task:1/device:GPU:3', '/job:mesh/task:1/device:GPU:4', '/job:mesh/task:1/device:GPU:5', '/job:mesh/task:1/device:GPU:6', '/job:mesh/task:1/device:GPU:7']
+Lowering done
+Time for  Shape[b1=16, b2=1]  is :  0.43631895780563357
+Max absolute FFT error 0.000002, with wall time 0.436319

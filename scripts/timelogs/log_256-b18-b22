@@ -1,0 +1,32 @@
+Parsing Inputs...
+generating trace file.
+/job:mesh/replica:0/task:0/device:gpu:0 peak memory: 38.80 MB
+/job:mesh/replica:0/task:0/device:gpu:1 peak memory: 33.56 MB
+/job:mesh/replica:0/task:0/device:gpu:2 peak memory: 40.90 MB
+/job:mesh/replica:0/task:0/device:gpu:3 peak memory: 38.80 MB
+/job:mesh/replica:0/task:0/device:gpu:4 peak memory: 34.60 MB
+/job:mesh/replica:0/task:0/device:gpu:5 peak memory: 39.85 MB
+/job:mesh/replica:0/task:0/device:gpu:6 peak memory: 45.09 MB
+/job:mesh/replica:0/task:0/device:gpu:7 peak memory: 35.65 MB
+/job:mesh/replica:0/task:1/device:gpu:0 peak memory: 45.09 MB
+/job:mesh/replica:0/task:1/device:gpu:1 peak memory: 41.94 MB
+/job:mesh/replica:0/task:1/device:gpu:2 peak memory: 37.75 MB
+/job:mesh/replica:0/task:1/device:gpu:3 peak memory: 42.99 MB
+/job:mesh/replica:0/task:1/device:gpu:4 peak memory: 50.33 MB
+/job:mesh/replica:0/task:1/device:gpu:5 peak memory: 29.36 MB
+/job:mesh/replica:0/task:1/device:gpu:6 peak memory: 33.56 MB
+/job:mesh/replica:0/task:1/device:gpu:7 peak memory: 34.60 MB
+
+******************************************************
+Timeline file is written to timeline-b18-b22_0.
+Open a Chrome browser, enter URL chrome://tracing and load the timeline file.
+******************************************************
+mesh_shape :  Shape[b1=8, b2=2]
+layout_rules :  LayoutRules{('nx', 'b1'), ('ny', 'b2')}
+FLAGS.gpus_per_node :  8
+FLAGS.gpus_per_task :  8
+FLAGS.tasks_per_node :  1
+List of devices ['/job:mesh/task:0/device:GPU:0', '/job:mesh/task:0/device:GPU:1', '/job:mesh/task:0/device:GPU:2', '/job:mesh/task:0/device:GPU:3', '/job:mesh/task:0/device:GPU:4', '/job:mesh/task:0/device:GPU:5', '/job:mesh/task:0/device:GPU:6', '/job:mesh/task:0/device:GPU:7', '/job:mesh/task:1/device:GPU:0', '/job:mesh/task:1/device:GPU:1', '/job:mesh/task:1/device:GPU:2', '/job:mesh/task:1/device:GPU:3', '/job:mesh/task:1/device:GPU:4', '/job:mesh/task:1/device:GPU:5', '/job:mesh/task:1/device:GPU:6', '/job:mesh/task:1/device:GPU:7']
+Lowering done
+Time for  Shape[b1=8, b2=2]  is :  0.0940404748916626
+Max absolute FFT error 0.000001, with wall time 0.094040

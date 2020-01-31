@@ -1,0 +1,48 @@
+Parsing Inputs...
+generating trace file.
+/job:mesh/replica:0/task:0/device:gpu:0 peak memory: 142.61 MB
+/job:mesh/replica:0/task:0/device:gpu:1 peak memory: 125.83 MB
+/job:mesh/replica:0/task:0/device:gpu:2 peak memory: 121.64 MB
+/job:mesh/replica:0/task:0/device:gpu:3 peak memory: 151.00 MB
+/job:mesh/replica:0/task:0/device:gpu:4 peak memory: 134.22 MB
+/job:mesh/replica:0/task:0/device:gpu:5 peak memory: 125.83 MB
+/job:mesh/replica:0/task:0/device:gpu:6 peak memory: 125.83 MB
+/job:mesh/replica:0/task:0/device:gpu:7 peak memory: 113.25 MB
+/job:mesh/replica:0/task:1/device:gpu:0 peak memory: 117.44 MB
+/job:mesh/replica:0/task:1/device:gpu:1 peak memory: 142.61 MB
+/job:mesh/replica:0/task:1/device:gpu:2 peak memory: 176.16 MB
+/job:mesh/replica:0/task:1/device:gpu:3 peak memory: 184.55 MB
+/job:mesh/replica:0/task:1/device:gpu:4 peak memory: 167.77 MB
+/job:mesh/replica:0/task:1/device:gpu:5 peak memory: 121.64 MB
+/job:mesh/replica:0/task:1/device:gpu:6 peak memory: 117.44 MB
+/job:mesh/replica:0/task:1/device:gpu:7 peak memory: 159.38 MB
+/job:mesh/replica:0/task:2/device:gpu:0 peak memory: 125.83 MB
+/job:mesh/replica:0/task:2/device:gpu:1 peak memory: 113.25 MB
+/job:mesh/replica:0/task:2/device:gpu:2 peak memory: 155.19 MB
+/job:mesh/replica:0/task:2/device:gpu:3 peak memory: 163.58 MB
+/job:mesh/replica:0/task:2/device:gpu:4 peak memory: 113.25 MB
+/job:mesh/replica:0/task:2/device:gpu:5 peak memory: 113.25 MB
+/job:mesh/replica:0/task:2/device:gpu:6 peak memory: 134.22 MB
+/job:mesh/replica:0/task:2/device:gpu:7 peak memory: 142.61 MB
+/job:mesh/replica:0/task:3/device:gpu:0 peak memory: 142.61 MB
+/job:mesh/replica:0/task:3/device:gpu:1 peak memory: 142.61 MB
+/job:mesh/replica:0/task:3/device:gpu:2 peak memory: 151.00 MB
+/job:mesh/replica:0/task:3/device:gpu:3 peak memory: 109.05 MB
+/job:mesh/replica:0/task:3/device:gpu:4 peak memory: 113.25 MB
+/job:mesh/replica:0/task:3/device:gpu:5 peak memory: 159.38 MB
+/job:mesh/replica:0/task:3/device:gpu:6 peak memory: 134.22 MB
+/job:mesh/replica:0/task:3/device:gpu:7 peak memory: 155.19 MB
+
+******************************************************
+Timeline file is written to timeline-b116_0.
+Open a Chrome browser, enter URL chrome://tracing and load the timeline file.
+******************************************************
+mesh_shape :  Shape[b1=4, b2=8]
+layout_rules :  LayoutRules{('ny', 'b2'), ('nx', 'b1')}
+FLAGS.gpus_per_node :  8
+FLAGS.gpus_per_task :  8
+FLAGS.tasks_per_node :  1
+List of devices ['/job:mesh/task:0/device:GPU:0', '/job:mesh/task:0/device:GPU:1', '/job:mesh/task:0/device:GPU:2', '/job:mesh/task:0/device:GPU:3', '/job:mesh/task:0/device:GPU:4', '/job:mesh/task:0/device:GPU:5', '/job:mesh/task:0/device:GPU:6', '/job:mesh/task:0/device:GPU:7', '/job:mesh/task:1/device:GPU:0', '/job:mesh/task:1/device:GPU:1', '/job:mesh/task:1/device:GPU:2', '/job:mesh/task:1/device:GPU:3', '/job:mesh/task:1/device:GPU:4', '/job:mesh/task:1/device:GPU:5', '/job:mesh/task:1/device:GPU:6', '/job:mesh/task:1/device:GPU:7', '/job:mesh/task:2/device:GPU:0', '/job:mesh/task:2/device:GPU:1', '/job:mesh/task:2/device:GPU:2', '/job:mesh/task:2/device:GPU:3', '/job:mesh/task:2/device:GPU:4', '/job:mesh/task:2/device:GPU:5', '/job:mesh/task:2/device:GPU:6', '/job:mesh/task:2/device:GPU:7', '/job:mesh/task:3/device:GPU:0', '/job:mesh/task:3/device:GPU:1', '/job:mesh/task:3/device:GPU:2', '/job:mesh/task:3/device:GPU:3', '/job:mesh/task:3/device:GPU:4', '/job:mesh/task:3/device:GPU:5', '/job:mesh/task:3/device:GPU:6', '/job:mesh/task:3/device:GPU:7']
+Lowering done
+Time for  Shape[b1=4, b2=8]  is :  0.29952899932861327
+Max absolute FFT error 0.000002, with wall time 0.299529
