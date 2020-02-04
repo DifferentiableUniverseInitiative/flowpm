@@ -35,9 +35,9 @@ def cic_paint(mesh, part, weight=None, name=None, shift=0):
     # Extract the indices of all the mesh points affected by each particles
     part = tf.expand_dims(part, 2)
     floor = tf.floor(part)
-    connection = tf.expand_dims(tf.constant([[[0, 0, 0], [1., 0, 0],[0., 1, 0],
+    connection = tf.cast(tf.expand_dims(tf.constant([[[0, 0, 0], [1., 0, 0],[0., 1, 0],
                                               [0., 0, 1],[1., 1, 0],[1., 0, 1],
-                                              [0., 1, 1],[1., 1, 1]]]), 0)
+                                                      [0., 1, 1],[1., 1, 1]]]), 0), part.dtype)
 
     neighboor_coords = floor + connection
     kernel = 1. - tf.abs(part - neighboor_coords)
@@ -93,9 +93,9 @@ def cic_readout(mesh, part, name=None, shift=0):
     # Extract the indices of all the mesh points affected by each particles
     part = tf.expand_dims(part, 2)
     floor = tf.floor(part)
-    connection = tf.expand_dims(tf.constant([[[0, 0, 0], [1., 0, 0],[0., 1, 0],
+    connection = tf.cast(tf.expand_dims(tf.constant([[[0, 0, 0], [1., 0, 0],[0., 1, 0],
                                               [0., 0, 1],[1., 1, 0],[1., 0, 1],
-                                              [0., 1, 1],[1., 1, 1]]]), 0)
+                                                      [0., 1, 1],[1., 1, 1]]]), 0), mesh.dtype)
 
     neighboor_coords = tf.add(floor, connection)
     kernel = 1. - tf.abs(part - neighboor_coords)

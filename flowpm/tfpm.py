@@ -72,13 +72,14 @@ def lpt1(dlin_k, pos, kvec=None, name=None):
     if kvec is None:
       kvec = fftk((nc, nc, nc), symmetric=False)
 
-    lap = tf.cast(laplace_kernel(kvec), tf.complex64)
+    lap = tf.cast(laplace_kernel(kvec), dlin_k.dtype)
 
     displacement = []
     for d in range(3):
       kweight = gradient_kernel(kvec, d) * lap
       dispc = tf.multiply(dlin_k, kweight)
-      disp = c2r3d(dispc, norm=nc**3)
+      disp = c2r3d(dispc, norm=nc**3, dtype=pos.dtype)
+      print('disp, pos : ', disp.dtype, pos.dtype)
       displacement.append(cic_readout(disp, pos))
     displacement = tf.stack(displacement, axis=2)
     return displacement
@@ -106,7 +107,7 @@ def lpt2_source(dlin_k, kvec=None, name=None):
 
     phi_ii = []
     # diagnoal terms
-    lap = tf.cast(laplace_kernel(kvec), tf.complex64)
+    lap = tf.cast(laplace_kernel(kvec), dlin_k.dtype)
 
     for d in range(3):
         grad = gradient_kernel(kvec, d)
@@ -132,7 +133,7 @@ def lpt2_source(dlin_k, kvec=None, name=None):
     source = tf.multiply(source, 3.0/7.)
     return r2c3d(source, norm=nc**3)
 
-def lpt_init(linear, a0, order=2, cosmology=Planck15, kvec=None, name=None):
+def lpt_init(linear, a0, order=2, cosmology=Planck15, kvec=None, name=None, dtype=tf.float32):
   """ Estimate the initial LPT displacement given an input linear (real) field
 
   Parameters:
@@ -144,8 +145,13 @@ def lpt_init(linear, a0, order=2, cosmology=Planck15, kvec=None, name=None):
     shape = linear.get_shape()
     batch_size, nc = shape[0], shape[1].value
 
-    dtype = np.float32
-    Q = np.indices((nc, nc, nc)).reshape(3, -1).T.astype(dtype)
+    if dtype == tf.float32:
+      npdtype = np.float32
+      Q = np.indices((nc, nc, nc)).reshape(3, -1).T.astype("float32")
+    elif dtype == tf.float64:
+      npdtype = np.float64
+      Q = np.indices((nc, nc, nc)).reshape(3, -1).T.astype("float64")
+
     Q = np.repeat(Q.reshape((1, -1, 3)), batch_size, axis=0)
     pos = Q
 
@@ -154,13 +160,13 @@ def lpt_init(linear, a0, order=2, cosmology=Planck15, kvec=None, name=None):
     lineark = r2c3d(linear, norm=nc**3)
 
     pt = PerturbationGrowth(cosmology, a=[a], a_normalize=1.0)
-    DX = tf.multiply(dtype(pt.D1(a)) , lpt1(lineark, pos))
-    P = tf.multiply(dtype(a ** 2 * pt.f1(a) * pt.E(a)) , DX)
-    F = tf.multiply(dtype(a ** 2 * pt.E(a) * pt.gf(a) / pt.D1(a)) , DX)
+    DX = tf.multiply(npdtype(pt.D1(a)) , lpt1(lineark, pos))
+    P = tf.multiply(npdtype(a ** 2 * pt.f1(a) * pt.E(a)) , DX)
+    F = tf.multiply(npdtype(a ** 2 * pt.E(a) * pt.gf(a) / pt.D1(a)) , DX)
     if order == 2:
-      DX2 = tf.multiply(dtype(pt.D2(a)) , lpt1(lpt2_source(lineark), pos))
-      P2 = tf.multiply(dtype(a ** 2 * pt.f2(a) * pt.E(a)) , DX2)
-      F2 = tf.multiply(dtype(a ** 2 * pt.E(a) * pt.gf2(a) / pt.D2(a)) , DX2)
+      DX2 = tf.multiply(npdtype(pt.D2(a)) , lpt1(lpt2_source(lineark), pos))
+      P2 = tf.multiply(npdtype(a ** 2 * pt.f2(a) * pt.E(a)) , DX2)
+      F2 = tf.multiply(npdtype(a ** 2 * pt.E(a) * pt.gf2(a) / pt.D2(a)) , DX2)
       DX = tf.add(DX, DX2)
       P = tf.add(P, P2)
       F = tf.add(F, F2)
@@ -182,7 +188,7 @@ def apply_longrange(x, delta_k, split=0, factor=1, kvec=None, name=None):
 
     ndim = 3
     norm = nc**3
-    lap = tf.cast(laplace_kernel(kvec), tf.complex64)
+    lap = tf.cast(laplace_kernel(kvec), delta_k.dtype)
     fknlrange = longrange_kernel(kvec, split)
     kweight = lap * fknlrange
     pot_k = tf.multiply(delta_k, kweight)
@@ -190,7 +196,7 @@ def apply_longrange(x, delta_k, split=0, factor=1, kvec=None, name=None):
     f = []
     for d in range(ndim):
       force_dc = tf.multiply(pot_k, gradient_kernel(kvec, d))
-      forced = c2r3d(force_dc, norm=norm)
+      forced = c2r3d(force_dc, norm=norm, dtype=x.dtype)
       force = cic_readout(forced, x)
       f.append(force)
 
@@ -209,11 +215,14 @@ def kick(state, ai, ac, af, cosmology=Planck15, dtype=np.float32, name=None,
 
   ai, ac, af: float
   """
+  if dtype == tf.float32: npdtype = np.float32
+  elif dtype == tf.float64: npdtype = np.float64
+
   with tf.name_scope(name, "Kick", [state]):
     pt = PerturbationGrowth(cosmology, a=[ai, ac, af], a_normalize=1.0)
     fac = 1 / (ac ** 2 * pt.E(ac)) * (pt.Gf(af) - pt.Gf(ai)) / pt.gf(ac)
     indices = tf.constant([[1]])
-    update = tf.expand_dims(tf.multiply(dtype(fac), state[2]), axis=0)
+    update = tf.expand_dims(tf.multiply(npdtype(fac), state[2]), axis=0)
     shape = state.shape
     update = tf.scatter_nd(indices, update, shape)
     state = tf.add(state, update)
@@ -230,11 +239,14 @@ def drift(state, ai, ac, af, cosmology=Planck15, dtype=np.float32,
 
   ai, ac, af: float
   """
+  if dtype == tf.float32: npdtype = np.float32
+  elif dtype == tf.float64: npdtype = np.float64
+
   with tf.name_scope(name, "Drift", [state]):
     pt = PerturbationGrowth(cosmology, a=[ai, ac, af], a_normalize=1.0)
     fac = 1. / (ac ** 3 * pt.E(ac)) * (pt.Gp(af) - pt.Gp(ai)) / pt.gp(ac)
     indices = tf.constant([[0]])
-    update = tf.expand_dims(tf.multiply(dtype(fac), state[1]), axis=0)
+    update = tf.expand_dims(tf.multiply(npdtype(fac), state[1]), axis=0)
     shape = state.shape
     update = tf.scatter_nd(indices, update, shape)
     state = tf.add(state, update)
@@ -259,19 +271,22 @@ def force(state, nc, cosmology=Planck15, pm_nc_factor=1, kvec=None,
   pm_nc_factor: int
     TODO: @modichirag please add doc
   """
+  if dtype == tf.float32: npdtype = np.float32
+  elif dtype == tf.float64: npdtype = np.float64
+
   with tf.name_scope(name, "Force", [state]):
     shape = state.get_shape()
     batch_size = shape[1]
     ncf = nc * pm_nc_factor
 
-    rho = tf.zeros((batch_size, ncf, ncf, ncf))
-    wts = tf.ones((batch_size, nc**3))
+    rho = tf.cast(tf.zeros((batch_size, ncf, ncf, ncf)), dtype)
+    wts = tf.cast(tf.ones((batch_size, nc**3)), dtype)
     nbar = nc**3/ncf**3
 
     rho = cic_paint(rho, tf.multiply(state[0], pm_nc_factor), wts)
     rho = tf.multiply(rho, 1./nbar)  ###I am not sure why this is not needed here
     delta_k = r2c3d(rho, norm=ncf**3)
-    fac = dtype(1.5 * cosmology.Om0)
+    fac = npdtype(1.5 * cosmology.Om0)
     update = apply_longrange(tf.multiply(state[0], pm_nc_factor), delta_k, split=0, factor=fac)
 
     update = tf.expand_dims(update, axis=0)
@@ -284,7 +299,7 @@ def force(state, nc, cosmology=Planck15, pm_nc_factor=1, kvec=None,
     state = tf.add(state, update)
     return state
 
-def nbody(state, stages, nc, cosmology=Planck15, pm_nc_factor=1, name=None):
+def nbody(state, stages, nc, cosmology=Planck15, pm_nc_factor=1, name=None, dtype=tf.float32):
   """
   Integrate the evolution of the state across the givent stages
 
@@ -317,7 +332,7 @@ def nbody(state, stages, nc, cosmology=Planck15, pm_nc_factor=1, name=None):
     ai = stages[0]
 
     # first force calculation for jump starting
-    state = force(state, nc, pm_nc_factor=pm_nc_factor, cosmology=cosmology)
+    state = force(state, nc, pm_nc_factor=pm_nc_factor, cosmology=cosmology, dtype=dtype)
 
     x, p, f = ai, ai, ai
     # Loop through the stages
@@ -327,19 +342,19 @@ def nbody(state, stages, nc, cosmology=Planck15, pm_nc_factor=1, name=None):
         ah = (a0 * a1) ** 0.5
 
         # Kick step
-        state = kick(state, p, f, ah, cosmology=cosmology)
+        state = kick(state, p, f, ah, cosmology=cosmology, dtype=dtype)
         p = ah
 
         # Drift step
-        state = drift(state, x, p, a1, cosmology=cosmology)
+        state = drift(state, x, p, a1, cosmology=cosmology, dtype=dtype)
         x = a1
 
         # Force
-        state = force(state, nc, pm_nc_factor=pm_nc_factor, cosmology=cosmology)
+        state = force(state, nc, pm_nc_factor=pm_nc_factor, cosmology=cosmology, dtype=dtype)
         f = a1
 
         # Kick again
-        state = kick(state, p, f, a1, cosmology=cosmology)
+        state = kick(state, p, f, a1, cosmology=cosmology, dtype=dtype)
         p = a1
 
     return state

@@ -22,11 +22,13 @@ PerturbationGrowth = lambda cosmo, *args, **kwargs: MatterDominated(Omega0_lambd
                                                                     *args, **kwargs)
 
 def linear_field(mesh, shape, boxsize, nc, pk, kvec,
-                 seed=None, dtype=tf.float32):
+                 seed=None, dtype=tf.float32, cdtype=tf.complex64):
   """Generates a linear field with a given linear power spectrum, in a
   distributed fashion
   """
   # Element-wise function that applies a Fourier kernel
+  if dtype == tf.float64: cdtype=tf.complex128
+  
   def _cwise_fn(kfield, pk, kx, ky, kz):
       kx = tf.reshape(kx, [-1, 1, 1])
       ky = tf.reshape(ky, [1, -1, 1])
@@ -37,7 +39,7 @@ def linear_field(mesh, shape, boxsize, nc, pk, kvec,
       pkmesh = tfp.math.interp_regular_1d_grid(x=kk, x_ref_min=1e-05, x_ref_max=1000.0,
                                                y_ref=pk, grid_regularizing_transform=tf.log)
       pkmesh = tf.reshape(pkmesh, shape)
-      kfield = kfield * tf.cast((pkmesh/boxsize**3)**0.5, tf.complex64)
+      kfield = kfield * tf.cast((pkmesh/boxsize**3)**0.5, cdtype)
       return kfield
 
   k_dims = [d.shape[0] for d in kvec]
@@ -45,17 +47,19 @@ def linear_field(mesh, shape, boxsize, nc, pk, kvec,
 
   # Generates the random field
   field = mesh_ops.random_normal(mesh, shape=shape,
-                                 mean=0, stddev=nc**1.5, dtype=tf.float32)
+                                 mean=0, stddev=nc**1.5, dtype=dtype)
 
   # Apply power spectrum on both grids
-  cfield = mesh_utils.r2c3d(field, k_dims)
-  cfield = mtf.cwise(_cwise_fn, [cfield, pk] + kvec, output_dtype=tf.complex64)
-  field = mesh_utils.c2r3d(cfield, field.shape[-3:])
+  cfield = mesh_utils.r2c3d(field, k_dims, dtype=cdtype)
+  cfield = mtf.cwise(_cwise_fn, [cfield, pk] + kvec, output_dtype=cdtype)
+  field = mesh_utils.c2r3d(cfield, field.shape[-3:], dtype=dtype)
   return field
 
 def lpt_init(lr_field, hr_field, a0, kvec_lr, kvec_hr, halo_size, hr_shape, lr_shape,
               part_shape, antialias=True, downsampling_factor=2,
-              order=1, post_filtering=True, cosmology=Planck15):
+              order=1, post_filtering=True, cosmology=Planck15, dtype=tf.float32):
+  if dtype==tf.float32: cdtype = tf.complex64
+  elif dtype==tf.float64: cdtype = tf.complex128
   a = a0
   batch_dim = hr_field.shape[0]
   lnc = lr_shape[-1].size
@@ -65,11 +69,11 @@ def lpt_init(lr_field, hr_field, a0, kvec_lr, kvec_hr, halo_size, hr_shape, lr_s
   k_dims_hr = [k_dims_hr[2], k_dims_hr[0], k_dims_hr[1]]
 
   # Create particles on the high resolution grid
-  mstate = mesh_ops.mtf_indices(hr_field.mesh, shape=part_shape, dtype=tf.float32)
-  X = mtf.einsum([mtf.ones(hr_field.mesh, [batch_dim]), mstate], output_shape=[batch_dim] + mstate.shape[:])
+  mstate = mesh_ops.mtf_indices(hr_field.mesh, shape=part_shape, dtype=dtype)
+  X = mtf.einsum([mtf.ones(hr_field.mesh, [batch_dim], dtype=dtype), mstate], output_shape=[batch_dim] + mstate.shape[:])
 
-  lr_kfield = mesh_utils.r2c3d(lr_field, k_dims_lr)
-  hr_kfield = mesh_utils.r2c3d(hr_field, k_dims_hr)
+  lr_kfield = mesh_utils.r2c3d(lr_field, k_dims_lr, dtype=cdtype)
+  hr_kfield = mesh_utils.r2c3d(hr_field, k_dims_hr, dtype=cdtype)
 
   grad_kfield_lr = mesh_kernels.apply_gradient_laplace_kernel(lr_kfield, kvec_lr)
   grad_kfield_hr = mesh_kernels.apply_gradient_laplace_kernel(hr_kfield, kvec_hr)
@@ -80,10 +84,10 @@ def lpt_init(lr_field, hr_field, a0, kvec_lr, kvec_hr, halo_size, hr_shape, lr_s
 
   displacement = []
   for f,g in zip(grad_kfield_lr,grad_kfield_hr):
-      f = mesh_utils.c2r3d(f, lr_shape[-3:])
+      f = mesh_utils.c2r3d(f, lr_shape[-3:], dtype=dtype)
       f = mtf.slicewise(lambda x:tf.expand_dims(tf.expand_dims(tf.expand_dims(x, axis=1),axis=1),axis=1),
                         [f],
-                        output_dtype=tf.float32,
+                        output_dtype=dtype,
                         output_shape=mtf.Shape(hr_shape[0:4]+[
                                                 mtf.Dimension('sx_block', lnc//hr_shape[1].size),
                                                 mtf.Dimension('sy_block', lnc//hr_shape[2].size),
@@ -98,7 +102,7 @@ def lpt_init(lr_field, hr_field, a0, kvec_lr, kvec_hr, halo_size, hr_shape, lr_s
       f = mesh_utils.upsample(f, downsampling_factor)
       f = mtf.reshape(f, f.shape[:-1])
 
-      g = mesh_utils.c2r3d(g, f.shape[-3:])
+      g = mesh_utils.c2r3d(g, f.shape[-3:], dtype=dtype)
       high_shape = g.shape
       # And now we remove the large scales
       g = mtf.reshape(g, g.shape+[mtf.Dimension('h_dim', 1)])
@@ -106,7 +110,7 @@ def lpt_init(lr_field, hr_field, a0, kvec_lr, kvec_hr, halo_size, hr_shape, lr_s
       g = g - mtf.reshape(mesh_utils.upsample(_low, downsampling_factor), g.shape)
       g = mtf.reshape(g, high_shape)
 
-      d =  mesh_utils.cic_readout(f+g, X, halo_size)
+      d =  mesh_utils.cic_readout(f+g, X, halo_size, dtype=dtype)
       displacement.append(d)
 
   # Readout to particle positions
@@ -123,7 +127,7 @@ def lpt_init(lr_field, hr_field, a0, kvec_lr, kvec_hr, halo_size, hr_shape, lr_s
 
   return X, P, F
 
-def kick(state, ai, ac, af, cosmology=Planck15, **kwargs):
+def kick(state, ai, ac, af, cosmology=Planck15, dtype=tf.float32, **kwargs):
   """Kick the particles given the state
 
   Parameters
@@ -137,10 +141,10 @@ def kick(state, ai, ac, af, cosmology=Planck15, **kwargs):
 
   pt = PerturbationGrowth(cosmology, a=[ai, ac, af], a_normalize=1.0)
   fac = 1 / (ac ** 2 * pt.E(ac)) * (pt.Gf(af) - pt.Gf(ai)) / pt.gf(ac)
-  P += fac * F
+  P += tf.cast(fac, dtype) * F
   return X, P ,F
 
-def drift(state, ai, ac, af, cosmology=Planck15, **kwargs):
+def drift(state, ai, ac, af, cosmology=Planck15, dtype=tf.float32, **kwargs):
   """Drift the particles given the state
 
   Parameters
@@ -153,11 +157,11 @@ def drift(state, ai, ac, af, cosmology=Planck15, **kwargs):
   X, P, F = state
   pt = PerturbationGrowth(cosmology, a=[ai, ac, af], a_normalize=1.0)
   fac = 1. / (ac ** 3 * pt.E(ac)) * (pt.Gp(af) - pt.Gp(ai)) / pt.gp(ac)
-  X += fac * P
+  X += tf.cast(fac, dtype) * P
   return X, P, F
 
 def force(state, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size, cosmology=Planck15,
-          downsampling_factor=2, pm_nc_factor=1, antialias=True, **kwargs):
+          downsampling_factor=2, pm_nc_factor=1, antialias=True, dtype=tf.float32, **kwargs):
   """
   Estimate force on the particles given a state.
 
@@ -175,6 +179,8 @@ def force(state, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size, cosmology=Plan
   pm_nc_factor: int
     TODO: @modichirag please add doc
   """
+  if dtype==tf.float32: cdtype = tf.complex64
+  elif dtype==tf.float64: cdtype = tf.complex128
   X, P, F = state
   #TODO: support different factor
   assert pm_nc_factor ==1
@@ -187,10 +193,10 @@ def force(state, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size, cosmology=Plan
   k_dims_hr = [k_dims_hr[2], k_dims_hr[0], k_dims_hr[1]]
 
   # Paint the particles on the high resolution mesh
-  field = mtf.zeros(X.mesh, shape=hr_shape)
+  field = mtf.zeros(X.mesh, shape=hr_shape, dtype=dtype)
   for block_size_dim in hr_shape[-3:]:
     field = mtf.pad(field, [halo_size, halo_size], block_size_dim.name)
-  field = mesh_utils.cic_paint(field, X, halo_size)
+  field = mesh_utils.cic_paint(field, X, halo_size, dtype=dtype)
   for blocks_dim, block_size_dim in zip(hr_shape[1:4], field.shape[-3:]):
     field = mesh_ops.halo_reduce(field, blocks_dim, block_size_dim, halo_size)
 
@@ -206,13 +212,13 @@ def force(state, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size, cosmology=Plan
   # Hack usisng  custom reshape because mesh is pretty dumb
   lr_field = mtf.slicewise(lambda x: x[:,0,0,0],
                         [low],
-                        output_dtype=tf.float32,
+                        output_dtype=dtype,
                         output_shape=lr_shape,
                         name='my_dumb_reshape',
                         splittable_dims=lr_shape[:-1]+hr_shape[:4])
 
-  lr_kfield = mesh_utils.r2c3d(lr_field, k_dims_lr)
-  hr_kfield = mesh_utils.r2c3d(hr_field, k_dims_hr)
+  lr_kfield = mesh_utils.r2c3d(lr_field, k_dims_lr, dtype=cdtype)
+  hr_kfield = mesh_utils.r2c3d(hr_field, k_dims_hr, dtype=cdtype)
 
   kfield_lr = mesh_kernels.apply_longrange_kernel(lr_kfield, kvec_lr, r_split=0)
   kfield_lr = mesh_kernels.apply_gradient_laplace_kernel(lr_kfield, kvec_lr)
@@ -225,10 +231,10 @@ def force(state, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size, cosmology=Plan
 
   displacement = []
   for f,g in zip(kfield_lr, kfield_hr):
-      f = mesh_utils.c2r3d(f, lr_shape[-3:])
+      f = mesh_utils.c2r3d(f, lr_shape[-3:], dtype=dtype)
       f = mtf.slicewise(lambda x:tf.expand_dims(tf.expand_dims(tf.expand_dims(x, axis=1),axis=1),axis=1),
                         [f],
-                        output_dtype=tf.float32,
+                        output_dtype=dtype,
                         output_shape=mtf.Shape(hr_shape[0:4]+[
                                                 mtf.Dimension('sx_block', lnc//hr_shape[1].size),
                                                 mtf.Dimension('sy_block', lnc//hr_shape[2].size),
@@ -243,7 +249,7 @@ def force(state, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size, cosmology=Plan
       f = mesh_utils.upsample(f, downsampling_factor)
       f = mtf.reshape(f, f.shape[:-1])
 
-      g = mesh_utils.c2r3d(g, f.shape[-3:])
+      g = mesh_utils.c2r3d(g, f.shape[-3:], dtype=dtype)
       high_shape = g.shape
       # And now we remove the large scales
       g = mtf.reshape(g, g.shape+[mtf.Dimension('h_dim', 1)])
@@ -251,7 +257,7 @@ def force(state, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size, cosmology=Plan
       g = g - mtf.reshape(mesh_utils.upsample(_low, downsampling_factor), g.shape)
       g = mtf.reshape(g, high_shape)
 
-      d =  mesh_utils.cic_readout(f+g, X, halo_size)
+      d =  mesh_utils.cic_readout(f+g, X, halo_size, dtype=dtype)
       displacement.append(d)
 
   # Readout the force to particle positions
@@ -261,7 +267,7 @@ def force(state, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size, cosmology=Plan
   return X, P, F
 
 def nbody(state, stages, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size, cosmology=Planck15,
-          pm_nc_factor=1, downsampling_factor=2):
+          pm_nc_factor=1, downsampling_factor=2, dtype=tf.float32):
   """
   Integrate the evolution of the state across the givent stages
 
@@ -295,7 +301,7 @@ def nbody(state, stages, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size, cosmol
   # first force calculation for jump starting
   state = force(state, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size,
                 pm_nc_factor=pm_nc_factor, cosmology=cosmology,
-                downsampling_factor=downsampling_factor)
+                downsampling_factor=downsampling_factor , dtype=dtype)
 
   x, p, f = ai, ai, ai
   # Loop through the stages
@@ -305,34 +311,34 @@ def nbody(state, stages, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size, cosmol
     ah = (a0 * a1) ** 0.5
 
     # Kick step
-    state = kick(state, p, f, ah, cosmology=cosmology)
+    state = kick(state, p, f, ah, cosmology=cosmology, dtype=dtype)
     p = ah
 
     # Drift step
-    state = drift(state, x, p, a1, cosmology=cosmology)
+    state = drift(state, x, p, a1, cosmology=cosmology, dtype=dtype)
     x = a1
 
     # Force
     state = force(state, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size,
                   pm_nc_factor=pm_nc_factor, cosmology=cosmology,
-                  downsampling_factor=downsampling_factor)
+                  downsampling_factor=downsampling_factor, dtype=dtype)
     f = a1
 
     # Kick again
-    state = kick(state, p, f, a1, cosmology=cosmology)
+    state = kick(state, p, f, a1, cosmology=cosmology, dtype=dtype)
     p = a1
 
   return state
 
 
 
-def lpt_init_single(lr_field, a0, kvec_lr, halo_size, lr_shape, hr_shape, part_shape, antialias=True, order=1, post_filtering=True, cosmology=Planck15):
+def lpt_init_single(lr_field, a0, kvec_lr, halo_size, lr_shape, hr_shape, part_shape, antialias=True, order=1, post_filtering=True, cosmology=Planck15, dtype=tf.float32):
   a = a0
   batch_dim = lr_field.shape[0]
   lnc = lr_shape[-1].size
 
   # Create particles on the high resolution grid
-  mstate = mesh_ops.mtf_indices(lr_field.mesh, shape=part_shape, dtype=tf.float32)
+  mstate = mesh_ops.mtf_indices(lr_field.mesh, shape=part_shape, dtype=dtype)
   X = mtf.einsum([mtf.ones(lr_field.mesh, [batch_dim]), mstate], output_shape=[batch_dim] + mstate.shape[:])
 
   
@@ -352,7 +358,7 @@ def lpt_init_single(lr_field, a0, kvec_lr, halo_size, lr_shape, hr_shape, part_s
     f = mesh_utils.c2r3d(f, lr_shape[-3:])
     f = mtf.slicewise(lambda x:tf.expand_dims(tf.expand_dims(tf.expand_dims(x, axis=1),axis=1),axis=1),
                       [f],
-                      output_dtype=tf.float32,
+                      output_dtype=dtype,
                       output_shape=mtf.Shape(hr_shape[0:4]+[
                         mtf.Dimension('sx_block', lnc//hr_shape[1].size),
                         mtf.Dimension('sy_block', lnc//hr_shape[2].size),
@@ -386,7 +392,7 @@ def lpt_init_single(lr_field, a0, kvec_lr, halo_size, lr_shape, hr_shape, part_s
 
 
 def force_single(state, lr_shape, hr_shape, kvec_lr, halo_size, cosmology=Planck15,
-          pm_nc_factor=1, **kwargs):
+                 pm_nc_factor=1, dtype=tf.float32, **kwargs):
   """
   Estimate force on the particles given a state.
 
@@ -426,7 +432,7 @@ def force_single(state, lr_shape, hr_shape, kvec_lr, halo_size, cosmology=Planck
   # Hack usisng  custom reshape because mesh is pretty dumb
   lr_field = mtf.slicewise(lambda x: x[:,0,0,0],
                         [field],
-                        output_dtype=tf.float32,
+                        output_dtype=dtype,
                         output_shape=lr_shape,
                         name='my_dumb_reshape',
                         splittable_dims=lr_shape[:-1]+hr_shape[:4])
@@ -446,7 +452,7 @@ def force_single(state, lr_shape, hr_shape, kvec_lr, halo_size, cosmology=Planck
       f = mesh_utils.c2r3d(f, lr_shape[-3:])
       f = mtf.slicewise(lambda x:tf.expand_dims(tf.expand_dims(tf.expand_dims(x, axis=1),axis=1),axis=1),
                         [f],
-                        output_dtype=tf.float32,
+                        output_dtype=dtype,
                         output_shape=mtf.Shape(hr_shape[0:4]+[
                                                 mtf.Dimension('sx_block', lnc//hr_shape[1].size),
                                                 mtf.Dimension('sy_block', lnc//hr_shape[2].size),
@@ -472,7 +478,7 @@ def force_single(state, lr_shape, hr_shape, kvec_lr, halo_size, cosmology=Planck
 
 
 def nbody_single(state, stages, lr_shape, hr_shape, kvec_lr, halo_size, cosmology=Planck15,
-          pm_nc_factor=1):
+                 pm_nc_factor=1, dtype=tf.float32):
   """
   Integrate the evolution of the state across the givent stages
 
@@ -505,7 +511,7 @@ def nbody_single(state, stages, lr_shape, hr_shape, kvec_lr, halo_size, cosmolog
 
   # first force calculation for jump starting
   state = force_single(state, lr_shape, hr_shape, kvec_lr, halo_size,
-                       pm_nc_factor=pm_nc_factor, cosmology=cosmology )
+                       pm_nc_factor=pm_nc_factor, cosmology=cosmology , dtype=dtype)
 
   x, p, f = ai, ai, ai
   # Loop through the stages
@@ -524,7 +530,7 @@ def nbody_single(state, stages, lr_shape, hr_shape, kvec_lr, halo_size, cosmolog
 
     # Force
     state = force_single(state, lr_shape, hr_shape, kvec_lr, halo_size,
-                       pm_nc_factor=pm_nc_factor, cosmology=cosmology )
+                       pm_nc_factor=pm_nc_factor, cosmology=cosmology , dtype=dtype)
     f = a1
 
     # Kick again
