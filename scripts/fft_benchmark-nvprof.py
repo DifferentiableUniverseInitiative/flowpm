@@ -104,7 +104,7 @@ def main(_):
 
   print("Max absolute FFT error %f, with wall time %f"%(err, (end - start)))
   time.sleep(1)
-  exit(-1)
+  exit(0)
 
 
 if __name__ == "__main__":
