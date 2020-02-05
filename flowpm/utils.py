@@ -7,7 +7,7 @@ import numpy as np
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
 
-def cic_paint(mesh, part, weight=None, name=None):
+def cic_paint(mesh, part, weight=None, name=None, shift=0):
   """
   Paints particules on a 3D mesh.
 
@@ -25,7 +25,12 @@ def cic_paint(mesh, part, weight=None, name=None):
   """
   with tf.name_scope(name, "CiCPaint", [mesh, part, weight]):
     shape = tf.shape(mesh)
-    batch_size, nc = shape[0], shape[1]
+    batch_size, nx, ny, nz = shape[0], shape[1], shape[2], shape[3]
+    nc = nz
+
+    # Flatten part if it's not already done
+    if len(part.shape) > 3:
+      part = tf.reshape(part, (batch_size, -1, 3))
 
     # Extract the indices of all the mesh points affected by each particles
     part = tf.expand_dims(part, 2)
@@ -43,6 +48,7 @@ def cic_paint(mesh, part, weight=None, name=None):
     if weight is not None: kernel = tf.multiply(tf.expand_dims(weight, axis=-1) , kernel)
 
     neighboor_coords = tf.cast(neighboor_coords, tf.int32)
+    neighboor_coords = neighboor_coords + tf.reshape(tf.constant([shift,0,0]), [1,1,3])
     neighboor_coords = tf.math.mod(neighboor_coords , nc)
 
     # Adding batch dimension to the neighboor coordinates
@@ -53,11 +59,11 @@ def cic_paint(mesh, part, weight=None, name=None):
 
     update = tf.scatter_nd(tf.reshape(neighboor_coords, (-1, 8,4)),
                            tf.reshape(kernel, (-1, 8)),
-                           [batch_size, nc, nc, nc])
+                           [batch_size, nx, ny, nz])
     mesh = mesh + update
     return mesh
 
-def cic_readout(mesh, part, name=None):
+def cic_readout(mesh, part, name=None, shift=0):
   """
   Reads out particles from mesh.
 
@@ -77,7 +83,12 @@ def cic_readout(mesh, part, name=None):
   """
   with tf.name_scope(name, "CiCReadout", [mesh, part]):
     shape = tf.shape(mesh)
-    batch_size, nc = shape[0], shape[1]
+    batch_size, nx, ny, nz = shape[0], shape[1], shape[2], shape[3]
+    nc = nz
+
+    # Flatten part if it's not already done
+    if len(part.shape) > 3:
+      part = tf.reshape(part, (batch_size, -1, 3))
 
     # Extract the indices of all the mesh points affected by each particles
     part = tf.expand_dims(part, 2)
@@ -91,6 +102,7 @@ def cic_readout(mesh, part, name=None):
     kernel = kernel[..., 0] * kernel[..., 1] * kernel[..., 2]
 
     neighboor_coords = tf.cast(neighboor_coords, tf.int32)
+    neighboor_coords = neighboor_coords + tf.reshape(tf.constant([shift,0,0]), [1,1,3])
     neighboor_coords = tf.math.mod(neighboor_coords , nc)
 
     meshvals = tf.gather_nd(mesh, neighboor_coords, batch_dims=1)
