@@ -51,9 +51,11 @@ $ salloc -C gpu -N 1 -t 30 -c 10 --gres=gpu:1 -A m1759
 
 1) First install dependencies
 ```
-$ module purge && module load  tensorflow/gpu-2.0.0-py37 esslurm gcc/7.3.0 
+$ module purge && module load gcc/7.3.0 python3 cuda/10.1.243
+$ pip install --user tensorflow==2.1
 $ pip install --user mesh-tensorflow
 ```
+**NOTE: we are installing our own tensorflow 2.1 version until a module is available at NERSC**
 
 3) Install the Mesh TensorFlow branch of FlowPM
 ```
