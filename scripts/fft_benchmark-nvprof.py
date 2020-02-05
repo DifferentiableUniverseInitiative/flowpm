@@ -46,17 +46,18 @@ def benchmark_model(mesh):
 
   input_field = field
   field = mtf.cast(field, tf.complex64)
-
+  err = 0
   # Performs several back and forth FFTs in the same session
   for i in range(FLAGS.n_ffts):
     # Apply FFT
     fft_field = mpm.fft3d(field, [tx_dim, ty_dim, tz_dim])
     # Inverse FFT
     field = mpm.ifft3d(fft_field*1, [x_dim, y_dim, z_dim])
+    err += mtf.reduce_max(mtf.abs(mtf.cast(field, tf.float32) - input_field))
 
   field = mtf.cast(field, tf.float32)
   # Compute errors
-  err = mtf.reduce_max(mtf.abs(field - input_field))
+  err += mtf.reduce_max(mtf.abs(field - input_field))
   return err
 
 def main(_):
@@ -98,6 +99,11 @@ def main(_):
   result = lowering.export_to_tf_tensor(fft_err)
 
   with tf.Session(server.target) as sess:
+    start = time.time()
+    err = sess.run(result)
+    end = time.time()
+
+    time.sleep(1)
     start = time.time()
     err = sess.run(result)
     end = time.time()
