@@ -23,11 +23,8 @@ tf.flags.DEFINE_integer("batch_size", 64,
 tf.flags.DEFINE_string("mesh_shape", "b1:16", "mesh shape")
 tf.flags.DEFINE_string("layout", "nx:b1", "layout rules")
 
-tf.flags.DEFINE_string("output_file", "timeline", "Name of the output timeline file")
-
-tf.flags.DEFINE_integer("max_depth", 1, "max_depth of profile")
-
-
+tf.flags.DEFINE_integer("n_ffts", 10, "Number of back and forth FFTs in single"
+                        "session run.")
 
 FLAGS = tf.flags.FLAGS
 
@@ -47,14 +44,19 @@ def benchmark_model(mesh):
   # Create field
   field = mpm.random_normal(mesh, [batch_dim, x_dim, y_dim, z_dim])
 
-  # Apply FFT
-  fft_field = mpm.fft3d(mtf.cast(field, tf.complex64), [tx_dim, ty_dim, tz_dim])
+  input_field = field
+  field = mtf.cast(field, tf.complex64)
 
-  # Inverse FFT
-  rfield = mtf.cast(mpm.ifft3d(fft_field, [x_dim, y_dim, z_dim]), tf.float32)
+  # Performs several back and forth FFTs in the same session
+  for i in range(FLAGS.n_ffts):
+    # Apply FFT
+    fft_field = mpm.fft3d(field, [tx_dim, ty_dim, tz_dim])
+    # Inverse FFT
+    field = mpm.ifft3d(fft_field*1, [x_dim, y_dim, z_dim])
 
+  field = mtf.cast(field, tf.float32)
   # Compute errors
-  err = mtf.reduce_max(mtf.abs(field - rfield))
+  err = mtf.reduce_max(mtf.abs(field - input_field))
   return err
 
 def main(_):
@@ -76,7 +78,7 @@ def main(_):
   # Only he master job takes care of the graph building,
   # everyone else can just chill for now
   if cluster.task_id >0:
-      server.join()
+    server.join()
 
   # Otherwise we are the main task, let's define the devices
   mesh_devices = ["/job:mesh/task:%d/device:GPU:%d"%(i,j) for i in range(cluster_spec.num_tasks("mesh")) for j in range(FLAGS.gpus_per_node)]
@@ -96,7 +98,6 @@ def main(_):
   result = lowering.export_to_tf_tensor(fft_err)
 
   with tf.Session(server.target) as sess:
-
     start = time.time()
     err = sess.run(result)
     end = time.time()
