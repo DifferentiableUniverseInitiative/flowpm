@@ -1,8 +1,12 @@
 import argparse
 import sys
 import numpy as np
+
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+
 import mesh_tensorflow as mtf
-import tensorflow as tf
+
 from matplotlib import pyplot as plt
 
 import flowpm

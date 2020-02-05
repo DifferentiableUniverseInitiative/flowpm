@@ -40,7 +40,7 @@ tf.flags.DEFINE_integer("batch_size", 128,
                         "is the global batch size and not the per-shard batch.")
 
 tf.flags.DEFINE_string("mesh_shape", "b1:32", "mesh shape")
-tf.flags.DEFINE_string("layout", "nx:b1", "layout rules")
+tf.flags.DEFINE_string("layout", "nx:b1,tny:b1", "layout rules")
 
 FLAGS = tf.flags.FLAGS
 
@@ -53,14 +53,18 @@ def benchmark_model(mesh):
   y_dim = mtf.Dimension("ny", FLAGS.cube_size)
   z_dim = mtf.Dimension("nz", FLAGS.cube_size)
 
+  tx_dim = mtf.Dimension("tnx", FLAGS.cube_size)
+  ty_dim = mtf.Dimension("tny", FLAGS.cube_size)
+  tz_dim = mtf.Dimension("tnz", FLAGS.cube_size)
+
   # Create field
   field = mtf.random_uniform(mesh, [batch_dim, x_dim, y_dim, z_dim])
 
   # Apply FFT
-  fft_field = mpm.fft3d(field)
+  fft_field = mpm.fft3d(mtf.cast(field, tf.complex64), [tx_dim, ty_dim, tz_dim])
 
   # Inverse FFT
-  rfield = mtf.cast(mpm.ifft3d(fft_field), tf.float32)
+  rfield = mtf.cast(mpm.ifft3d(fft_field, [x_dim, y_dim, z_dim]), tf.float32)
 
   # Compute errors
   err = mtf.reduce_max(mtf.abs(field - rfield))

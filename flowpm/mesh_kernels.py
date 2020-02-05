@@ -3,8 +3,43 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
 import mesh_tensorflow as mtf
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+
+def get_bspline_kernel(x, channels, transpose=False, dtype=tf.float32, order=4):
+  """Creates a 5x5x5 b-spline kernel.
+  Args:
+    num_channels: The number of channels of the image to filter.
+    dtype: The type of an element in the kernel.
+  Returns:
+    A tensor of shape `[5, 5, 5, num_channels, num_channels]`.
+  """
+  mesh = x.mesh
+  in_dim = x.shape[-1]
+  num_channels = channels.size
+  if order == 8:
+    kernel = np.array(( 1., 8., 28., 56., 70., 56., 28., 8., 1.), dtype=dtype.as_numpy_dtype())
+  elif order == 6:
+    kernel = np.array(( 1., 6., 15., 20., 15., 6., 1.), dtype=dtype.as_numpy_dtype())
+  elif order==2:
+    kernel = np.array(( 1., 2., 1.), dtype=dtype.as_numpy_dtype())
+  else:
+    kernel = np.array(( 1., 4., 6., 4., 1.), dtype=dtype.as_numpy_dtype())
+  size = len(kernel)
+  kernel = np.einsum('ij,k->ijk', np.outer(kernel, kernel), kernel)
+  kernel /= np.sum(kernel)
+  kernel = kernel[:, :, :, np.newaxis, np.newaxis]
+  kernel = tf.constant(kernel, dtype=dtype) * tf.eye(num_channels, dtype=dtype)
+
+  fd_dim = mtf.Dimension("fd", size)
+  fh_dim = mtf.Dimension("fh", size)
+  fw_dim = mtf.Dimension("fw", size)
+  if transpose:
+    return mtf.import_tf_tensor(mesh, kernel, shape=[fd_dim, fh_dim, fw_dim, channels, in_dim])
+  else:
+    return mtf.import_tf_tensor(mesh, kernel, shape=[fd_dim, fh_dim, fw_dim, in_dim, channels])
 
 def apply_gradient_kernel(kfield, kvec, order=1):
   """

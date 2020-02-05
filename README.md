@@ -1,6 +1,10 @@
 # flowpm [![Build Status](https://travis-ci.org/modichirag/flowpm.svg?branch=master)](https://travis-ci.org/modichirag/flowpm)[![PyPI version](https://badge.fury.io/py/flowpm.svg)](https://badge.fury.io/py/flowpm)
 Particle Mesh Simulation in TensorFlow, based on [fastpm-python](https://github.com/rainwoodman/fastpm-python) simulations
 
+Try me out: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/modichirag/flowpm/blob/master/notebooks/flowpm_tutorial.ipynb)
+
+For the Mesh TensorFlow version under development see: https://github.com/modichirag/flowpm/tree/mesh
+
 To install:
 ```
 $ pip install flowpm
@@ -47,7 +51,7 @@ $ salloc -C gpu -N 1 -t 30 -c 10 --gres=gpu:1 -A m1759
 
 1) First install dependencies
 ```
-$ module purge && module load tensorflow/gpu-1.15.0-rc1-py37 esslurm gcc/7.3.0 cuda
+$ module purge && module load  tensorflow/gpu-2.0.0-py37 esslurm gcc/7.3.0 
 $ pip install --user mesh-tensorflow
 ```
 
