@@ -3,10 +3,46 @@
 
 ## Benchmarking on Cori
 
-To run this script on Cori-GPU
+To run these scripts on Cori-GPU:
 
-0) Make sure you have setup the environment as described in the home README for Cori specific instructions
+  - *make sure* you have setup the environment as described in the home [README](../README.md)
+  for Cori specific instructions.
 
+  - make sure you are loading the `esslurm` module before you can actually submit these scripts
+  ```
+  $ module add esslurm
+  ```
+
+### Benchmarking distributed FFTs implementation
+
+TL;DR, run from this folder:
+```
+$ sbatch fft_nvprof.sh
+```
+This uses `nvprof` to record the execution of a series of 512^3 FFTs distributed
+across 2 GPUs, on 2 nodes. The trace of this execution is record as an nvprof file
+which can be read using the `nvvp` utility.
+
+To change the configuration for running this test, the `fft_nvprof.sh` script to
+be modified in 2 places:
+  - The *number of nodes* and *number of gpus* per nodes in the header
+  - The following parameters in the python call: `--mesh_shape`, `--gpus_per_node` `--gpus_per_task`
+
+Here is an example to run the same size transform but on two GPUs on the same node:
+```
+#!/bin/bash
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --constraint=gpu
+#SBATCH --time=15
+#SBATCH --gres=gpu:2
+#SBATCH --exclusive -A m1759
+module purge && module load esslurm gcc/7.3.0 python3 cuda/10.1.243
+
+srun nvprof -f -o test.nvvp python fft_benchmark-nvprof.py --cube_size=512 --batch_size=2 --mesh_shape="b1:2" --gpus_per_node=2 --gpus_per_task=2 --layout="nx:b1,tny:b1" > log_1024
+```
+
+### Benchmarking the full simulation
 1) Run from this folder
 ```
 $ module add esslurm
