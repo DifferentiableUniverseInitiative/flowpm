@@ -251,9 +251,6 @@ def r2c3d(rfield, k_dims, norm=None, dtype=tf.complex64):
   x_dim, y_dim, z_dim = rfield.shape[-3:]
   if norm is None:
     norm = mtf.cast(mtf.constant(rfield.mesh, x_dim.size*y_dim.size*z_dim.size), rfield.dtype)
-    print(norm)
-    print(rfield)
-    print(k_dims)
   cfield = mesh_ops.fft3d(mtf.cast(rfield / norm, dtype), k_dims)
   return cfield
 
