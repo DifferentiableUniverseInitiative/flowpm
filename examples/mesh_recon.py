@@ -175,7 +175,7 @@ def recon_prototype(mesh, data, nc=FLAGS.nc, bs=FLAGS.box_size, batch_size=FLAGS
     if FLAGS.nbody:
         state = mtfpm.lpt_init_single(fieldvar, a0, kv_lr, halo_size, lr_shape, hr_shape, part_shape[1:], antialias=True,)
         # Here we can run our nbody
-        #final_state = mtfpm.nbody_single(state, stages, lr_shape, hr_shape, k_dims, kv_lr, kv_hr, halo_size, downsampling_factor=downsampling_factor)
+        final_state = mtfpm.nbody_single(state, stages, lr_shape, hr_shape, kv_lr, halo_size)
     else:
         final_state = mtfpm.lpt_init_single(fieldvar, stages[-1], kv_lr, halo_size, lr_shape, hr_shape, part_shape[1:], antialias=True,)
 
@@ -332,6 +332,7 @@ def main(_):
         sess.run(tf_linear_op, feed_dict={input_field:ic})
         ic_check, fin_check = sess.run([tf_initc, tf_final])
         dg.saveimfig('-check', [ic_check, fin_check], [ic, fin], fpath)
+        dg.save2ptfig('-check', [ic_check, fin_check], [ic, fin], fpath, bs)
 
         sess.run(tf_linear_op, feed_dict={input_field:np.random.normal(size=ic.size).reshape(ic.shape)})
         ic0, fin0 = sess.run([tf_initc, tf_final])

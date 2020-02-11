@@ -384,6 +384,7 @@ def main(_):
         sess.run(tf_linear_op, feed_dict={input_field:ic_hrshape})
         ic_check, fin_check = sess.run([tf_initc, tf_final])
         dg.saveimfig('-check', [ic_check, fin_check], [ic, fin], fpath)
+        dg.save2ptfig('-check', [ic_check, fin_check], [ic, fin], fpath, bs)
 
         sess.run(tf_linear_op, feed_dict={input_field:np.random.normal(size=ic.size).reshape(ic_hrshape.shape)})
         ic0, fin0 = sess.run([tf_initc, tf_final])

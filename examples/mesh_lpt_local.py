@@ -113,7 +113,7 @@ def lpt_prototype(mesh, initial_conditions, derivs,
 
     # Here we can run our nbody
     #final_state = state
-    final_state = mtfpm.nbody_single(state, stages, lr_shape, hr_shape, k_dims, kv_lr, halo_size)
+    final_state = mtfpm.nbody_single(state, stages, lr_shape, hr_shape, kv_lr, halo_size)
     
     # paint the field
     final_field = mtf.zeros(mesh, shape=hr_shape)
