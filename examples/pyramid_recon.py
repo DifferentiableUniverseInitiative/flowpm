@@ -260,23 +260,21 @@ def recon_prototype(mesh, data, nc=FLAGS.nc, bs=FLAGS.box_size, batch_size=FLAGS
     k_dims_pr = [d.shape[0] for d in kv_pr]
     k_dims_pr = [k_dims_pr[2], k_dims_pr[0], k_dims_pr[1]]
     cfield = mesh_utils.r2c3d(fieldvar, k_dims_pr, dtype=cdtype)
-    def _cwise_fn(kfield, pk, kx, ky, kz):
+    def _cwise_prior(kfield, pk, kx, ky, kz):
         kx = tf.reshape(kx, [-1, 1, 1])
         ky = tf.reshape(ky, [1, -1, 1])
         kz = tf.reshape(kz, [1, 1, -1])
-        kk = tf.sqrt((kx / bs * nc)**2 + (ky/ bs * nc)**2 + (kz/ bs * nc)**2)
+        kk = tf.sqrt((kx / bs * nc)**2 + (ky / bs * nc)**2 + (kz / bs * nc)**2)
         kshape = kk.shape
         kk = tf.reshape(kk, [-1])
         pkmesh = tfp.math.interp_regular_1d_grid(x=kk, x_ref_min=1e-05, x_ref_max=1000.0,
                                                  y_ref=pk, grid_regularizing_transform=tf.log)
         priormesh = tf.reshape(pkmesh, kshape)
-        
-        kfieldabs = tf.abs(kfield)
-        return kfield / tf.cast(priormesh**0.5, tf.complex64)
-    cfield = mtf.cwise(_cwise_fn, [cfield, pk] + kv_pr, output_dtype=cdtype)
-    abscfield = mtf.abs(cfield)
-    prior = mtf.cast(mtf.reduce_sum(mtf.multiply(abscfield, abscfield)), dtype)
-
+        return tf.abs(kfield) / priormesh**0.5 
+    
+    cpfield = mtf.cwise(_cwise_prior, [cfield, pk] + kv, output_dtype=tf.float32) 
+    prior = mtf.reduce_sum(mtf.square(cpfield)) * bs**3
+    
     # Total loss
     diff = (final_field - mtfdata)
     cdiff = mesh_utils.r2c3d(diff, k_dims_pr, dtype=cdtype)

@@ -213,17 +213,16 @@ def recon_prototype(mesh, data, nc=FLAGS.nc, bs=FLAGS.box_size, batch_size=FLAGS
         kx = tf.reshape(kx, [-1, 1, 1])
         ky = tf.reshape(ky, [1, -1, 1])
         kz = tf.reshape(kz, [1, 1, -1])
-        kk = tf.sqrt((kx / bs * nc)**2 + (ky/ bs * nc)**2 + (kz/ bs * nc)**2)
+        kk = tf.sqrt((kx / bs * nc)**2 + (ky / bs * nc)**2 + (kz / bs * nc)**2)
         kshape = kk.shape
         kk = tf.reshape(kk, [-1])
         pkmesh = tfp.math.interp_regular_1d_grid(x=kk, x_ref_min=1e-05, x_ref_max=1000.0,
                                                  y_ref=pk, grid_regularizing_transform=tf.log)
         priormesh = tf.reshape(pkmesh, kshape)
-        return kfield / tf.cast(priormesh**0.5, tf.complex64)
+        return tf.abs(kfield) / priormesh**0.5 
     
-    cfield = mtf.cwise(_cwise_prior, [cfield, pk] + kv, output_dtype=cdtype)
-    abscfield = mtf.abs(cfield)
-    prior = mtf.cast(mtf.reduce_sum(mtf.multiply(abscfield, abscfield)), dtype)
+    cpfield = mtf.cwise(_cwise_prior, [cfield, pk] + kv, output_dtype=tf.float32) 
+    prior = mtf.reduce_sum(mtf.square(cpfield)) * bs**3
 
     # Total loss
     diff = (final_field - mtfdata)
@@ -245,6 +244,7 @@ def recon_prototype(mesh, data, nc=FLAGS.nc, bs=FLAGS.box_size, batch_size=FLAGS
     #return initc, final_field, loss, linearop, input_field
     var_grads = mtf.gradients([loss], [fieldvar])
     lr = tf.placeholder(tf.float32, shape=())
+    
     update_op = mtf.assign(fieldvar, fieldvar - var_grads[0]*lr)
 
     return initc, final_field, loss, var_grads, update_op, linearop, input_field, lr, R0
@@ -363,6 +363,7 @@ def main(_):
         start0 = time.time()
         RRs = [4, 2, 1, 0.5, 0]
         lrs = [0.1, 0.1, 0.05, 0.05, 0.01]
+        #lrs = [0.1, 0.05, 0.01, 0.005, 0.001]
         for iR, zlR in enumerate(zip(RRs, lrs)):
             RR, lR = zlR
             for ff in [fpath + '/figs-R%02d'%(10*RR)]:
