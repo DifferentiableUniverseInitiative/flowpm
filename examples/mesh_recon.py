@@ -40,6 +40,7 @@ tf.flags.DEFINE_float("a0", 0.1, "initial scale factor")
 tf.flags.DEFINE_float("af", 1.0, "final scale factor")
 tf.flags.DEFINE_integer("nsteps", 5, "Number of time steps")
 tf.flags.DEFINE_bool("nbody", False, "Do nbody evolution")
+tf.flags.DEFINE_string("suffix", "", "suffix for the folder name")
 
 #pyramid flags
 tf.flags.DEFINE_integer("dsample", 2, "downsampling factor")
@@ -57,8 +58,9 @@ FLAGS = tf.flags.FLAGS
 nc, bs = FLAGS.nc, FLAGS.box_size
 a0, a, nsteps =FLAGS.a0, FLAGS.af, FLAGS.nsteps
 stages = np.linspace(a0, a, nsteps, endpoint=True)
-if FLAGS.nbody: fpath = cscratch + "nbody_%d_nx%d_ny%d_mesh/"%(nc, FLAGS.nx, FLAGS.ny)
-else: fpath = cscratch + "lpt_%d_nx%d_ny%d_mesh/"%(nc, FLAGS.nx, FLAGS.ny)
+if FLAGS.nbody: fpath = cscratch + "nbody_%d_nx%d_ny%d_mesh%s/"%(nc, FLAGS.nx, FLAGS.ny, FLAGS.suffix)
+else: fpath = cscratch + "lpt_%d_nx%d_ny%d_mesh%s/"%(nc, FLAGS.nx, FLAGS.ny, FLAGS.suffix)
+print(fpath)
 for ff in [fpath, fpath + '/figs']:
     try: os.makedirs(ff)
     except Exception as e: print (e)
@@ -207,7 +209,7 @@ def recon_prototype(mesh, data, nc=FLAGS.nc, bs=FLAGS.box_size, batch_size=FLAGS
     k_dims_pr = [d.shape[0] for d in kv]
     k_dims_pr = [k_dims_pr[2], k_dims_pr[0], k_dims_pr[1]]
     cfield = mesh_utils.r2c3d(fieldvar, k_dims_pr, dtype=cdtype)
-    def _cwise_fn(kfield, pk, kx, ky, kz):
+    def _cwise_prior(kfield, pk, kx, ky, kz):
         kx = tf.reshape(kx, [-1, 1, 1])
         ky = tf.reshape(ky, [1, -1, 1])
         kz = tf.reshape(kz, [1, 1, -1])
@@ -217,30 +219,46 @@ def recon_prototype(mesh, data, nc=FLAGS.nc, bs=FLAGS.box_size, batch_size=FLAGS
         pkmesh = tfp.math.interp_regular_1d_grid(x=kk, x_ref_min=1e-05, x_ref_max=1000.0,
                                                  y_ref=pk, grid_regularizing_transform=tf.log)
         priormesh = tf.reshape(pkmesh, kshape)
-        
-        kfieldabs = tf.abs(kfield)
         return kfield / tf.cast(priormesh**0.5, tf.complex64)
-    cfield = mtf.cwise(_cwise_fn, [cfield, pk] + kv, output_dtype=cdtype)
+    
+    cfield = mtf.cwise(_cwise_prior, [cfield, pk] + kv, output_dtype=cdtype)
     abscfield = mtf.abs(cfield)
     prior = mtf.cast(mtf.reduce_sum(mtf.multiply(abscfield, abscfield)), dtype)
 
     # Total loss
-    chisq = mtf.square(final_field - mtfdata)
-    loss = mtf.reduce_sum(chisq) + prior
+    diff = (final_field - mtfdata)
+    cdiff = mesh_utils.r2c3d(diff, k_dims_pr, dtype=cdtype)
+    R0 = tf.placeholder(tf.float32, shape=())
+    def _cwise_smooth(kfield, kx, ky, kz):
+        kx = tf.reshape(kx, [-1, 1, 1])
+        ky = tf.reshape(ky, [1, -1, 1])
+        kz = tf.reshape(kz, [1, 1, -1])
+        kk = (kx / bs * nc)**2 + (ky/ bs * nc)**2 + (kz/ bs * nc)**2
+        wts = tf.cast(tf.exp(- kk* (R0*bs/nc)**2), kfield.dtype)
+        return kfield * wts
 
+    cdiff = mtf.cwise(_cwise_smooth, [cdiff] + kv, output_dtype=cdtype)
+    diff = mesh_utils.c2r3d(cdiff, diff.shape[-3:], dtype=dtype)
+    chisq = mtf.square(diff)
+    loss = mtf.reduce_sum(chisq) + prior
+    
     #return initc, final_field, loss, linearop, input_field
     var_grads = mtf.gradients([loss], [fieldvar])
-    lr = tf.placeholder(dtype=tf.float32)
-    update_op = mtf.assign(fieldvar, fieldvar - var_grads[0]*0.05)
+    lr = tf.placeholder(tf.float32, shape=())
+    update_op = mtf.assign(fieldvar, fieldvar - var_grads[0]*lr)
 
-    return initc, final_field, loss, var_grads, update_op, linearop, input_field
+    return initc, final_field, loss, var_grads, update_op, linearop, input_field, lr, R0
 
+
+##############################################
 
 def main(_):
 
     dtype=tf.float32
     mesh_shape = mtf.convert_to_shape(FLAGS.mesh_shape)
 
+    startw = time.time()
+    
     print(mesh_shape)
 
     #layout_rules = mtf.convert_to_layout_rules(FLAGS.layout)
@@ -304,7 +322,7 @@ def main(_):
     mesh = mtf.Mesh(graph, "my_mesh")
 
     
-    initial_conditions, final_field, loss, var_grads, update_op, linear_op, input_field = recon_prototype(mesh, fin, nc=FLAGS.nc,
+    initial_conditions, final_field, loss, var_grads, update_op, linear_op, input_field, lr, R0 = recon_prototype(mesh, fin, nc=FLAGS.nc,
                                                                        batch_size=FLAGS.batch_size, dtype=dtype)
 
     #initial_conditions = recon_prototype(mesh, fin, nc=FLAGS.nc,  batch_size=FLAGS.batch_size, dtype=dtype)
@@ -321,6 +339,7 @@ def main(_):
     tf_initc = lowering.export_to_tf_tensor(initial_conditions)
     tf_final = lowering.export_to_tf_tensor(final_field)
     tf_grads = lowering.export_to_tf_tensor(var_grads[0])
+    #tf_lr = lowering.export_to_tf_tensor(lr)
     tf_linear_op = lowering.lowered_operation(linear_op)
     tf_update_ops = lowering.lowered_operation(update_op)
     n_block_x, n_block_y, n_block_z = FLAGS.nx, FLAGS.ny, 1
@@ -339,28 +358,42 @@ def main(_):
         dg.saveimfig('-init', [ic0, fin0], [ic, fin], fpath)
         start = time.time()
 
-        #sys.exit(-1)
-        
-        for i in range(1000):
-            sess.run(tf_update_ops)
-            if (i%20 == 0):
-                end = time.time()
-                print('Iter : ', i)
-                print('Time taken : ', end-start)
-                start = end
-                
-                ##
-                ic1, fin1 = sess.run([tf_initc, tf_final])
+        niter = 20
+        iiter = 0
+        start0 = time.time()
+        RRs = [4, 2, 1, 0.5, 0]
+        lrs = [0.1, 0.1, 0.05, 0.05, 0.01]
+        for iR, zlR in enumerate(zip(RRs, lrs)):
+            RR, lR = zlR
+            for ff in [fpath + '/figs-R%02d'%(10*RR)]:
+                try: os.makedirs(ff)
+                except Exception as e: print (e)
+            for i in range(101):
+                iiter +=1
+                sess.run(tf_update_ops, {lr:lR, R0:RR})
+                if (i%niter == 0):
+                    end = time.time()
+                    print('Iter : ', i)
+                    print('Time taken for %d iterations: '%niter, end-start)
+                    start = end
 
-                dg.saveimfig(i, [ic1, fin1], [ic, fin], fpath+'/figs')
-                dg.save2ptfig(i, [ic1, fin1], [ic, fin], fpath+'/figs', bs)
+                    ##
+                    ic1, fin1 = sess.run([tf_initc, tf_final])
+                    
+                    dg.saveimfig(i, [ic1, fin1], [ic, fin], fpath+'/figs-R%02d'%(10*RR))
+                    dg.save2ptfig(i, [ic1, fin1], [ic, fin], fpath+'/figs-R%02d'%(10*RR), bs)
+            dg.saveimfig(i*(iR+1), [ic1, fin1], [ic, fin], fpath+'/figs')
+            dg.save2ptfig(i*(iR+1), [ic1, fin1], [ic, fin], fpath+'/figs', bs)
 
         ic1, fin1 = sess.run([tf_initc, tf_final])
-    dg.saveimfig(i, [ic1, fin1], [ic, fin], fpath+'/figs')
-    dg.save2ptfig(i, [ic1, fin1], [ic, fin], fpath+'/figs', bs)
+        print('Total time taken for %d iterations is : '%iiter, time.time()-start0)
+        
+    dg.saveimfig(i, [ic1, fin1], [ic, fin], fpath)
+    dg.save2ptfig(i, [ic1, fin1], [ic, fin], fpath, bs)
 
     np.save(fpath + 'ic_recon', ic1)
     np.save(fpath + 'final_recon', fin1)
+    print('Total wallclock time is : ', time.time()-start0)
 
     
 ##
