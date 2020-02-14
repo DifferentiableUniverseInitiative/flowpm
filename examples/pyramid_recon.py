@@ -255,8 +255,6 @@ def recon_prototype(mesh, data, nc=FLAGS.nc, bs=FLAGS.box_size, batch_size=FLAGS
     mtfdata = mtf.import_tf_tensor(mesh, tf.convert_to_tensor(data), shape=shape)
     
     # Get prior
-    #k_dims = [d.shape[0] for d in kv]
-    #k_dims = [k_dims[2], k_dims[0], k_dims[1]]
     k_dims_pr = [d.shape[0] for d in kv_pr]
     k_dims_pr = [k_dims_pr[2], k_dims_pr[0], k_dims_pr[1]]
     cfield = mesh_utils.r2c3d(fieldvar, k_dims_pr, dtype=cdtype)
@@ -272,12 +270,11 @@ def recon_prototype(mesh, data, nc=FLAGS.nc, bs=FLAGS.box_size, batch_size=FLAGS
         priormesh = tf.reshape(pkmesh, kshape)
         return tf.abs(kfield) / priormesh**0.5 
     
-    cpfield = mtf.cwise(_cwise_prior, [cfield, pk] + kv, output_dtype=tf.float32) 
-    prior = mtf.reduce_sum(mtf.square(cpfield)) * bs**3
+    cpfield = mtf.cwise(_cwise_prior, [cfield, pk] + kv_pr, output_dtype=tf.float32) 
+    prior = mtf.reduce_sum(mtf.square(cpfield)) * bs**3 
     
     # Total loss
     diff = (final_field - mtfdata)
-    cdiff = mesh_utils.r2c3d(diff, k_dims_pr, dtype=cdtype)
     R0 = tf.placeholder(tf.float32, shape=())
     def _cwise_smooth(kfield, kx, ky, kz):
         kx = tf.reshape(kx, [-1, 1, 1])
@@ -286,18 +283,33 @@ def recon_prototype(mesh, data, nc=FLAGS.nc, bs=FLAGS.box_size, batch_size=FLAGS
         kk = (kx / bs * nc)**2 + (ky/ bs * nc)**2 + (kz/ bs * nc)**2
         wts = tf.cast(tf.exp(- kk* (R0*bs/nc)**2), kfield.dtype)
         return kfield * wts
-
+    cdiff = mesh_utils.r2c3d(diff, k_dims_pr, dtype=cdtype)
     cdiff = mtf.cwise(_cwise_smooth, [cdiff] + kv_pr, output_dtype=cdtype)
     diff = mesh_utils.c2r3d(cdiff, diff.shape[-3:], dtype=dtype)
-    chisq = mtf.square(diff)
-    loss = mtf.reduce_sum(chisq) + prior
+    chisq = mtf.reduce_sum(mtf.square(diff))
+    loss = chisq + prior
+
     
     #return initc, final_field, loss, linearop, input_field
+    nyq = np.pi*nc/bs
+    def _cwise_highpass(kfield, kx, ky, kz):
+        kx = tf.reshape(kx, [-1, 1, 1])
+        ky = tf.reshape(ky, [1, -1, 1])
+        kz = tf.reshape(kz, [1, 1, -1])
+        kk = (kx / bs * nc)**2 + (ky/ bs * nc)**2 + (kz/ bs * nc)**2
+        wts = tf.cast(tf.exp(- kk* (R0*bs/nc + 1/nyq)**2), kfield.dtype)
+        return kfield * (1-wts)
+
     var_grads = mtf.gradients([loss], [fieldvar])
+    cgrads = mesh_utils.r2c3d(var_grads[0], k_dims_pr, dtype=cdtype)
+    cgrads = mtf.cwise(_cwise_highpass, [cgrads] + kv_pr, output_dtype=cdtype)
+    var_grads = [mesh_utils.c2r3d(cgrads, var_grads[0].shape[-3:], dtype=dtype)]
+
     lr = tf.placeholder(tf.float32, shape=())
     update_op = mtf.assign(fieldvar, fieldvar - var_grads[0]*lr)
 
     return initc, final_field, loss, var_grads, update_op, linearop, input_field, lr, R0
+
 
 
 ##############################################
@@ -405,31 +417,35 @@ def main(_):
         dg.saveimfig('-init', [ic0, fin0], [ic, fin], fpath)
         start = time.time()
 
-        niter = 20
+        niter = 5
         iiter = 0
         start0 = time.time()
         RRs = [4, 2, 1, 0.5, 0]
-        lrs = [0.1, 0.1, 0.05, 0.05, 0.01]
+        lrs = np.array([0.2, 0.15, 0.1, 0.1, 0.1])
+        #lrs = [0.1, 0.05, 0.01, 0.005, 0.001]
         
         for iR, zlR in enumerate(zip(RRs, lrs)):
             RR, lR = zlR
-            for ff in [fpath + '/figs-R%02d'%(10*RR)]:
+            #for ff in [fpath + '/figs-R%02d'%(10*RR)]:
+            for ff in [fpath + '/figsiter']:
                 try: os.makedirs(ff)
                 except Exception as e: print (e)
-            for i in range(101):
-                iiter +=1
-                sess.run(tf_update_ops, {lr:lR, R0:RR})
+            for i in range(301):
                 if (i%niter == 0):
                     end = time.time()
                     print('Iter : ', i)
                     print('Time taken for %d iterations: '%niter, end-start)
                     start = end
-
                     ##
                     ic1, fin1 = sess.run([tf_initc, tf_final])
                     
-                    dg.saveimfig(i, [ic1, fin1], [ic, fin], fpath+'/figs-R%02d'%(10*RR))
-                    dg.save2ptfig(i, [ic1, fin1], [ic, fin], fpath+'/figs-R%02d'%(10*RR), bs)
+                    #dg.saveimfig(i, [ic1, fin1], [ic, fin], fpath+'/figs-R%02d'%(10*RR))
+                    #dg.save2ptfig(i, [ic1, fin1], [ic, fin], fpath+'/figs-R%02d'%(10*RR), bs)
+                    dg.saveimfig2x2(iiter, [ic1, fin1], [ic, fin], fpath+'/figsiter')
+                    #
+                sess.run(tf_update_ops, {lr:lR, R0:RR})
+                iiter +=1
+                    
             dg.saveimfig(i*(iR+1), [ic1, fin1], [ic, fin], fpath+'/figs')
             dg.save2ptfig(i*(iR+1), [ic1, fin1], [ic, fin], fpath+'/figs', bs)
 

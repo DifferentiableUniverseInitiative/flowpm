@@ -222,11 +222,10 @@ def recon_prototype(mesh, data, nc=FLAGS.nc, bs=FLAGS.box_size, batch_size=FLAGS
         return tf.abs(kfield) / priormesh**0.5 
     
     cpfield = mtf.cwise(_cwise_prior, [cfield, pk] + kv, output_dtype=tf.float32) 
-    prior = mtf.reduce_sum(mtf.square(cpfield)) * bs**3
+    prior = mtf.reduce_sum(mtf.square(cpfield)) * bs**3 *nc**3
 
     # Total loss
     diff = (final_field - mtfdata)
-    cdiff = mesh_utils.r2c3d(diff, k_dims_pr, dtype=cdtype)
     R0 = tf.placeholder(tf.float32, shape=())
     def _cwise_smooth(kfield, kx, ky, kz):
         kx = tf.reshape(kx, [-1, 1, 1])
@@ -236,18 +235,31 @@ def recon_prototype(mesh, data, nc=FLAGS.nc, bs=FLAGS.box_size, batch_size=FLAGS
         wts = tf.cast(tf.exp(- kk* (R0*bs/nc)**2), kfield.dtype)
         return kfield * wts
 
+    cdiff = mesh_utils.r2c3d(diff, k_dims_pr, dtype=cdtype)
     cdiff = mtf.cwise(_cwise_smooth, [cdiff] + kv, output_dtype=cdtype)
     diff = mesh_utils.c2r3d(cdiff, diff.shape[-3:], dtype=dtype)
-    chisq = mtf.square(diff)
-    loss = mtf.reduce_sum(chisq) + prior
+    chisq = mtf.reduce_sum(mtf.square(diff))
+    loss = chisq + prior
     
     #return initc, final_field, loss, linearop, input_field
+    nyq = np.pi*nc/bs
+    def _cwise_highpass(kfield, kx, ky, kz):
+        kx = tf.reshape(kx, [-1, 1, 1])
+        ky = tf.reshape(ky, [1, -1, 1])
+        kz = tf.reshape(kz, [1, 1, -1])
+        kk = (kx / bs * nc)**2 + (ky/ bs * nc)**2 + (kz/ bs * nc)**2
+        wts = tf.cast(tf.exp(- kk* (R0*bs/nc + 1/nyq)**2), kfield.dtype)
+        return kfield * (1-wts)
+
     var_grads = mtf.gradients([loss], [fieldvar])
+    cgrads = mesh_utils.r2c3d(var_grads[0], k_dims_pr, dtype=cdtype)
+    cgrads = mtf.cwise(_cwise_highpass, [cgrads] + kv, output_dtype=cdtype)
+    var_grads = [mesh_utils.c2r3d(cgrads, diff.shape[-3:], dtype=dtype)]
+
     lr = tf.placeholder(tf.float32, shape=())
-    
     update_op = mtf.assign(fieldvar, fieldvar - var_grads[0]*lr)
 
-    return initc, final_field, loss, var_grads, update_op, linearop, input_field, lr, R0
+    return initc, final_field, loss, var_grads, update_op, linearop, input_field, lr, R0, chisq, prior
 
 
 ##############################################
@@ -322,7 +334,7 @@ def main(_):
     mesh = mtf.Mesh(graph, "my_mesh")
 
     
-    initial_conditions, final_field, loss, var_grads, update_op, linear_op, input_field, lr, R0 = recon_prototype(mesh, fin, nc=FLAGS.nc,
+    initial_conditions, final_field, loss, var_grads, update_op, linear_op, input_field, lr, R0, chisq, prior = recon_prototype(mesh, fin, nc=FLAGS.nc,
                                                                        batch_size=FLAGS.batch_size, dtype=dtype)
 
     #initial_conditions = recon_prototype(mesh, fin, nc=FLAGS.nc,  batch_size=FLAGS.batch_size, dtype=dtype)
@@ -338,6 +350,8 @@ def main(_):
     
     tf_initc = lowering.export_to_tf_tensor(initial_conditions)
     tf_final = lowering.export_to_tf_tensor(final_field)
+    tf_chisq = lowering.export_to_tf_tensor(chisq)
+    tf_prior = lowering.export_to_tf_tensor(prior)
     tf_grads = lowering.export_to_tf_tensor(var_grads[0])
     #tf_lr = lowering.export_to_tf_tensor(lr)
     tf_linear_op = lowering.lowered_operation(linear_op)
@@ -362,14 +376,14 @@ def main(_):
         iiter = 0
         start0 = time.time()
         RRs = [4, 2, 1, 0.5, 0]
-        lrs = [0.1, 0.1, 0.05, 0.05, 0.01]
+        lrs = np.array([0.1, 0.1, 0.1, 0.1, 0.1])*2
         #lrs = [0.1, 0.05, 0.01, 0.005, 0.001]
         for iR, zlR in enumerate(zip(RRs, lrs)):
             RR, lR = zlR
             for ff in [fpath + '/figs-R%02d'%(10*RR)]:
                 try: os.makedirs(ff)
                 except Exception as e: print (e)
-            for i in range(101):
+            for i in range(201):
                 iiter +=1
                 sess.run(tf_update_ops, {lr:lR, R0:RR})
                 if (i%niter == 0):
@@ -379,7 +393,8 @@ def main(_):
                     start = end
 
                     ##
-                    ic1, fin1 = sess.run([tf_initc, tf_final])
+                    ic1, fin1, cc, pp = sess.run([tf_initc, tf_final, tf_chisq, tf_prior], {R0:RR})
+                    print('Chisq and prior are : ', cc, pp)
                     
                     dg.saveimfig(i, [ic1, fin1], [ic, fin], fpath+'/figs-R%02d'%(10*RR))
                     dg.save2ptfig(i, [ic1, fin1], [ic, fin], fpath+'/figs-R%02d'%(10*RR), bs)

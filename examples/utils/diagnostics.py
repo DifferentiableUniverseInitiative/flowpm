@@ -29,10 +29,43 @@ def saveimfig(i, iterand, truth, fpath):
     plt.title('Recon Final')
     plt.colorbar()
 
-    plt.savefig(fpath + "/reconim%s.png"%str(i))
+    plt.tight_layout()
+    if type(i) == str: plt.savefig(fpath + "/reconim%s.png"%i)
+    elif type(i) == int: plt.savefig(fpath + "/reconim%04d.png"%i)
+    
     plt.close()
 
 
+def saveimfig2x2(i, iterand, truth, fpath):
+
+    ic, fin = truth
+    ic1, fin1 = iterand
+
+    plt.figure(figsize=(7, 6))
+    plt.subplot(221)
+    plt.imshow(ic[0].sum(axis=2))
+    plt.title('True Intial')
+    plt.colorbar()
+
+    plt.subplot(222)
+    plt.imshow(fin[0].sum(axis=2))
+    plt.title('True Final') 
+    plt.colorbar()
+
+    plt.subplot(223)
+    plt.imshow(ic1[0].sum(axis=2))
+    plt.title('Reconstruct Initial')
+    plt.colorbar()
+
+    plt.subplot(224)
+    plt.imshow((fin1[0]).sum(axis=2))
+    plt.title('Reconstruct Final')
+    plt.colorbar()
+
+    plt.tight_layout()
+    if type(i) == str: plt.savefig(fpath + "/reconim%s.png"%i)
+    elif type(i) == int: plt.savefig(fpath + "/reconim%04d.png"%i)
+    plt.close()
 
 
 
