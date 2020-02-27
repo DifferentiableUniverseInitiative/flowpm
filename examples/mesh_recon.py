@@ -372,8 +372,10 @@ def main(_):
         dg.saveimfig('-init', [ic0, fin0], [ic, fin], fpath)
         start = time.time()
 
-        niter = 20
+        titer = 20
+        niter = 201
         iiter = 0
+        
         start0 = time.time()
         RRs = [4, 2, 1, 0.5, 0]
         lrs = np.array([0.1, 0.1, 0.1, 0.1, 0.1])*2
@@ -383,13 +385,14 @@ def main(_):
             for ff in [fpath + '/figs-R%02d'%(10*RR)]:
                 try: os.makedirs(ff)
                 except Exception as e: print (e)
-            for i in range(201):
+                
+            for i in range(niter):
                 iiter +=1
                 sess.run(tf_update_ops, {lr:lR, R0:RR})
-                if (i%niter == 0):
+                if (i%titer == 0):
                     end = time.time()
                     print('Iter : ', i)
-                    print('Time taken for %d iterations: '%niter, end-start)
+                    print('Time taken for %d iterations: '%titer, end-start)
                     start = end
 
                     ##

@@ -36,29 +36,29 @@ def saveimfig(i, iterand, truth, fpath):
     plt.close()
 
 
-def saveimfig2x2(i, iterand, truth, fpath):
+def saveimfig2x2(i, iterand, truth, fpath, cmapic='RdYlBu_r', cmapfin='YlOrRd', vminic=-120, vmaxic=120, vminfin=0, vmaxfin=350):
 
     ic, fin = truth
     ic1, fin1 = iterand
 
     plt.figure(figsize=(7, 6))
     plt.subplot(221)
-    plt.imshow(ic[0].sum(axis=2))
+    plt.imshow(ic[0].sum(axis=2), vmin=vminic, vmax=vmaxic, cmap=cmapic)
     plt.title('True Intial')
     plt.colorbar()
 
     plt.subplot(222)
-    plt.imshow(fin[0].sum(axis=2))
+    plt.imshow(fin[0].sum(axis=2), vmin=vminfin, vmax=vmaxfin, cmap=cmapfin)
     plt.title('True Final') 
     plt.colorbar()
 
     plt.subplot(223)
-    plt.imshow(ic1[0].sum(axis=2))
+    plt.imshow(ic1[0].sum(axis=2), vmin=vminic, vmax=vmaxic, cmap=cmapic)
     plt.title('Reconstruct Initial')
     plt.colorbar()
 
     plt.subplot(224)
-    plt.imshow((fin1[0]).sum(axis=2))
+    plt.imshow(fin1[0].sum(axis=2), vmin=vminfin, vmax=vmaxfin, cmap=cmapfin)
     plt.title('Reconstruct Final')
     plt.colorbar()
 
@@ -66,6 +66,7 @@ def saveimfig2x2(i, iterand, truth, fpath):
     if type(i) == str: plt.savefig(fpath + "/reconim%s.png"%i)
     elif type(i) == int: plt.savefig(fpath + "/reconim%04d.png"%i)
     plt.close()
+
 
 
 

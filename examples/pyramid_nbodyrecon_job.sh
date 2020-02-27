@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --nodes=1
-#SBATCH -q gpu_preempt
+###SBATCH -q gpu_preempt
 #SBATCH --tasks-per-node=1
 #SBATCH --constraint=gpu
 #SBATCH --time=200
@@ -16,9 +16,9 @@ hsize=16
 nx=1
 ny=1
 gpus_per_task=1
-suffix="_anneal"
+suffix="_gif"
 
-for nc in 64 128 256; do
+for nc in 128; do
     echo
     echo $nc
     echo
