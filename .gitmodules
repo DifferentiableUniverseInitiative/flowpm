@@ -1,6 +1,0 @@
-[submodule "talks/LBNL2019/reveal.js"]
-	path = talks/LBNL2019/reveal.js
-	url = https://github.com/EiffL/reveal.js.git
-[submodule "talks/Argonne2019/reveal.js"]
-	path = talks/Argonne2019/reveal.js
-	url = https://github.com/EiffL/reveal.js.git
