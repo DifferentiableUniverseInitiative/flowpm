@@ -185,7 +185,7 @@ def recon_prototype(mesh, data, nc=FLAGS.nc, bs=FLAGS.box_size, batch_size=FLAGS
     final_field = mtf.zeros(mesh, shape=hr_shape)
     for block_size_dim in hr_shape[-3:]:
         final_field = mtf.pad(final_field, [halo_size, halo_size], block_size_dim.name)
-    final_field = mesh_utils.cic_paint(final_field, final_state[0], halo_size, dtype=dtype)
+    final_field = mesh_utils.cic_paint(final_field, final_state[0], halo_size)
     # Halo exchange
     for blocks_dim, block_size_dim in zip(hr_shape[1:4], final_field.shape[-3:]):
         final_field = mpm.halo_reduce(final_field, blocks_dim, block_size_dim, halo_size)
@@ -316,10 +316,10 @@ def main(_):
         print('Exception occured', e)
         tfic = linear_field(FLAGS.nc, FLAGS.box_size, ipklin, batch_size=1, seed=100, dtype=dtype)
         if FLAGS.nbody:
-            state = lpt_init(tfic, a0=0.1, order=1, dtype=dtype)
-            final_state = nbody(state,  stages, FLAGS.nc, dtype=dtype)
+            state = lpt_init(tfic, a0=0.1, order=1)
+            final_state = nbody(state,  stages, FLAGS.nc)
         else:
-            final_state = lpt_init(tfic, a0=stages[-1], order=1, dtype=dtype)
+            final_state = lpt_init(tfic, a0=stages[-1], order=1)
         tfinal_field = cic_paint(tf.zeros_like(tfic), final_state[0])
         with tf.Session(server.target) as sess:
             ic, fin  = sess.run([tfic, tfinal_field])

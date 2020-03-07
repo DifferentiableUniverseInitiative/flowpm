@@ -225,19 +225,19 @@ def recon_prototype(mesh, data, nc=FLAGS.nc, bs=FLAGS.box_size, batch_size=FLAGS
     # Here we can run our nbody
     if FLAGS.nbody:
         state = mtfpm.lpt_init(low, high, 0.1, kv_lr, kv_hr, halo_size, hr_shape, lr_shape,
-                           part_shape[1:], downsampling_factor=downsampling_factor, antialias=True, dtype=dtype)
+                           part_shape[1:], downsampling_factor=downsampling_factor, antialias=True)
 
-        final_state = mtfpm.nbody(state, stages, lr_shape, hr_shape, kv_lr, kv_hr, halo_size, downsampling_factor=downsampling_factor, dtype=dtype)
+        final_state = mtfpm.nbody(state, stages, lr_shape, hr_shape, kv_lr, kv_hr, halo_size, downsampling_factor=downsampling_factor)
     else:
         final_state = mtfpm.lpt_init(low, high, stages[-1], kv_lr, kv_hr, halo_size, hr_shape, lr_shape,
-                           part_shape[1:], downsampling_factor=downsampling_factor, antialias=True, dtype=dtype)
+                           part_shape[1:], downsampling_factor=downsampling_factor, antialias=True)
 
 
     # paint the field
     final_field = mtf.zeros(mesh, shape=hr_shape)
     for block_size_dim in hr_shape[-3:]:
         final_field = mtf.pad(final_field, [halo_size, halo_size], block_size_dim.name)
-    final_field = mesh_utils.cic_paint(final_field, final_state[0], halo_size, dtype=dtype)
+    final_field = mesh_utils.cic_paint(final_field, final_state[0], halo_size)
     # Halo exchange
     for blocks_dim, block_size_dim in zip(hr_shape[1:4], final_field.shape[-3:]):
         final_field = mpm.halo_reduce(final_field, blocks_dim, block_size_dim, halo_size)
@@ -364,10 +364,10 @@ def main(_):
         print('Exception occured', e)
         tfic = linear_field(FLAGS.nc, FLAGS.box_size, ipklin, batch_size=1, seed=100, dtype=dtype)
         if FLAGS.nbody:
-            state = lpt_init(tfic, a0=0.1, order=1, dtype=dtype)
-            final_state = nbody(state,  stages, FLAGS.nc, dtype=dtype)
+            state = lpt_init(tfic, a0=0.1, order=1)
+            final_state = nbody(state,  stages, FLAGS.nc)
         else:
-            final_state = lpt_init(tfic, a0=stages[-1], order=1, dtype=dtype)
+            final_state = lpt_init(tfic, a0=stages[-1], order=1)
         tfinal_field = cic_paint(tf.zeros_like(tfic), final_state[0])
         with tf.Session(server.target) as sess:
             ic, fin  = sess.run([tfic, tfinal_field])
