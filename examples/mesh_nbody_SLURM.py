@@ -1,21 +1,23 @@
 import numpy as np
-import os
+import os, sys
 import math, time
+from scipy.interpolate import InterpolatedUnivariateSpline as iuspline
+from matplotlib import pyplot as plt
+
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
+import tensorflow_probability as tfp
 import mesh_tensorflow as mtf
+
+import flowpm
 import flowpm.mesh_ops as mpm
 import flowpm.mtfpm as mtfpm
 import flowpm.mesh_utils as mesh_utils
-import flowpm
 from astropy.cosmology import Planck15
 from flowpm.tfpm import PerturbationGrowth
 from flowpm import linear_field, lpt_init, nbody, cic_paint
-from scipy.interpolate import InterpolatedUnivariateSpline as iuspline
-from matplotlib import pyplot as plt
-##
 
-cosmology=Planck15
+##
 
 
 cosmology=Planck15
@@ -37,7 +39,6 @@ tf.flags.DEFINE_bool("nbody", False, "Do nbody evolution")
 tf.flags.DEFINE_string("suffix", "", "suffix for the folder name")
 
 #pyramid flags
-tf.flags.DEFINE_integer("dsample", 2, "downsampling factor")
 tf.flags.DEFINE_integer("hsize", 32, "halo size")
 
 #mesh flags
@@ -53,7 +54,6 @@ a0, a, nsteps =FLAGS.a0, FLAGS.af, FLAGS.nsteps
 stages = np.linspace(a0, a, nsteps, endpoint=True)
 
 
-
 def nbody_prototype(mesh, infield=False, nc=FLAGS.nc, bs=FLAGS.box_size, batch_size=FLAGS.batch_size,
                         a0=FLAGS.a0, a=FLAGS.af, nsteps=FLAGS.nsteps, dtype=tf.float32):
     """
@@ -62,10 +62,7 @@ def nbody_prototype(mesh, infield=False, nc=FLAGS.nc, bs=FLAGS.box_size, batch_s
     Returns output tensorflow and mesh tensorflow tensors
     """
     # Compute a few things first, using simple tensorflow
-    klin = np.loadtxt('../flowpm/data/Planck15_a1p00.txt').T[0]
-    plin = np.loadtxt('../flowpm/data/Planck15_a1p00.txt').T[1]
     stages = np.linspace(a0, a, nsteps, endpoint=True)
-
 
     # Define the named dimensions
     # Parameters of the small scales decomposition
@@ -74,9 +71,8 @@ def nbody_prototype(mesh, infield=False, nc=FLAGS.nc, bs=FLAGS.box_size, batch_s
     n_block_z = 1
     halo_size = FLAGS.hsize
 
+
     # Parameters of the large scales decomposition
-    downsampling_factor = FLAGS.dsample
-    lnc = nc // 2**downsampling_factor
 
     fx_dim = mtf.Dimension("nx", nc)
     fy_dim = mtf.Dimension("ny", nc)
@@ -86,14 +82,10 @@ def nbody_prototype(mesh, infield=False, nc=FLAGS.nc, bs=FLAGS.box_size, batch_s
     tfy_dim = mtf.Dimension("ty", nc)
     tfz_dim = mtf.Dimension("tz", nc)
 
-    # Dimensions of the low resolution grid
-    x_dim = mtf.Dimension("nx_lr", lnc)
-    y_dim = mtf.Dimension("ny_lr", lnc)
-    z_dim = mtf.Dimension("nz_lr", lnc)
 
-    tx_dim = mtf.Dimension("tx_lr", lnc)
-    ty_dim = mtf.Dimension("ty_lr", lnc)
-    tz_dim = mtf.Dimension("tz_lr", lnc)
+    tx_dim = mtf.Dimension("tx_lr", nc)
+    ty_dim = mtf.Dimension("ty_lr", nc)
+    tz_dim = mtf.Dimension("tz_lr", nc)
 
     nx_dim = mtf.Dimension('nx_block', n_block_x)
     ny_dim = mtf.Dimension('ny_block', n_block_y)
@@ -106,9 +98,14 @@ def nbody_prototype(mesh, infield=False, nc=FLAGS.nc, bs=FLAGS.box_size, batch_s
     k_dims = [tx_dim, ty_dim, tz_dim]
 
     batch_dim = mtf.Dimension("batch", batch_size)
-    pk_dim = mtf.Dimension("npk", len(plin))
-    pk = mtf.import_tf_tensor(mesh, plin.astype('float32'), shape=[pk_dim])
 
+    klin = np.loadtxt('../flowpm/data/Planck15_a1p00.txt').T[0]
+    plin = np.loadtxt('../flowpm/data/Planck15_a1p00.txt').T[1]
+    ipklin = iuspline(klin, plin)
+    pk_dim = mtf.Dimension("npk", len(plin))
+    pk = mtf.import_tf_tensor(mesh, plin, shape=[pk_dim])
+
+    
     # Compute necessary Fourier kernels
     kvec = flowpm.kernels.fftk((nc, nc, nc), symmetric=False)
     kx = mtf.import_tf_tensor(mesh, kvec[0].squeeze().astype('float32'), shape=[tfx_dim])
@@ -117,79 +114,39 @@ def nbody_prototype(mesh, infield=False, nc=FLAGS.nc, bs=FLAGS.box_size, batch_s
     kv = [ky, kz, kx]
 
     # kvec for low resolution grid
-    kvec_lr = flowpm.kernels.fftk([lnc, lnc, lnc], symmetric=False)
-
-    kx_lr = mtf.import_tf_tensor(mesh, kvec_lr[0].squeeze().astype('float32')/ 2**downsampling_factor, shape=[tx_dim])
-    ky_lr = mtf.import_tf_tensor(mesh, kvec_lr[1].squeeze().astype('float32')/ 2**downsampling_factor, shape=[ty_dim])
-    kz_lr = mtf.import_tf_tensor(mesh, kvec_lr[2].squeeze().astype('float32')/ 2**downsampling_factor, shape=[tz_dim])
+    kvec_lr = flowpm.kernels.fftk([nc, nc, nc], symmetric=False)
+    kx_lr = mtf.import_tf_tensor(mesh, kvec_lr[0].squeeze().astype('float32'), shape=[tx_dim])
+    ky_lr = mtf.import_tf_tensor(mesh, kvec_lr[1].squeeze().astype('float32'), shape=[ty_dim])
+    kz_lr = mtf.import_tf_tensor(mesh, kvec_lr[2].squeeze().astype('float32'), shape=[tz_dim])
     kv_lr = [ky_lr, kz_lr, kx_lr]
 
-    # kvec for high resolution blocks
-    padded_sx_dim = mtf.Dimension('padded_sx_block', nc//n_block_x+2*halo_size)
-    padded_sy_dim = mtf.Dimension('padded_sy_block', nc//n_block_y+2*halo_size)
-    padded_sz_dim = mtf.Dimension('padded_sz_block', nc//n_block_z+2*halo_size)
-    kvec_hr = flowpm.kernels.fftk([nc//n_block_x+2*halo_size, nc//n_block_y+2*halo_size, nc//n_block_z+2*halo_size], symmetric=False)
 
-    kx_hr = mtf.import_tf_tensor(mesh, kvec_hr[0].squeeze().astype('float32'), shape=[padded_sx_dim])
-    ky_hr = mtf.import_tf_tensor(mesh, kvec_hr[1].squeeze().astype('float32'), shape=[padded_sy_dim])
-    kz_hr = mtf.import_tf_tensor(mesh, kvec_hr[2].squeeze().astype('float32'), shape=[padded_sz_dim])
-    kv_hr = [ky_hr, kz_hr, kx_hr]
 
     shape = [batch_dim, fx_dim, fy_dim, fz_dim]
-    lr_shape = [batch_dim, x_dim, y_dim, z_dim]
+    lr_shape = [batch_dim, fx_dim, fy_dim, fz_dim]
     hr_shape = [batch_dim, nx_dim, ny_dim, nz_dim, sx_dim, sy_dim, sz_dim]
     part_shape = [batch_dim, fx_dim, fy_dim, fz_dim]
 
-    # Compute initial initial conditions distributed   
+
+
+    # Begin simulation
+    
+    ## Compute initial initial conditions distributed
     input_field = tf.placeholder(dtype, [batch_size, nc, nc, nc])
     if infield:
         initc = mtf.import_tf_tensor(mesh, input_field, shape=part_shape)
     else:
         initc = mtfpm.linear_field(mesh, shape, bs, nc, pk, kv)
 
-    # Reshaping array into high resolution mesh
-    field = mtf.slicewise(lambda x:tf.expand_dims(tf.expand_dims(tf.expand_dims(x, axis=1),axis=1),axis=1),
-                      [initc],
-                      output_dtype=tf.float32,
-                      output_shape=hr_shape,
-                      name='my_reshape',
-                      splittable_dims=lr_shape[:-1]+hr_shape[1:4]+part_shape[1:3])
-
-    for block_size_dim in hr_shape[-3:]:
-        field = mtf.pad(field, [halo_size, halo_size], block_size_dim.name)
-
-    for blocks_dim, block_size_dim in zip(hr_shape[1:4], field.shape[-3:]):
-        field = mpm.halo_reduce(field, blocks_dim, block_size_dim, halo_size)
-
-    field = mtf.reshape(field, field.shape+[mtf.Dimension('h_dim', 1)])
-    high = field
-    low = mesh_utils.downsample(field, downsampling_factor, antialias=True)
-
-    low = mtf.reshape(low, low.shape[:-1])
-    high = mtf.reshape(high, high.shape[:-1])
-
-    for block_size_dim in hr_shape[-3:]:
-        low = mtf.slice(low, halo_size//2**downsampling_factor, block_size_dim.size//2**downsampling_factor, block_size_dim.name)
-    # Hack usisng  custom reshape because mesh is pretty dumb
-    low = mtf.slicewise(lambda x: x[:,0,0,0],
-                        [low],
-                        output_dtype=tf.float32,
-                        output_shape=lr_shape,
-                        name='my_dumb_reshape',
-                        splittable_dims=lr_shape[:-1]+hr_shape[:4])
-
-    state = mtfpm.lpt_init(low, high, 0.1, kv_lr, kv_hr, halo_size, hr_shape, lr_shape,
-                           part_shape[1:], downsampling_factor=downsampling_factor, antialias=True,)
+        
 
     # Here we can run our nbody
     if FLAGS.nbody:
-        state = mtfpm.lpt_init(low, high, 0.1, kv_lr, kv_hr, halo_size, hr_shape, lr_shape,
-                           part_shape[1:], downsampling_factor=downsampling_factor, antialias=True,)
-        final_state = mtfpm.nbody(state, stages, lr_shape, hr_shape, kv_lr, kv_hr, halo_size, downsampling_factor=downsampling_factor)
+        state = mtfpm.lpt_init_single(initc, a0, kv_lr, halo_size, lr_shape, hr_shape, part_shape[1:], antialias=True,)
+        # Here we can run our nbody
+        final_state = mtfpm.nbody_single(state, stages, lr_shape, hr_shape, kv_lr, halo_size)
     else:
-        final_state = mtfpm.lpt_init(low, high, stages[-1], kv_lr, kv_hr, halo_size, hr_shape, lr_shape,
-                           part_shape[1:], downsampling_factor=downsampling_factor, antialias=True,)
-
+        final_state = mtfpm.lpt_init_single(initc, stages[-1], kv_lr, halo_size, lr_shape, hr_shape, part_shape[1:], antialias=True,)
 
     # paint the field
     final_field = mtf.zeros(mesh, shape=hr_shape)
@@ -205,13 +162,15 @@ def nbody_prototype(mesh, infield=False, nc=FLAGS.nc, bs=FLAGS.box_size, batch_s
 
     final_field = mtf.slicewise(lambda x: x[:,0,0,0],
                         [final_field],
-                        output_dtype=tf.float32,
+                        output_dtype=dtype,
                         output_shape=[batch_dim, fx_dim, fy_dim, fz_dim],
                         name='my_dumb_reshape',
                         splittable_dims=part_shape[:-1]+hr_shape[:4])
 
     return initc, final_field, input_field
 
+
+##############################################
 
 def main(_):
 
@@ -331,10 +290,16 @@ def main(_):
     plt.title('Residuals')
     plt.colorbar()
 
-    plt.savefig("comparison_pyramid.png")
+    plt.savefig("comparison_mesh.png")
 
+    exit(0)
+ 
+
+    
+##
     exit(0)
 
 if __name__ == "__main__":
   tf.app.run(main=main)
 
+  
