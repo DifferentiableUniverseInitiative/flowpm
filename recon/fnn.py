@@ -46,6 +46,37 @@ def setupfnn():
 
     return [pwts, pbias, pmx, psx],  [mwts, mbias, mmx, msx, mmy, msy], kernel
 
+
+def setnoise(datasm, noisefile, noisevar=0.25):
+    
+    noise3d = np.ones_like(datasm)*noisevar**0.5
+
+    noise = np.loadtxt(noisefile)
+    noise[:, -1] *=np.sqrt(2) #Add hoc factor of 2 to increase noise! 
+    #As it happens, the factor of \sqrt(2) is cz of def of gaussian - \sqrt(2)*\sigma^2 in exp
+    for foo in range(noise.shape[0]):
+        #file format is mhigh, mlow, mean, std
+        mhigh = noise[foo][0]
+        mlow = noise[foo][1]
+        pos = np.where((datasm[...] > mlow) & (datasm[...] < mhigh))
+        noise3d[pos] = noise[foo][3]
+
+    ivar3d = noise3d ** -2
+
+    #
+    mean3d = np.zeros_like(datasm)
+
+    # for foo in range(len(mbinsm) -2):
+    for foo in range(noise.shape[0]):
+        mhigh = noise[foo][0]
+        mlow = noise[foo][1]
+        pos = np.where((datasm[...] > mlow) & (datasm[...] <= mhigh))
+        mean3d[pos] = noise[foo][2]
+
+    return mean3d, ivar3d
+
+
+
 def tfwrap3D(image, padding=1):
     
     upper_pad = image[:, -padding:,:, :]

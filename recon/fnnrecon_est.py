@@ -526,18 +526,26 @@ def main(_):
         model_dir=fpath)
 
     # Train and evaluate model.
-    mms = [1e11]
+    mms = [1e12, 1e11]
     wws = [1., 2., 3.]
-    #wws = [3.]
     RRs = [4., 2., 1., 0.5, 0.]
-    niter = 50
+    niter = 100
     iiter = 0
 
+    def predict_input_fn():
+        features = {}
+        features['data'] = data
+        features['M0'] = 0.
+        features['w'] = 3.
+        features['R0'] = 0.    
+        return features, None
+    
     for mm in mms:
         for R0 in RRs:
             for ww in wws:
                 print('\nFor iteration %d\n'%iiter)
                 print('With mm=%0.2e, R0=%0.2f, ww=%d \n'%(mm, R0, ww))
+
                 def train_input_fn():
                     features = {}
                     features['data'] = datasm
@@ -548,7 +556,7 @@ def main(_):
                     return features, None
 
                 recon_estimator.train(input_fn=train_input_fn, max_steps=iiter+niter)
-                eval_results = recon_estimator.predict(input_fn=train_input_fn, yield_single_examples=False)
+                eval_results = recon_estimator.predict(input_fn=predict_input_fn, yield_single_examples=False)
 
                 for i, pred in enumerate(eval_results):
                     if i>0:     break

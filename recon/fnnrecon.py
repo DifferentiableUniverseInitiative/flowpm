@@ -308,22 +308,27 @@ def recon_prototype(mesh, data, nc=FLAGS.nc, bs=FLAGS.box_size, batch_size=FLAGS
         return tf.abs(kfield) / priormesh**0.5 
     
     cpfield = mtf.cwise(_cwise_prior, [cfield, pk] + kv, output_dtype=tf.float32) 
-    prior = mtf.reduce_sum(mtf.square(cpfield)) * bs**3 
+    prior = mtf.reduce_sum(mtf.square(cpfield)) * bs**3 *nc**3
 
     # Total loss
     #diff = (model - mtfdata)
     modelf = mesh_utils.r2c3d(model, k_dims, dtype=cdtype)
     modelsmf = mtf.cwise(cwise_fingauss, [modelf, float_to_mtf(R1, mesh, scalar)] + kv + [tfnc, tfbs], output_dtype=cdtype) 
     modelsm = mesh_utils.c2r3d(modelsmf, x1d.shape[-3:], dtype=dtype)
-    dataf = mesh_utils.r2c3d(mtfdata, k_dims, dtype=cdtype)
-    datasmf = mtf.cwise(cwise_fingauss, [dataf, float_to_mtf(R1, mesh, scalar)] + kv + [tfnc, tfbs], output_dtype=cdtype) 
-    datasm = mesh_utils.c2r3d(datasmf, x1d.shape[-3:], dtype=dtype)
+    #dataf = mesh_utils.r2c3d(mtfdata, k_dims, dtype=cdtype)
+    #datasmf = mtf.cwise(cwise_fingauss, [dataf, float_to_mtf(R1, mesh, scalar)] + kv + [tfnc, tfbs], output_dtype=cdtype) 
+    #datasm = mesh_utils.c2r3d(datasmf, x1d.shape[-3:], dtype=dtype)
 
     ##Anneal
     R0 = tf.placeholder(tf.float32, shape=())
     M0 = tf.placeholder(tf.float32, shape=())
-    diff = mtf.log(modelsm + M0) - mtf.log(datasm + M0)
-    diff = diff / 0.25
+    off, istd = tf.placeholder(tf.float32, shape=data.shape), tf.placeholder(tf.float32, shape=data.shape)
+    mtfoff = mtf.import_tf_tensor(mesh, off, shape=shape)
+    mtfistd = mtf.import_tf_tensor(mesh, istd, shape=shape)
+    diff = mtf.log(modelsm + M0) - mtf.log(mtfdata + M0)
+    #diff = diff / 0.25
+    #diff = (diff + mtfoff)*mtfistd #For some reason, doing things wrong this one
+    diff = (diff + mtfoff)/0.25
 
     def _cwise_smooth(kfield, kx, ky, kz):
         kx = tf.reshape(kx, [-1, 1, 1])
@@ -357,7 +362,7 @@ def recon_prototype(mesh, data, nc=FLAGS.nc, bs=FLAGS.box_size, batch_size=FLAGS
     lr = tf.placeholder(tf.float32, shape=())
     update_op = mtf.assign(fieldvar, fieldvar - var_grads[0]*lr)
 
-    return initc, model, loss, var_grads, update_op, linearop, input_field, lr, R0, M0, width, chisq, prior
+    return initc, model, loss, var_grads, update_op, linearop, input_field, lr, R0, M0, width, chisq, prior, off, istd
 
 
 
@@ -425,6 +430,12 @@ def main(_):
     #meshpos = tools.paintcic(hpos, bs, nc)
     meshmass = tools.paintcic(hpos, bs, nc, hmass.flatten()*1e10)
     data = meshmass
+    kv = tools.fftk([nc, nc, nc], bs, symmetric=True, dtype=np.float32)
+    datasm = tools.fingauss(data, kv, 3, np.pi*nc/bs)
+    ic, data = np.expand_dims(ic, 0), np.expand_dims(data, 0).astype(np.float32)
+    datasm = np.expand_dims(datasm, 0).astype(np.float32)
+    print("Min in data : %0.4e"%datasm.min())
+    
     
     ic, data = np.expand_dims(ic, 0), np.expand_dims(data, 0).astype(np.float32)
     np.save(fpath + 'ic', ic)
@@ -439,7 +450,7 @@ def main(_):
     mesh = mtf.Mesh(graph, "my_mesh")
 
     
-    initial_conditions, data_field, loss, var_grads, update_op, linear_op, input_field, lr, R0, M0, width, chisq, prior = recon_prototype(mesh, data, nc=FLAGS.nc, batch_size=FLAGS.batch_size, dtype=dtype)
+    initial_conditions, data_field, loss, var_grads, update_op, linear_op, input_field, lr, R0, M0, width, chisq, prior, tf_off, tf_istd = recon_prototype(mesh, datasm, nc=FLAGS.nc, batch_size=FLAGS.batch_size, dtype=dtype)
 
     # Lower mesh computation
     
@@ -487,17 +498,36 @@ def main(_):
         lrs = np.array([0.1, 0.1, 0.1, 0.1, 0.1])*2
         #lrs = [0.1, 0.05, 0.01, 0.005, 0.001]
 
+        readin = True
+        mm0, ww0, RR0 = 1e12, 3, 0.5
+        if readin:
+            icread = np.load(fpath + '/figs-M%02d-R%02d-w%01d/ic_recon.npy'%(np.log10(mm0), 10*RR0, ww0))
+            sess.run(tf_linear_op, feed_dict={input_field:icread})
+        
         for mm in [1e12, 1e11]:
+            print('Fraction of points above 1 for mm = %0.2e: '%mm, (datasm > mm).sum()/datasm.size)
+            noisefile = '/project/projectdirs/m3058/chmodi/cosmo4d/train/L0400_N0128_05step-n10/width_3/Wts_30_10_1/r1rf1/hlim-13_nreg-43_batch-5/eluWts-10_5_1/blim-20_nreg-23_batch-100/hist_M%d_na.txt'%(np.log10(mm)*10)
+            offset, ivar = setnoise(datasm, noisefile, noisevar=0.25)
             for iR, zlR in enumerate(zip(RRs, lrs)):
                 RR, lR = zlR
-                for ww in [1, 2, 3]:
+                for ww in wws:
                     for ff in [fpath + '/figs-M%02d-R%02d-w%01d'%(np.log10(mm), 10*RR, ww)]:
                         try: os.makedirs(ff)
                         except Exception as e: print (e)
-
-                    for i in range(niter):
+                    if readin:
+                        if mm > mm0: continue
+                        elif mm == mm0 and RR > RR0:
+                            print(RR, RR0, RRs)
+                            continue
+                        elif RR == RR0 and ww <= ww0:
+                            print(ww, ww0, wws)
+                            continue
+                        else: print('Starting from %0.2e'%mm, RR, ww)
+                    print('Do for %0.2e'%mm, RR, ww)
+                    
+                    for i in range(niters[iR]):
                         iiter +=1
-                        sess.run(tf_update_ops, {lr:lR, M0:mm, R0:RR, width:ww})
+                        sess.run(tf_update_ops, {lr:lR, M0:mm, R0:RR, width:ww, tf_off:offset, tf_istd:ivar**0.5})
                         if (i%titer == 0):
                             end = time.time()
                             print('Iter : ', i)
@@ -505,20 +535,28 @@ def main(_):
                             start = end
 
                             ##
-                            ic1, data1, cc, pp = sess.run([tf_initc, tf_data, tf_chisq, tf_prior], {M0:mm, R0:RR, width:ww})
+                            ic1, data1, cc, pp = sess.run([tf_initc, tf_data, tf_chisq, tf_prior], {M0:mm, R0:RR, width:ww, tf_off:offset, tf_istd:ivar**0.5})
                             print('Chisq and prior are : ', cc, pp)
 
                             dg.saveimfig(i, [ic1, data1], [ic, data], ff)
                             dg.save2ptfig(i, [ic1, data1], [ic, data], ff, bs)
+
+                    ic1, data1 = sess.run([tf_initc, tf_data], {width:ww})
+                    np.save(ff + '/ic_recon', ic1)
+                    np.save(ff + '/data_recon', data1)
                     dg.saveimfig(iiter, [ic1, data1], [ic, data], fpath+'/figs')
                     dg.save2ptfig(iiter, [ic1, data1], [ic, data], fpath+'/figs', bs)
+                    
             wws = [3]
-            RRs = [1, 0.5, 0]
+            RRs = [0]
+            niters = [201, 101, 201]
+            lrs = np.array([0.1, 0.1, 0.1])
+            
         ic1, data1 = sess.run([tf_initc, tf_data], {width:3})
         print('Total time taken for %d iterations is : '%iiter, time.time()-start0)
         
-    dg.saveimfig(i, [ic1, data1], [ic, data], fpath)
-    dg.save2ptfig(i, [ic1, data1], [ic, data], fpath, bs)
+    dg.saveimfig('', [ic1, data1], [ic, data], fpath)
+    dg.save2ptfig('', [ic1, data1], [ic, data], fpath, bs)
 
     np.save(fpath + 'ic_recon', ic1)
     np.save(fpath + 'data_recon', data1)
