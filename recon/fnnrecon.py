@@ -195,7 +195,7 @@ def recon_prototype(mesh, data, nc=FLAGS.nc, bs=FLAGS.box_size, batch_size=FLAGS
     final_field = mtf.zeros(mesh, shape=hr_shape)
     for block_size_dim in hr_shape[-3:]:
         final_field = mtf.pad(final_field, [halo_size, halo_size], block_size_dim.name)
-    final_field = mesh_utils.cic_paint(final_field, final_state[0], halo_size, dtype=dtype)
+    final_field = mesh_utils.cic_paint(final_field, final_state[0], halo_size)
     # Halo exchange
     for blocks_dim, block_size_dim in zip(hr_shape[1:4], final_field.shape[-3:]):
         final_field = mpm.halo_reduce(final_field, blocks_dim, block_size_dim, halo_size)
@@ -468,8 +468,8 @@ def main(_):
         sess.run(tf_linear_op, feed_dict={input_field:ic})
         ic_check, data_check = sess.run([tf_initc, tf_data], {width:3})
         
-        dg.saveimfig('-check', [ic_check, data_check], [ic, data], './tmp/')
-        dg.save2ptfig('-check', [ic_check, data_check], [ic, data], './tmp/', bs)
+        dg.saveimfig('-check', [ic_check, data_check], [ic, data], fpath + '/figs/')
+        dg.save2ptfig('-check', [ic_check, data_check], [ic, data], fpath + '/figs/', bs)
         print('Total time taken for mesh thingy is : ', time.time()-start)
 
         sess.run(tf_linear_op, feed_dict={input_field:np.random.normal(size=ic.size).reshape(ic.shape)})
