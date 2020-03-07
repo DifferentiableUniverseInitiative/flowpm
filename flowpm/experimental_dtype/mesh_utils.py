@@ -38,9 +38,9 @@ def _cic_indexing(mesh, part, weight=None, name=None):
     # Extract the indices of all the mesh points affected by each particles
     part = tf.expand_dims(part, 2)
     floor = tf.floor(part)
-    connection = tf.expand_dims(tf.constant([[[0, 0, 0], [1., 0, 0],[0., 1, 0],
+    connection = tf.cast(tf.expand_dims(tf.constant([[[0, 0, 0], [1., 0, 0],[0., 1, 0],
                                               [0., 0, 1],[1., 1, 0],[1., 0, 1],
-                                              [0., 1, 1],[1., 1, 1]]]), 0)
+                                                      [0., 1, 1],[1., 1, 1]]]), 0), part.dtype)
     neighboor_coords = floor + connection
     kernel = 1. - tf.abs(part - neighboor_coords)
     kernel = kernel[..., 0] * kernel[..., 1] * kernel[..., 2]
@@ -80,7 +80,7 @@ def _cic_paint(mesh, neighboor_coords, kernel, shift, name=None):
                            tf.reshape(kernel, (-1, 8)),
                            [batch_size, nx, ny, nz])
 
-    mesh = mesh + tf.reshape(update, mesh.shape)
+    mesh = mesh + tf.cast(tf.reshape(update, mesh.shape), mesh.dtype)
     return mesh
 
 def _cic_readout(mesh, neighboor_coords, kernel, shift, name=None):
@@ -114,7 +114,7 @@ def _cic_readout(mesh, neighboor_coords, kernel, shift, name=None):
     value = tf.reshape(value, shape_part[:-2])
     return value
 
-def cic_paint(mesh, part, halo_size, weight=None, name=None):
+def cic_paint(mesh, part, halo_size, weight=None, name=None, dtype=tf.float32):
   """
   Distributed Cloud In Cell implementation.
 
@@ -140,34 +140,35 @@ def cic_paint(mesh, part, halo_size, weight=None, name=None):
   """
   nk = mtf.Dimension("nk", 8)
   nl = mtf.Dimension("nl", 4)
+  dtype = part.dtype  
   indices, values = mtf.slicewise(_cic_indexing,
                          [mesh, part],
-                         output_dtype=[tf.float32, tf.float32],
+                         output_dtype=[dtype, dtype],
                          output_shape=[mtf.Shape(part.shape.dims[:-1]+[nk, nl]),
                                        mtf.Shape(part.shape.dims[:-1]+[nk])],
                          splittable_dims=mesh.shape[:-3]+part.shape[1:-1])
 
   mesh = mtf.slicewise(lambda x,y,z: _cic_paint(x, y, z, shift=[0, halo_size, halo_size, halo_size]),
                          [mesh, indices, values],
-                         output_dtype=tf.float32,
+                         output_dtype=dtype,
                          output_shape=mesh.shape,
                          splittable_dims=mesh.shape[:-3]+part.shape[1:-1])
   return mesh
 
-def cic_readout(mesh, part, halo_size, name=None):
+def cic_readout(mesh, part, halo_size, name=None, dtype=tf.float32):
   nk = mtf.Dimension("nk", 8)
   nl = mtf.Dimension("nl", 4)
-
+  dtype = part.dtype
   indices, values = mtf.slicewise(_cic_indexing,
                          [mesh, part],
-                         output_dtype=[tf.float32, tf.float32],
+                         output_dtype=[dtype, dtype],
                          output_shape=[mtf.Shape(part.shape.dims[:-1]+[nk, nl]),
                                        mtf.Shape(part.shape.dims[:-1]+[nk])],
                          splittable_dims=mesh.shape[:-3]+part.shape[1:-1])
 
   value = mtf.slicewise(lambda x,y,z: _cic_readout(x, y, z, shift=[0, halo_size, halo_size, halo_size]),
                          [mesh, indices, values],
-                         output_dtype=tf.float32,
+                         output_dtype=dtype,
                          output_shape=part.shape[:-1],
                          splittable_dims=mesh.shape[:-3]+part.shape[1:-1])
   return value
@@ -181,10 +182,10 @@ def downsample(field, downsampling_factor=2, antialias=True):
   """
   low = field
   for i in range(downsampling_factor):
-    kernel = mesh_kernels.get_bspline_kernel(low, mtf.Dimension('down_%d'%i,low.shape[-1].size), order=6)
+    kernel = mtf.cast(mesh_kernels.get_bspline_kernel(low, mtf.Dimension('down_%d'%i,low.shape[-1].size), order=6), field.dtype)
     low = mtf.Conv3dOperation(low, kernel, strides=(1,2,2,2,1), padding='SAME').outputs[0]
   if antialias:
-    kernel = mesh_kernels.get_bspline_kernel(low, mtf.Dimension('dogwn_%d'%i,low.shape[-1].size), order=2)
+    kernel = mtf.cast(mesh_kernels.get_bspline_kernel(low, mtf.Dimension('dogwn_%d'%i,low.shape[-1].size), order=2), field.dtype)
     low = mtf.Conv3dOperation(low, kernel, strides=(1,1,1,1,1), padding='SAME').outputs[0]
   return low
 
@@ -196,9 +197,10 @@ def upsample(low, downsampling_factor=2):
   and a details component.
   """
   for i in range(downsampling_factor):
-    kernel = mesh_kernels.get_bspline_kernel(low, mtf.Dimension('out_%d'%i,low.shape[-1].size), transpose=True, order=6)
+    kernel = mtf.cast(mesh_kernels.get_bspline_kernel(low, mtf.Dimension('out_%d'%i,low.shape[-1].size), transpose=True, order=6), low.dtype)
     low = mtf.Conv3dTransposeOperation(low, kernel * 2.0**3, strides=(1,2,2,2,1), padding='SAME').outputs[0]
   return low
+
 
 def split_scales(field, downsampling_factor=2., antialias=True):
   """
@@ -212,17 +214,17 @@ def split_scales(field, downsampling_factor=2., antialias=True):
   high = field - mtf.reshape(high, field.shape)
   return low, high
 
-def slicewise_r2c3d(rfield):
-  cfield = mtf.slicewise(lambda x: tf.signal.fft3d(tf.cast(x, tf.complex64)),
+def slicewise_r2c3d(rfield, dtype=tf.complex64):
+  cfield = mtf.slicewise(lambda x: tf.signal.fft3d(tf.cast(x, dtype)),
                          [rfield],
-                         output_dtype=tf.complex64,
+                         output_dtype=dtype,
                          splittable_dims=rfield.shape[:-3])
   return cfield
 
-def slicewise_c2r3d(cfield):
-  rfield = mtf.slicewise(lambda x: tf.cast(tf.signal.ifft3d(x), tf.float32),
+def slicewise_c2r3d(cfield, dtype=tf.float32):
+  rfield = mtf.slicewise(lambda x: tf.cast(tf.signal.ifft3d(x), dtype),
                          [cfield],
-                         output_dtype=tf.float32,
+                         output_dtype=dtype,
                          splittable_dims=cfield.shape[:-3])
   return rfield
 
@@ -248,7 +250,7 @@ def r2c3d(rfield, k_dims, norm=None, dtype=tf.complex64):
   """
   x_dim, y_dim, z_dim = rfield.shape[-3:]
   if norm is None:
-    norm = mtf.constant(rfield.mesh, x_dim.size*y_dim.size*z_dim.size)
+    norm = mtf.cast(mtf.constant(rfield.mesh, x_dim.size*y_dim.size*z_dim.size), rfield.dtype)
   cfield = mesh_ops.fft3d(mtf.cast(rfield / norm, dtype), k_dims)
   return cfield
 
@@ -274,6 +276,6 @@ def c2r3d(cfield, dims, norm=None, dtype=tf.float32, name=None):
   """
   x_dim, y_dim, z_dim = cfield.shape[-3:]
   if norm is None:
-    norm = mtf.constant(cfield.mesh, x_dim.size*y_dim.size*z_dim.size)
+    norm = mtf.cast(mtf.constant(cfield.mesh, x_dim.size*y_dim.size*z_dim.size), dtype)
   rfield = mtf.cast(mesh_ops.ifft3d(cfield, dims), dtype) * norm
   return rfield

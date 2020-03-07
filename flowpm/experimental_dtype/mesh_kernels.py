@@ -81,7 +81,7 @@ def apply_gradient_laplace_kernel(kfield, kvec, order=1):
     return dkfield_dx, dkfield_dy, dkfield_dz
   dkfield_dx, dkfield_dy, dkfield_dz = mtf.slicewise(_swise_fn, [kfield] + kvec,
                          output_shape=[kfield.shape]*3,
-                         output_dtype=[tf.complex64]*3,
+                         output_dtype=[kfield.dtype]*3,
                          splittable_dims=kfield.shape[:])
   return dkfield_dx, dkfield_dy, dkfield_dz
 
