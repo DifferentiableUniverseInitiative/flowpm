@@ -31,7 +31,7 @@ cscratch = "/global/cscratch1/sd/chmodi/flowpm/recon/"
 
 
 tf.flags.DEFINE_integer("gpus_per_node", 8, "Number of GPU on each node")
-tf.flags.DEFINE_integer("gpus_per_task", 8, "Number of GPU in each task")
+tf.flags.DEFINE_integer("gpus_per_task", 1, "Number of GPU in each task")
 tf.flags.DEFINE_integer("tasks_per_node", 1, "Number of task in each node")
 
 tf.flags.DEFINE_integer("nc", 128, "Size of the cube")
@@ -40,35 +40,39 @@ tf.flags.DEFINE_float("box_size", 400, "Batch Size")
 tf.flags.DEFINE_float("a0", 0.1, "initial scale factor")
 tf.flags.DEFINE_float("af", 1.0, "final scale factor")
 tf.flags.DEFINE_integer("nsteps", 5, "Number of time steps")
-tf.flags.DEFINE_bool("nbody", False, "Do nbody evolution")
-tf.flags.DEFINE_string("suffix", "", "suffix for the folder name")
+tf.flags.DEFINE_bool("nbody", True, "Do nbody evolution")
+tf.flags.DEFINE_string("fpath", "", "suffix for the folder name")
 
 #pyramid flags
 tf.flags.DEFINE_integer("dsample", 2, "downsampling factor")
-tf.flags.DEFINE_integer("hsize", 32, "halo size")
+tf.flags.DEFINE_integer("hsize", 16, "halo size")
 
 #mesh flags
-tf.flags.DEFINE_integer("nx", 4, "# blocks along x")
-tf.flags.DEFINE_integer("ny", 2, "# blocks along y")
-tf.flags.DEFINE_string("mesh_shape", "row:16", "mesh shape")
+tf.flags.DEFINE_integer("nx", 1, "# blocks along x")
+tf.flags.DEFINE_integer("ny", 1, "# blocks along y")
+tf.flags.DEFINE_string("mesh_shape", "row:1;col:1", "mesh shape")
 #tf.flags.DEFINE_string("layout", "nx:b1", "layout rules")
 tf.flags.DEFINE_string("output_file", "timeline", "Name of the output timeline file")
+
+tf.flags.DEFINE_bool("offset", False, "add offset to the halo mass")
+tf.flags.DEFINE_bool("istd", False, "add istd to the halo mass")
+tf.flags.DEFINE_integer("niter", 100, "number of iterations per loop")
 
 FLAGS = tf.flags.FLAGS
 
 nc, bs = FLAGS.nc, FLAGS.box_size
 a0, a, nsteps =FLAGS.a0, FLAGS.af, FLAGS.nsteps
 stages = np.linspace(a0, a, nsteps, endpoint=True)
-fpath = cscratch + "fnn_nx%d_ny%d_mesh%s/"%(FLAGS.nx, FLAGS.ny, FLAGS.suffix)
+fpath = FLAGS.fpath
 print(fpath)
-for ff in [fpath, fpath + '/figs/']:
+for ff in [fpath, fpath + '/figs/', fpath + '/reconmeshes/']:
     try: os.makedirs(ff)
     except Exception as e: print (e)
 
 numd = 1e-3
 
 
-def recon_model(mesh, data, M0, R0, width, nc=FLAGS.nc, bs=FLAGS.box_size, batch_size=FLAGS.batch_size,
+def recon_model(mesh, datasm, M0, R0, width, off, istd, nc=FLAGS.nc, bs=FLAGS.box_size, batch_size=FLAGS.batch_size,
                         a0=FLAGS.a0, a=FLAGS.af, nsteps=FLAGS.nsteps, dtype=tf.float32):
     """
     Prototype of function computing LPT deplacement.
@@ -170,19 +174,13 @@ def recon_model(mesh, data, M0, R0, width, nc=FLAGS.nc, bs=FLAGS.box_size, batch
    
     fieldvar = mtf.get_variable(mesh, 'linear', part_shape, initializer=tf.random_normal_initializer(mean=0.0, stddev=1, seed=None))
     #fieldvar = mtf.get_variable(mesh, 'linear', part_shape)
-    input_field = tf.placeholder(data.dtype, [batch_size, nc, nc, nc])
+    input_field = tf.placeholder(datasm.dtype, [batch_size, nc, nc, nc])
     #mtfinp = mtf.import_tf_tensor(mesh, input_field, shape=part_shape)
     #linearop = mtf.assign(fieldvar, mtfinp)
 
+    state = mtfpm.lpt_init_single(fieldvar, a0, kv_lr, halo_size, lr_shape, hr_shape, part_shape[1:], antialias=True,)
+    final_state = mtfpm.nbody_single(state, stages, lr_shape, hr_shape, kv_lr, halo_size)
     
-    # Here we can run our nbody
-    if FLAGS.nbody:
-        state = mtfpm.lpt_init_single(fieldvar, a0, kv_lr, halo_size, lr_shape, hr_shape, part_shape[1:], antialias=True,)
-        # Here we can run our nbody
-        final_state = mtfpm.nbody_single(state, stages, lr_shape, hr_shape, kv_lr, halo_size)
-    else:
-        final_state = mtfpm.lpt_init_single(fieldvar, stages[-1], kv_lr, halo_size, lr_shape, hr_shape, part_shape[1:], antialias=True,)
-
     # paint the field
     final_field = mtf.zeros(mesh, shape=hr_shape)
     for block_size_dim in hr_shape[-3:]:
@@ -278,7 +276,7 @@ def recon_model(mesh, data, M0, R0, width, nc=FLAGS.nc, bs=FLAGS.box_size, batch
 
     model = pmodel*mmodel
     
-    mtfdata = mtf.import_tf_tensor(mesh, tf.convert_to_tensor(data), shape=shape)
+    mtfdatasm = mtf.import_tf_tensor(mesh, tf.convert_to_tensor(datasm), shape=shape)
     
     # Get prior
     #k_dims = [d.shape[0] for d in kv]
@@ -306,19 +304,17 @@ def recon_model(mesh, data, M0, R0, width, nc=FLAGS.nc, bs=FLAGS.box_size, batch
     modelf = mesh_utils.r2c3d(model, k_dims, dtype=cdtype)
     modelsmf = mtf.cwise(cwise_fingauss, [modelf, float_to_mtf(R1, mesh, scalar)] + kv + [tfnc, tfbs], output_dtype=cdtype) 
     modelsm = mesh_utils.c2r3d(modelsmf, x1d.shape[-3:], dtype=dtype)
-    #dataf = mesh_utils.r2c3d(mtfdata, k_dims, dtype=cdtype)
-    #datasmf = mtf.cwise(cwise_fingauss, [dataf, float_to_mtf(R1, mesh, scalar)] + kv + [tfnc, tfbs], output_dtype=cdtype) 
-    #datasm = mesh_utils.c2r3d(datasmf, x1d.shape[-3:], dtype=dtype)
 
     ##Anneal
     M0 = tf.constant(M0)
-    off, istd = tf.placeholder(tf.float32, shape=data.shape), tf.placeholder(tf.float32, shape=data.shape)
-    mtfoff = mtf.import_tf_tensor(mesh, off, shape=shape)
-    mtfistd = mtf.import_tf_tensor(mesh, istd, shape=shape)
-    diff = mtf.log(modelsm + M0) - mtf.log(mtfdata + M0)
-    diff = diff / 0.25
-    #diff = (diff + mtfoff)*mtfistd #For some reason, doing things wrong this one
-    #diff = (diff + mtfoff)/0.25
+    diff = mtf.log(modelsm + M0) - mtf.log(mtfdatasm + M0)
+    if off is not None:
+        mtfoff = mtf.import_tf_tensor(mesh, off, shape=shape)
+        diff = diff + mtfoff
+    if istd is not None:
+        mtfistd = mtf.import_tf_tensor(mesh, istd, shape=shape)
+        diff = (diff + mtfoff)*mtfistd #For some reason, doing things wrong this one
+    else: diff = diff / 0.25
 
     def _cwise_smooth(kfield, kx, ky, kz):
         kx = tf.reshape(kx, [-1, 1, 1])
@@ -334,7 +330,7 @@ def recon_model(mesh, data, M0, R0, width, nc=FLAGS.nc, bs=FLAGS.box_size, batch
     chisq = mtf.reduce_sum(mtf.square(diff))
     loss = chisq + prior
     
-    fields = [fieldvar, model]
+    fields = [fieldvar, final_field, model]
     metrics = [chisq, prior, loss]
     
     return fields, metrics, kv
@@ -352,8 +348,8 @@ def model_fn(features, labels, mode, params):
     global_step = tf.train.get_global_step()
     graph = mtf.Graph()
     mesh = mtf.Mesh(graph, "my_mesh")
-    fields, metrics, kv = recon_model(mesh, features['data'], features['M0'], features['R0'], features['w'])
-    fieldvar, data = fields
+    fields, metrics, kv = recon_model(mesh, features['datasm'], features['M0'], features['R0'], features['w'], features['off'], features['istd'])
+    fieldvar, final, model = fields
     chisq, prior, loss = metrics
     
     ##
@@ -401,7 +397,8 @@ def model_fn(features, labels, mode, params):
     restore_hook = mtf.MtfRestoreHook(lowering)
     #
     tf_init = lowering.export_to_tf_tensor(fieldvar)
-    tf_data = lowering.export_to_tf_tensor(data)
+    tf_final = lowering.export_to_tf_tensor(final)
+    tf_model = lowering.export_to_tf_tensor(model)
     tf_loss = lowering.export_to_tf_tensor(loss)
     tf_chisq = lowering.export_to_tf_tensor(chisq)
     tf_prior = lowering.export_to_tf_tensor(prior)
@@ -414,7 +411,8 @@ def model_fn(features, labels, mode, params):
         tf.summary.scalar("prior", tf_prior)
         predictions = {
             "ic": tf_init,
-            "data": tf_data,
+            "final": tf_final,
+            "data": tf_model,
         }
         return tf.estimator.EstimatorSpec(
             mode=tf.estimator.ModeKeys.PREDICT,
@@ -534,25 +532,37 @@ def main(_):
 
     def predict_input_fn():
         features = {}
-        features['data'] = data
+        features['datasm'] = data
         features['M0'] = 0.
         features['w'] = 3.
         features['R0'] = 0.    
+        features['off'] = None
+        features['istd'] = None
         return features, None
     
     for mm in mms:
+
+        noisefile = '/project/projectdirs/m3058/chmodi/cosmo4d/train/L0400_N0128_05step-n10/width_3/Wts_30_10_1/r1rf1/hlim-13_nreg-43_batch-5/eluWts-10_5_1/blim-20_nreg-23_batch-100/hist_M%d_na.txt'%(np.log10(mm)*10)
+        offset, ivar = setnoise(datasm, noisefile, noisevar=0.25)
+        istd = ivar**0.5
+        if not FLAGS.offset : offset = None
+        if not FLAGS.istd : istd = None
+        
         for R0 in RRs:
+
             for ww in wws:
+
                 print('\nFor iteration %d\n'%iiter)
                 print('With mm=%0.2e, R0=%0.2f, ww=%d \n'%(mm, R0, ww))
 
                 def train_input_fn():
                     features = {}
-                    features['data'] = datasm
+                    features['datasm'] = datasm
                     features['M0'] = mm
                     features['w'] = ww
                     features['R0'] = R0
-
+                    features['off'] = offset
+                    features['istd'] = istd
                     return features, None
 
                 recon_estimator.train(input_fn=train_input_fn, max_steps=iiter+niter)
@@ -563,9 +573,16 @@ def main(_):
 
                 iiter += niter#
                 suff = '-%d-M%d-R%d-w%d'%(iiter, np.log10(mm), R0, ww)
-                dg.saveimfig(suff, [pred['ic'], pred['data']], [ic, data], fpath + '/figs/' )
-                dg.save2ptfig(suff, [pred['ic'], pred['data']], [ic, data], fpath + '/figs/', bs)
-
+                dg.saveimfig(suff, [pred['ic'], pred['model']], [ic, data], fpath + '/figs/' )
+                dg.save2ptfig(suff, [pred['ic'], pred['model']], [ic, data], fpath + '/figs/', bs)
+                suff = '-M%d-R%d-w%d'%(np.log10(mm), R0, ww)
+                np.save(fpath + '/reconmeshes/ic'+suff, pred['ic'])
+                np.save(fpath + '/reconmeshes/fin'+suff, pred['final'])
+                np.save(fpath + '/reconmeshes/model'+suff, pred['model'])
+                
+        RRs = [1., 0.5, 0.]
+        wws = [3.]
+        
     sys.exit(0)
 
 
