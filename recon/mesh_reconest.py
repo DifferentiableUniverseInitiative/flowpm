@@ -67,7 +67,7 @@ for ff in [fpath, fpath + '/figs']:
     except Exception as e: print (e)
 
 
-def recon_model(mesh, data, R0, nc=FLAGS.nc, bs=FLAGS.box_size, batch_size=FLAGS.batch_size,
+def recon_model(mesh, data, R0, x0, nc=FLAGS.nc, bs=FLAGS.box_size, batch_size=FLAGS.batch_size,
                         a0=FLAGS.a0, a=FLAGS.af, nsteps=FLAGS.nsteps, dtype=tf.float32):
     """
     Prototype of function computing LPT deplacement.
@@ -159,12 +159,13 @@ def recon_model(mesh, data, R0, nc=FLAGS.nc, bs=FLAGS.box_size, batch_size=FLAGS
     # Begin simulation
     
    
-    fieldvar = mtf.get_variable(mesh, 'linear', part_shape, initializer=tf.random_normal_initializer(mean=0.0, stddev=1, seed=None))
+    if x0 is None:
+        fieldvar = mtf.get_variable(mesh, 'linear', part_shape, initializer=tf.random_normal_initializer(mean=0.0, stddev=1, seed=None))
+    else:
+        #fieldvar = mtf.get_variable(mesh, 'linear', part_shape, initializer = tf.constant_initializer(tf.convert_to_tensor(x0)))
+        fieldvar = mtf.get_variable(mesh, 'linear', part_shape, initializer = tf.constant_initializer(x0))
     print("\nfieldvar : \n", fieldvar)
     
-    input_field = tf.placeholder(dtype, [batch_size, nc, nc, nc])
-    #mtfinp = mtf.import_tf_tensor(mesh, input_field, shape=part_shape)
-    #linearop = mtf.assign(fieldvar, mtfinp)
 
 
     # Here we can run our nbody
@@ -255,9 +256,11 @@ def model_fn(features, labels, mode, params):
     global_step = tf.train.get_global_step()
     graph = mtf.Graph()
     mesh = mtf.Mesh(graph, "my_mesh")
-    R0 = features[1]*1.
+    data = features['data']
+    R0 = features['R0']*1.
+    x0 = features['x0']
     print("\nR0 in the model function : %0.1f\n"%R0)
-    fields, metrics, kv = recon_model(mesh, features[0], R0)
+    fields, metrics, kv = recon_model(mesh, data, R0, x0)
     fieldvar, final_field = fields
     chisq, prior, loss = metrics
     
@@ -298,7 +301,7 @@ def model_fn(features, labels, mode, params):
         #optimizer = mtf.optimize.AdafactorOptimizer(1)
         #optimizer = mtf.optimize.SgdOptimizer(0.01)
         #optimizer = mtf.optimize.MomentumOptimizer(0.01, 0.001)
-        optimizer = mtf.optimize.AdamWeightDecayOptimizer(0.01)
+        optimizer = mtf.optimize.AdamWeightDecayOptimizer(features['lr'])
         update_ops = optimizer.apply_grads(var_grads, graph.trainable_variables)
 
 #
@@ -430,19 +433,29 @@ def main(_):
         model_dir=fpath)
 
     def eval_input_fn():
-        return [fin, 0.], None
+        features = {}
+        features['data'] = fin
+        features['R0'] = 0
+        features['x0'] = None
+        features['lr'] = 0
+        return features, None
 
     # Train and evaluate model.
 
     RRs = [4., 2., 1., 0.5, 0.]
-    niter = 100
+    niter = 200
     iiter = 0
 
     for R0 in RRs:
         print('\nFor iteration %d and R=%0.1f\n'%(iiter, R0))
 
         def train_input_fn():
-            return [fin, R0], None
+            features = {}
+            features['data'] = fin
+            features['R0'] = R0
+            features['x0'] = np.random.normal(size=fin.size).reshape(fin.shape)
+            features['lr'] = 0.01
+            return features, None
 
         for _ in range(1):
             recon_estimator.train(input_fn=train_input_fn, max_steps=iiter+niter)
