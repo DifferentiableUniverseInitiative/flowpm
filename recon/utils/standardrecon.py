@@ -5,7 +5,7 @@ import flowpm.tfpm as tfpm
 import flowpm.kernels as kernels
 
 import tools
-
+from getbiasparams import getbias
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
 
@@ -83,9 +83,10 @@ if __name__=="__main__":
         
     final = tools.readbigfile('/project/projectdirs/m3058/chmodi/cosmo4d/data/L0400_N0128_S0100_05step/mesh/d/')
     ic = tools.readbigfile('/project/projectdirs/m3058/chmodi/cosmo4d/data/L0400_N0128_S0100_05step/mesh/s/')
-
-    pypath = '/global/cscratch1/sd/chmodi/cosmo4d/output/version2/L0400_N0128_05step-fof/lhd_S0100/n10/opt_s999_iM12-sm3v25off/meshes/'
-    fin = tools.readbigfile(pypath + 'decic//') 
+    fpos = tools.readbigfile('/project/projectdirs/m3058/chmodi/cosmo4d/data/L0400_N0128_S0100_05step/dynamic/1/Position/')
+    
+    #pypath = '/global/cscratch1/sd/chmodi/cosmo4d/output/version2/L0400_N0128_05step-fof/lhd_S0100/n10/opt_s999_iM12-sm3v25off/meshes/'
+    #fin = tools.readbigfile(pypath + 'decic//') 
     
     hpos = tools.readbigfile('/project/projectdirs/m3058/chmodi/cosmo4d/data/L0400_N0512_S0100_40step/FOF/PeakPosition//')[1:int(bs**3 *numd)]
     hmass = tools.readbigfile('/project/projectdirs/m3058/chmodi/cosmo4d/data/L0400_N0512_S0100_40step/FOF/Mass//')[1:int(bs**3 *numd)].flatten()
@@ -95,7 +96,6 @@ if __name__=="__main__":
     data = meshmass
     kv = tools.fftk([nc, nc, nc], bs, symmetric=True, dtype=np.float32)
 
-
     
     base = meshpos
     base = (base - base.mean())/base.mean()
@@ -104,14 +104,15 @@ if __name__=="__main__":
     bias = ((ph[1:5]/pfin[1:5])**0.5).mean()
     print(bias)
 
+    bparams, bmod = getbias(bs, nc, meshmass, ic, fpos)
+    print(bparams)
     tf.reset_default_graph()
     tfdisplaced, tfrandom = standardrecon(bs, nc, np.expand_dims(base, 0), np.expand_dims(hpos, 0), bias, R=8)
 
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
 
-        displaced, random, dx = sess.run([tfdisplaced, tfrandom, tfdx])
-        dx = dx[0]
+        displaced, random = sess.run([tfdisplaced, tfrandom])
 
     displaced /= displaced.mean()
     displaced -= 1
