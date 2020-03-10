@@ -21,6 +21,7 @@ sys.path.append('./utils/')
 import tools
 import diagnostics as dg
 from fnn import *
+import standardrecon as srecon
 ##
 
 
@@ -72,7 +73,7 @@ for ff in [fpath, fpath + '/figs/', fpath + '/reconmeshes/']:
 numd = 1e-3
 
 
-def recon_model(mesh, datasm, M0, R0, width, off, istd, nc=FLAGS.nc, bs=FLAGS.box_size, batch_size=FLAGS.batch_size,
+def recon_model(mesh, datasm, M0, R0, width, off, istd, x0, nc=FLAGS.nc, bs=FLAGS.box_size, batch_size=FLAGS.batch_size,
                         a0=FLAGS.a0, a=FLAGS.af, nsteps=FLAGS.nsteps, dtype=tf.float32):
     """
     Prototype of function computing LPT deplacement.
@@ -172,12 +173,12 @@ def recon_model(mesh, datasm, M0, R0, width, off, istd, nc=FLAGS.nc, bs=FLAGS.bo
     # Begin simulation
     
    
-    fieldvar = mtf.get_variable(mesh, 'linear', part_shape, initializer=tf.random_normal_initializer(mean=0.0, stddev=1, seed=None))
-    #fieldvar = mtf.get_variable(mesh, 'linear', part_shape)
-    input_field = tf.placeholder(datasm.dtype, [batch_size, nc, nc, nc])
-    #mtfinp = mtf.import_tf_tensor(mesh, input_field, shape=part_shape)
-    #linearop = mtf.assign(fieldvar, mtfinp)
+    if x0 is None:
+        fieldvar = mtf.get_variable(mesh, 'linear', part_shape, initializer=tf.random_normal_initializer(mean=0.0, stddev=1, seed=None))
+    else:
+        fieldvar = mtf.get_variable(mesh, 'linear', part_shape, initializer = tf.constant_initializer(x0))
 
+    ##
     state = mtfpm.lpt_init_single(fieldvar, a0, kv_lr, halo_size, lr_shape, hr_shape, part_shape[1:], antialias=True,)
     final_state = mtfpm.nbody_single(state, stages, lr_shape, hr_shape, kv_lr, halo_size)
     
@@ -348,7 +349,8 @@ def model_fn(features, labels, mode, params):
     global_step = tf.train.get_global_step()
     graph = mtf.Graph()
     mesh = mtf.Mesh(graph, "my_mesh")
-    fields, metrics, kv = recon_model(mesh, features['datasm'], features['M0'], features['R0'], features['w'], features['off'], features['istd'])
+    fields, metrics, kv = recon_model(mesh, features['datasm'], features['M0'], features['R0'], features['w'], \
+                                      features['off'], features['istd'], features['x0'])
     fieldvar, final, model = fields
     chisq, prior, loss = metrics
     
@@ -389,7 +391,7 @@ def model_fn(features, labels, mode, params):
         #optimizer = mtf.optimize.AdafactorOptimizer(10)
         #optimizer = mtf.optimize.SgdOptimizer(0.01)
         #optimizer = mtf.optimize.MomentumOptimizer(0.01, 0.001)
-        optimizer = mtf.optimize.AdamWeightDecayOptimizer(0.01)
+        optimizer = mtf.optimize.AdamWeightDecayOptimizer(features['lr'])
         update_ops = optimizer.apply_grads(var_grads, graph.trainable_variables)
 
 
@@ -412,14 +414,14 @@ def model_fn(features, labels, mode, params):
         predictions = {
             "ic": tf_init,
             "final": tf_final,
-            "data": tf_model,
+            "model": tf_model,
         }
         return tf.estimator.EstimatorSpec(
             mode=tf.estimator.ModeKeys.PREDICT,
             predictions=predictions,
             prediction_hooks=[restore_hook],
             export_outputs={
-                "data": tf.estimator.export.PredictOutput(predictions) #TODO: is classify a keyword?
+                "model": tf.estimator.export.PredictOutput(predictions) #TODO: is classify a keyword?
             })
 
     ##Train
@@ -503,7 +505,7 @@ def main(_):
     hpos = tools.readbigfile('/project/projectdirs/m3058/chmodi/cosmo4d/data/L0400_N0512_S0100_40step/FOF/PeakPosition//')[1:int(bs**3 *numd)]
     hmass = tools.readbigfile('/project/projectdirs/m3058/chmodi/cosmo4d/data/L0400_N0512_S0100_40step/FOF/Mass//')[1:int(bs**3 *numd)].flatten()
 
-    #meshpos = tools.paintcic(hpos, bs, nc)
+    meshpos = tools.paintcic(hpos, bs, nc)
     meshmass = tools.paintcic(hpos, bs, nc, hmass.flatten()*1e10)
     data = meshmass
     kv = tools.fftk([nc, nc, nc], bs, symmetric=True, dtype=np.float32)
@@ -515,7 +517,9 @@ def main(_):
     np.save(fpath + 'ic', ic)
     np.save(fpath + 'data', data)
 
-    
+    #
+    stdinit = srecon.standardinit(bs, nc, meshpos, hpos, final, R=8)
+
     ####################################################
 
     print(ic.shape, fin.shape)
@@ -523,6 +527,31 @@ def main(_):
       model_fn=model_fn,
         model_dir=fpath)
 
+
+    def predict_input_fn(data=data, M0=0., w=3., R0=0., off=None, istd=None, x0=None):
+        features = {}
+        features['datasm'] = data
+        features['M0'] = M0
+        features['w'] = w
+        features['R0'] = R0    
+        features['off'] = off
+        features['istd'] = istd
+        features['x0'] = x0
+        return features, None
+    
+    eval_results = recon_estimator.predict(input_fn=lambda : predict_input_fn(x0 = np.expand_dims(stdinit, 0)), yield_single_examples=False)
+    
+    for i, pred in enumerate(eval_results):
+        if i>0:     break
+        
+    suff = '-init'
+    dg.saveimfig(suff, [pred['ic'], pred['model']], [ic, data], fpath + '/figs/' )
+    dg.save2ptfig(suff, [pred['ic'], pred['model']], [ic, data], fpath + '/figs/', bs)
+    np.save(fpath + '/reconmeshes/ic'+suff, pred['ic'])
+    np.save(fpath + '/reconmeshes/fin'+suff, pred['final'])
+    np.save(fpath + '/reconmeshes/model'+suff, pred['model'])
+
+    #
     # Train and evaluate model.
     mms = [1e12, 1e11]
     wws = [1., 2., 3.]
@@ -530,16 +559,6 @@ def main(_):
     niter = 100
     iiter = 0
 
-    def predict_input_fn():
-        features = {}
-        features['datasm'] = data
-        features['M0'] = 0.
-        features['w'] = 3.
-        features['R0'] = 0.    
-        features['off'] = None
-        features['istd'] = None
-        return features, None
-    
     for mm in mms:
 
         noisefile = '/project/projectdirs/m3058/chmodi/cosmo4d/train/L0400_N0128_05step-n10/width_3/Wts_30_10_1/r1rf1/hlim-13_nreg-43_batch-5/eluWts-10_5_1/blim-20_nreg-23_batch-100/hist_M%d_na.txt'%(np.log10(mm)*10)
@@ -563,6 +582,8 @@ def main(_):
                     features['R0'] = R0
                     features['off'] = offset
                     features['istd'] = istd
+                    features['x0'] = np.expand_dims(stdinit, 0) #np.random.normal(size=datasm.size).reshape(datasm.shape)
+                    features['lr'] = 0.01
                     return features, None
 
                 recon_estimator.train(input_fn=train_input_fn, max_steps=iiter+niter)
@@ -582,6 +603,7 @@ def main(_):
                 
         RRs = [1., 0.5, 0.]
         wws = [3.]
+        niter = 200
         
     sys.exit(0)
 

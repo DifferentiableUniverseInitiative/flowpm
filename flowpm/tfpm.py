@@ -78,7 +78,7 @@ def lpt1(dlin_k, pos, kvec=None, name=None):
     for d in range(3):
       kweight = gradient_kernel(kvec, d) * lap
       dispc = tf.multiply(dlin_k, kweight)
-      disp = c2r3d(dispc, norm=nc**3)
+      disp = c2r3d(dispc, norm=nc**3, dtype=pos.dtype)
       displacement.append(cic_readout(disp, pos))
     displacement = tf.stack(displacement, axis=2)
     return displacement

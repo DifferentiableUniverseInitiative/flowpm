@@ -162,7 +162,6 @@ def recon_model(mesh, data, R0, x0, nc=FLAGS.nc, bs=FLAGS.box_size, batch_size=F
     if x0 is None:
         fieldvar = mtf.get_variable(mesh, 'linear', part_shape, initializer=tf.random_normal_initializer(mean=0.0, stddev=1, seed=None))
     else:
-        #fieldvar = mtf.get_variable(mesh, 'linear', part_shape, initializer = tf.constant_initializer(tf.convert_to_tensor(x0)))
         fieldvar = mtf.get_variable(mesh, 'linear', part_shape, initializer = tf.constant_initializer(x0))
     print("\nfieldvar : \n", fieldvar)
     
