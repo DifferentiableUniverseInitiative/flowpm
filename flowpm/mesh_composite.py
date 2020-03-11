@@ -97,7 +97,7 @@ def cic_paint_fr(field, state, output_shape, hr_shape, halo_size, splittables, m
 
 
 
-def cic_readout_fr(field, state, output_shape, hr_shape, halo_size, splittables, mesh):
+def cic_readout_fr(field, state, hr_shape, halo_size, splittables, mesh):
     '''readout from at the position from state on a field of batch+3D tensor'''
     lnc = field.shape[-1].size
     field = mtf.slicewise(lambda x:tf.expand_dims(tf.expand_dims(tf.expand_dims(x, axis=1),axis=1),axis=1),

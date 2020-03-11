@@ -34,6 +34,9 @@ def _cic_indexing(mesh, part, weight=None, name=None):
     # Flatten part if it's not already done
     if len(part.shape) > 3:
       part = tf.reshape(part, (batch_size, -1, 3))
+    # Flatten weights if it's not already done
+    if weight is not None and len(weight.shape) > 2:
+      weight = tf.reshape(weight, (batch_size, -1))
 
     # Extract the indices of all the mesh points affected by each particles
     part = tf.expand_dims(part, 2)
@@ -44,7 +47,6 @@ def _cic_indexing(mesh, part, weight=None, name=None):
     neighboor_coords = floor + connection
     kernel = 1. - tf.abs(part - neighboor_coords)
     kernel = kernel[..., 0] * kernel[..., 1] * kernel[..., 2]
-
     if weight is not None: kernel = tf.multiply(tf.expand_dims(weight, axis=-1) , kernel)
 
     neighboor_coords = tf.cast(neighboor_coords, tf.int32)
@@ -140,8 +142,9 @@ def cic_paint(mesh, part, halo_size, weight=None, name=None):
   """
   nk = mtf.Dimension("nk", 8)
   nl = mtf.Dimension("nl", 4)
+  if weight is None: weight = mtf.ones(part.mesh, part.shape[:-1])
   indices, values = mtf.slicewise(_cic_indexing,
-                         [mesh, part],
+                         [mesh, part, weight],
                          output_dtype=[tf.float32, tf.float32],
                          output_shape=[mtf.Shape(part.shape.dims[:-1]+[nk, nl]),
                                        mtf.Shape(part.shape.dims[:-1]+[nk])],

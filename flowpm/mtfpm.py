@@ -56,6 +56,7 @@ def linear_field(mesh, shape, boxsize, nc, pk, kvec,
 def lpt_init(lr_field, hr_field, a0, kvec_lr, kvec_hr, halo_size, hr_shape, lr_shape,
               part_shape, antialias=True, downsampling_factor=2,
               order=1, post_filtering=True, cosmology=Planck15):
+  #This part does not have a batch dimension
   a = a0
   batch_dim = hr_field.shape[0]
   lnc = lr_shape[-1].size
@@ -89,7 +90,7 @@ def lpt_init(lr_field, hr_field, a0, kvec_lr, kvec_hr, halo_size, hr_shape, lr_s
                                                 mtf.Dimension('sy_block', lnc//hr_shape[2].size),
                                                 mtf.Dimension('sz_block', lnc//hr_shape[3].size)]),
                         name='my_reshape',
-                        splittable_dims=lr_shape[:-1]+hr_shape[1:4]+part_shape[1:3])
+                        splittable_dims=lr_shape[:-1]+hr_shape[1:4]+part_shape[:3])
       for block_size_dim in hr_shape[-3:]:
           f = mtf.pad(f, [halo_size//2**downsampling_factor, halo_size//2**downsampling_factor], block_size_dim.name)
       for blocks_dim, block_size_dim in zip(hr_shape[1:4], f.shape[-3:]):
@@ -327,6 +328,7 @@ def nbody(state, stages, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size, cosmol
 
 
 def lpt_init_single(lr_field, a0, kvec_lr, halo_size, lr_shape, hr_shape, part_shape, antialias=True, order=1, post_filtering=True, cosmology=Planck15):
+  #This part shape does not have the batch dimension
   a = a0
   batch_dim = lr_field.shape[0]
   lnc = lr_shape[-1].size
@@ -358,7 +360,7 @@ def lpt_init_single(lr_field, a0, kvec_lr, halo_size, lr_shape, hr_shape, part_s
                         mtf.Dimension('sy_block', lnc//hr_shape[2].size),
                         mtf.Dimension('sz_block', lnc//hr_shape[3].size)]),
                       name='my_reshape',
-                      splittable_dims=lr_shape[:-1]+hr_shape[1:4]+part_shape[1:3])
+                      splittable_dims=lr_shape[:-1]+hr_shape[1:4]+part_shape[:3])
 
     for block_size_dim in hr_shape[-3:]:
       f = mtf.pad(f, [halo_size, halo_size], block_size_dim.name)
