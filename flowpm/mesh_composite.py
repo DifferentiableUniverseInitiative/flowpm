@@ -53,7 +53,7 @@ def downsample_hr_to_lr(field, lr_shape, hr_shape, downsampling_factor, halo_siz
     return low
 
 
-def cic_paint_fr(field, state, output_shape, hr_shape, halo_size, splittables, mesh):
+def cic_paint_fr(field, state, output_shape, hr_shape, halo_size, splittables, mesh, weights=None):
     '''paint the position from state to a field of batch+3D tensor
     Ops performed :
     - reshape to hr_shape
@@ -77,7 +77,7 @@ def cic_paint_fr(field, state, output_shape, hr_shape, halo_size, splittables, m
     for block_size_dim in hr_shape[-3:]:
         field = mtf.pad(field, [halo_size, halo_size], block_size_dim.name)
 
-    field = mesh_utils.cic_paint(field, state[0], halo_size)
+    field = mesh_utils.cic_paint(field, state[0], halo_size, weights)
     # Halo exchange
     for blocks_dim, block_size_dim in zip(hr_shape[1:4], field.shape[-3:]):
         field = mesh_ops.halo_reduce(field, blocks_dim, block_size_dim, halo_size)
