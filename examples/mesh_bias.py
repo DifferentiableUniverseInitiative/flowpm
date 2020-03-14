@@ -13,6 +13,7 @@ import flowpm
 import flowpm.mesh_ops as mpm
 import flowpm.mtfpm as mtfpm
 import flowpm.mesh_utils as mesh_utils
+import flowpm.mesh_composite as mcomp
 from astropy.cosmology import Planck15
 from flowpm.tfpm import PerturbationGrowth
 from flowpm import linear_field, lpt_init, nbody, cic_paint
@@ -20,6 +21,8 @@ from flowpm import linear_field, lpt_init, nbody, cic_paint
 sys.path.append('../recon/utils/')
 import tools
 import diagnostics as dg
+import cswisefuncs as cswisef
+from getbiasparams import getbias
 ##
 
 
@@ -69,102 +72,35 @@ stages = np.linspace(a0, a, nsteps, endpoint=True)
 bs, nc = 400, 128
 numd = 1e-3
 
-def setupfnn():
 
-    ppath = '/project/projectdirs/m3058/chmodi/cosmo4d/train/L0400_N0128_05step-n10/width_3/Wts_30_10_1/r1rf1/hlim-13_nreg-43_batch-5/'
-    pwts, pbias = [], []
-    # act = [lambda x: relu(x), lambda x: relu(x), lambda x: sigmoid(x)]
-    act = [lambda x: relu(x), lambda x: relu(x), lambda x: relu(x)]
+def shear(rfield, cfield, kv, tfnc, tfbs):
 
-    for s in [0, 2, 4]:
-        pwts.append(np.load(ppath + 'w%d.npy'%s))
-        pbias.append(np.load(ppath + 'b%d.npy'%s))
-    pmx = np.load(ppath + 'mx.npy')
-    psx = np.load(ppath + 'sx.npy')
-
-
-    mpath = '/project/projectdirs/m3058/chmodi/cosmo4d/train/L0400_N0128_05step-n10/width_3/Wts_30_10_1/r1rf1/hlim-13_nreg-43_batch-5/eluWts-10_5_1/blim-20_nreg-23_batch-100/'
-    mwts, mbias = [], []
-    # act = [lambda x: relu(x), lambda x: relu(x), lambda x: sigmoid(x)]
-    act = [lambda x: elu(x), lambda x: elu(x), lambda x: linear(x)]
-
-    for s in [0, 2, 4]:
-        mwts.append(np.load(mpath + 'w%d.npy'%s))
-        mbias.append(np.load(mpath + 'b%d.npy'%s))
-    mmx = np.load(mpath + 'mx.npy')
-    msx = np.load(mpath + 'sx.npy')
-    mmy = np.load(mpath + 'my.npy')
-    msy = np.load(mpath + 'sy.npy')
-
-    size = 3
-    kernel = np.zeros([size, size, size, 1, size**3])
-    for i in range(size):
-        for j in range(size):
-            for k in range(size):
-                kernel[i, j, k, 0, i*size**2+j*size+k] = 1
-
-    return [pwts, pbias, pmx, psx],  [mwts, mbias, mmx, msx, mmy, msy], kernel
-
-def tfwrap3D(image, padding=1):
+    wtss = mtf.slicewise(cswisef.shearwts, [cfield] + kv + [tfnc, tfbs],
+                         output_shape=[cfield.shape]*6,
+                         output_dtype=[cfield.dtype]*6,
+                         splittable_dims=cfield.shape[:])
     
-    upper_pad = image[:, -padding:,:, :]
-    lower_pad = image[:, :padding,:, :]
-    
-    partial_image = tf.concat([upper_pad, image, lower_pad], axis=1)
-    
-    left_pad = partial_image[:, :,-padding:, :]
-    right_pad = partial_image[:, :,:padding, :]
-    
-    partial_image = tf.concat([left_pad, partial_image, right_pad], axis=2)
-    
-    front_pad = partial_image[:, :,:, -padding:]
-    back_pad = partial_image[:, :,:, :padding]
-    
-    padded_image = tf.concat([front_pad, partial_image, back_pad], axis=3)
-    return padded_image
-
-def sinc(x):
-    x = x + 1e-3 #x = tf.where(tf.abs(x) < 1e-20, 1e-20 * tf.ones_like(x), x)
-    return tf.sin(np.pi*x) / x/np.pi
-
-def float_to_mtf(x, mesh, scalar):
-    return mtf.import_tf_tensor(mesh, tf.constant(x, shape=[1]), shape=[scalar])
-
-def _cwise_gauss(kfield, R, kx, ky, kz):
-    kx = tf.reshape(kx, [-1, 1, 1]) * nc/bs
-    ky = tf.reshape(ky, [1, -1, 1]) * nc/bs
-    kz = tf.reshape(kz, [1, 1, -1]) * nc/bs
-    kk = tf.sqrt(kx**2 + ky**2 + kz**2)
-    wts = tf.exp(-0.5 * R**2 * kk**2)
-    return kfield * tf.cast(wts, kfield.dtype)
-
-def _cwise_decic(kfield, kx, ky, kz):
-    kx = tf.reshape(kx, [-1, 1, 1]) * nc/bs
-    ky = tf.reshape(ky, [1, -1, 1]) * nc/bs
-    kz = tf.reshape(kz, [1, 1, -1]) * nc/bs
-    wts = sinc(kx*bs/(2*np.pi*nc)) *sinc(ky*bs/(2*np.pi*nc)) *sinc(kz*bs/(2*np.pi*nc))
-    wts = tf.pow(wts, -2.)
-    return kfield * tf.cast(wts, kfield.dtype)
-
-def _cwise_fingauss(kfield, R, kx, ky, kz):
-    kny = 1*np.pi*nc/bs
-    kx = tf.reshape(kx, [-1, 1, 1]) * nc/bs
-    ky = tf.reshape(ky, [1, -1, 1]) * nc/bs
-    kz = tf.reshape(kz, [1, 1, -1]) * nc/bs
-    kk = tf.sqrt((2*kny/np.pi*tf.sin(kx*np.pi/(2*kny)))**2 + (2*kny/np.pi*tf.sin(ky*np.pi/(2*kny)))**2 + (2*kny/np.pi*tf.sin(kz*np.pi/(2*kny)))**2)
-    wts = tf.exp(-0.5 * R**2 * kk**2)
-    return kfield * tf.cast(wts, kfield.dtype)
+    counter = 0
+    for i in range(3):
+        for j in range(i, 3):
+            baser = mesh_utils.c2r3d(wtss[counter], rfield.shape[-3:], dtype=rfield.dtype)
+            rfield = rfield + baser*baser
+            if i != j: rfield = rfield + baser*baser
+            counter +=1
+    return rfield
 
 
 
 
-def nbody_prototype(mesh, infield=False, nc=FLAGS.nc, bs=FLAGS.box_size, batch_size=FLAGS.batch_size,
+def nbody_prototype(mesh, bparams, infield=False, nc=FLAGS.nc, bs=FLAGS.box_size, batch_size=FLAGS.batch_size,
                         a0=FLAGS.a0, a=FLAGS.af, nsteps=FLAGS.nsteps, dtype=tf.float32):
     """
     Prototype of function computing LPT deplacement.
 
     Returns output tensorflow and mesh tensorflow tensors
     """
+    b1, b2, bs2 = bparams
+    
     if dtype == tf.float32:
         npdtype = "float32"
         cdtype = tf.complex64
@@ -237,7 +173,6 @@ def nbody_prototype(mesh, infield=False, nc=FLAGS.nc, bs=FLAGS.box_size, batch_s
     kz = mtf.import_tf_tensor(mesh, kvec[2].squeeze().astype('float32'), shape=[tfz_dim])
     kv = [ky, kz, kx]
 
-    
 
     
     # kvec for low resolution grid
@@ -253,13 +188,11 @@ def nbody_prototype(mesh, infield=False, nc=FLAGS.nc, bs=FLAGS.box_size, batch_s
     lr_shape = [batch_dim, fx_dim, fy_dim, fz_dim]
     hr_shape = [batch_dim, nx_dim, ny_dim, nz_dim, sx_dim, sy_dim, sz_dim]
     part_shape = [batch_dim, fx_dim, fy_dim, fz_dim]
+    splittables = lr_shape[:-1]+hr_shape[1:4]+part_shape[1:3]
 
 #
     # Begin simulation
     
-    ## Compute initial initial conditions distributed
-    #initc = mtfpm.linear_field(mesh, shape, bs, nc, pk, kv)
-
    
     input_field = tf.placeholder(dtype, [batch_size, nc, nc, nc])
     if infield:
@@ -278,104 +211,44 @@ def nbody_prototype(mesh, infield=False, nc=FLAGS.nc, bs=FLAGS.box_size, batch_s
     else:
         final_state = mtfpm.lpt_init_single(initc, stages[-1], kv_lr, halo_size, lr_shape, hr_shape, part_shape[1:], antialias=True,)
 
+    print("\n final state : ", final_state)
     # paint the field
-    final_field = mtf.zeros(mesh, shape=hr_shape)
-    for block_size_dim in hr_shape[-3:]:
-        final_field = mtf.pad(final_field, [halo_size, halo_size], block_size_dim.name)
-    final_field = mesh_utils.cic_paint(final_field, final_state[0], halo_size, dtype=dtype)
-    # Halo exchange
-    for blocks_dim, block_size_dim in zip(hr_shape[1:4], final_field.shape[-3:]):
-        final_field = mpm.halo_reduce(final_field, blocks_dim, block_size_dim, halo_size)
-    # Remove borders
-    for block_size_dim in hr_shape[-3:]:
-        final_field = mtf.slice(final_field, halo_size, block_size_dim.size, block_size_dim.name)
+    final_field = mtf.zeros(mesh, shape=part_shape)
+    final_field = mcomp.cic_paint_fr(final_field, final_state, output_shape=part_shape, hr_shape=hr_shape, halo_size=halo_size, splittables=splittables, mesh=mesh, weights=None)
 
-    final_field = mtf.slicewise(lambda x: x[:,0,0,0],
-                        [final_field],
-                        output_dtype=dtype,
-                        output_shape=[batch_dim, fx_dim, fy_dim, fz_dim],
-                        name='my_dumb_reshape',
-                        splittable_dims=part_shape[:-1]+hr_shape[:4])
-    ##
-    x = final_field
-    
-    k_dims = [d.shape[0] for d in kv]
-    k_dims = [k_dims[2], k_dims[0], k_dims[1]]
-    x1f = mesh_utils.r2c3d(x, k_dims, dtype=cdtype)
-    x1f = mtf.cwise(_cwise_decic, [x1f] + kv, output_dtype=cdtype) 
-    #x1d = mtf.cast(x1f, dtype)
-    x1d = mesh_utils.c2r3d(x1f, x.shape[-3:], dtype=dtype)
-    x1d = mtf.add(x1d,  -1.)
+    #Get the fields for bias
+    hr_field = mcomp.fr_to_hr(final_field, hr_shape, halo_size, splittables, mesh)
+    mstate = mpm.mtf_indices(hr_field.mesh, shape=part_shape[1:], dtype=tf.float32)
+    X = mtf.einsum([mtf.ones(hr_field.mesh, [batch_dim]), mstate], output_shape=[batch_dim] + mstate.shape[:])
+    k_dims_pr = [d.shape[0] for d in kv]
+    k_dims_pr = [k_dims_pr[2], k_dims_pr[0], k_dims_pr[1]]
+    tfnc, tfbs = cswisef.float_to_mtf(nc*1., mesh, scalar), cswisef.float_to_mtf(bs, mesh, scalar)
 
-    
-    x1f0 = mesh_utils.r2c3d(x1d, k_dims, dtype=cdtype)
-    x1f = mtf.cwise(_cwise_fingauss, [x1f0, float_to_mtf(R1, mesh, scalar)] + kv, output_dtype=cdtype) 
-    x1 = mesh_utils.c2r3d(x1f, x1d.shape[-3:], dtype=dtype)
-    x2f = mtf.cwise(_cwise_fingauss, [x1f0, float_to_mtf(R2, mesh, scalar)] + kv, output_dtype=cdtype) 
-    x2 = mesh_utils.c2r3d(x2f, x1d.shape[-3:], dtype=dtype)
-    x12 = x1-x2
+    #
+    d0 = initc - mtf.reduce_mean(initc)
+    #
+    d2 = initc * initc
+    d2  = d2  - mtf.reduce_mean(d2)
+    #
+    cfield = mesh_utils.r2c3d(d0, k_dims_pr, dtype=cdtype)
+    shearfield = mtf.zeros(mesh, shape=part_shape)
+    shearfield = shear(shearfield, cfield, kv, tfnc, tfbs)
+    s2 = shearfield - mtf.reduce_mean(shearfield)
+  
+    dread = mcomp.cic_readout_fr(d0, [X], hr_shape=hr_shape, halo_size=halo_size, splittables=splittables, mesh=mesh)
+    d2read = mcomp.cic_readout_fr(d2, [X], hr_shape=hr_shape, halo_size=halo_size, splittables=splittables, mesh=mesh)
+    s2read = mcomp.cic_readout_fr(s2, [X], hr_shape=hr_shape, halo_size=halo_size, splittables=splittables, mesh=mesh)
 
+    ed, ed2, es2 = mtf.zeros(mesh, shape=part_shape), mtf.zeros(mesh, shape=part_shape), mtf.zeros(mesh, shape=part_shape)
+    ed = mcomp.cic_paint_fr(ed, final_state, output_shape=part_shape, hr_shape=hr_shape, halo_size=halo_size, splittables=splittables, mesh=mesh, weights=dread)
+    ed2 = mcomp.cic_paint_fr(ed2, final_state, output_shape=part_shape, hr_shape=hr_shape, halo_size=halo_size, splittables=splittables, mesh=mesh, weights=d2read) 
+    es2 = mcomp.cic_paint_fr(es2, final_state, output_shape=part_shape, hr_shape=hr_shape, halo_size=halo_size, splittables=splittables, mesh=mesh, weights=s2read)
 
-    ppars, mpars, kernel = setupfnn()
-    pwts, pbias, pmx, psx = ppars
-    mwts, mbias, mmx, msx, mmy, msy = mpars
-    msy, mmy = msy[0], mmy[0]
-    print("mmy : ", mmy)
-    size = 3
+    print(ed, ed2, es2)
     
-    def apply_pwts(x, x1, x2):
-        #y = tf.expand_dims(x, axis=-1)
-    
-        y = tf.nn.conv3d(tf.expand_dims(x, axis=-1), kernel, [1, 1, 1, 1, 1], 'SAME')
-        y1 = tf.nn.conv3d(tf.expand_dims(x1, axis=-1), kernel, [1, 1, 1, 1, 1], 'SAME')
-        y2 = tf.nn.conv3d(tf.expand_dims(x2, axis=-1), kernel, [1, 1, 1, 1, 1], 'SAME')
-        #y = tf.nn.conv3d(tf.expand_dims(tfwrap3D(x), -1), kernel, [1, 1, 1, 1, 1], 'VALID')
-        #y1 = tf.nn.conv3d(tf.expand_dims(tfwrap3D(x1), -1), kernel, [1, 1, 1, 1, 1], 'VALID')
-        #y2 = tf.nn.conv3d(tf.expand_dims(tfwrap3D(x12), -1), kernel, [1, 1, 1, 1, 1], 'VALID')
+    biasfield = ed*b1 + ed2*b2 + es2*bs2
 
-        yy = tf.concat([y, y1, y2], axis=-1)
-        yy = yy - pmx
-        yy = yy / psx
-        yy1 = tf.nn.relu(tf.matmul(yy, pwts[0]) + pbias[0])
-        yy2 = tf.nn.relu(tf.matmul(yy1, pwts[1]) + pbias[1])
-        yy3 = tf.matmul(yy2, pwts[2]) + pbias[2]
-        pmodel = tf.nn.sigmoid(3 * yy3)
-        return pmodel[...,0]
-    
-    pmodel = mtf.slicewise(apply_pwts,
-                        [x, x1, x12],
-                        output_dtype=tf.float32,
-                        output_shape=part_shape, # + [mtf.Dimension('c_dim', 81)],
-                        name='apply_pwts',
-                        splittable_dims=lr_shape[:-1]+hr_shape[1:4]+part_shape[1:3])
-    
-    toret = pmodel
-    
-    #return initc, toret, input_field
-
-    def apply_mwts(x, x1, x2):
-        #y = tf.expand_dims(x, axis=-1)
-
-        zz = tf.concat([tf.expand_dims(x, -1), tf.expand_dims(x1, -1), tf.expand_dims(x2, -1)], axis=-1)
-        zz = zz - mmx
-        zz = zz / msx
-        zz1 = tf.nn.elu(tf.matmul(zz, mwts[0]) + mbias[0])
-        zz2 = tf.nn.elu(tf.matmul(zz1, mwts[1]) + mbias[1])
-        zz3 = tf.matmul(zz2, mwts[2]) + mbias[2]
-        mmodel = zz3*msy + mmy
-        return mmodel[...,0]
-    
-    mmodel = mtf.slicewise(apply_mwts,
-                        [x, x1, x12],
-                        output_dtype=tf.float32,
-                        output_shape=part_shape, # + [mtf.Dimension('c_dim', 81)],
-                        name='apply_mwts',
-                        splittable_dims=lr_shape[:-1]+hr_shape[1:4]+part_shape[1:3])
-
-    toret = pmodel*mmodel
-    
-    return initc, toret, input_field
-
+    return initc, biasfield, input_field # 
 
 
 
@@ -387,7 +260,7 @@ def main(_):
     infield = True
     dtype=tf.float32
     mesh_shape = mtf.convert_to_shape(FLAGS.mesh_shape)
-
+    mesh_size = mesh_shape.size
     startw = time.time()
     
     print(mesh_shape)
@@ -417,6 +290,7 @@ def main(_):
 
     # Otherwise we are the main task, let's define the devices
     devices = ["/job:mesh/task:%d/device:GPU:%d"%(i,j) for i in range(cluster_spec.num_tasks("mesh")) for j in range(FLAGS.gpus_per_task)]
+    devices = [""]*mesh_size
     print("List of devices", devices)
 
     mesh_impl = mtf.placement_mesh_impl.PlacementMeshImpl(mesh_shape, layout_rules, devices)
@@ -428,6 +302,7 @@ def main(_):
 
     final = tools.readbigfile('/project/projectdirs/m3058/chmodi/cosmo4d/data/L0400_N0128_S0100_05step/mesh/d/')
     ic = tools.readbigfile('/project/projectdirs/m3058/chmodi/cosmo4d/data/L0400_N0128_S0100_05step/mesh/s/')
+    fpos = tools.readbigfile('/project/projectdirs/m3058/chmodi/cosmo4d/data/L0400_N0128_S0100_05step/dynamic/1/Position/')
     #ic = final
     finaltf = np.expand_dims(final, 0)
 
@@ -439,10 +314,26 @@ def main(_):
 
     #meshpos = tools.paintcic(hpos, bs, nc)
     meshmass = tools.paintcic(hpos, bs, nc, hmass.flatten()*1e10)
+    meshmass /= meshmass.mean()
     fin = meshmass
-    
-    ic, fin = np.expand_dims(ic, 0), np.expand_dims(fin, 0)
 
+    #
+    tf.reset_default_graph()
+    tfic = tf.constant(np.expand_dims(ic, 0).astype(np.float32))
+    state = lpt_init(tfic, a0=0.1, order=1)
+    final_state = nbody(state,  stages, FLAGS.nc)
+    tfinal_field = cic_paint(tf.zeros_like(tfic), final_state[0])
+    with tf.Session(server.target) as sess:
+        state  = sess.run(final_state)
+        
+    fpos = state[0, 0]*bs/nc
+    bparams, bmodel = getbias(bs, nc, meshmass, ic, fpos)
+    #fin = bmodel
+    bmodel = np.expand_dims(bmodel, 0) + 1
+    
+    fin = meshmass 
+    ic, fin = np.expand_dims(ic, 0), np.expand_dims(fin, 0)
+    print(ic.shape)
     
     tf.reset_default_graph()
     print('ic constructed')
@@ -451,7 +342,7 @@ def main(_):
     mesh = mtf.Mesh(graph, "my_mesh")
 
     
-    initial_conditions, final_field, input_field = nbody_prototype(mesh, infield, nc=FLAGS.nc,
+    initial_conditions, final_field, input_field = nbody_prototype(mesh, bparams, infield, nc=FLAGS.nc,
                                                                        batch_size=FLAGS.batch_size, dtype=dtype)
 
     # Lower mesh computation
@@ -479,18 +370,15 @@ def main(_):
         print('\n Time for the mesh thingy : %f \n'%(time.time() - start))
         print(fin.sum())
         print(fin_check.sum())
-              
+
+        print(fin_check.shape, fin.shape)
         #fin +=1
-        #fin_check +=1
-        
+        fin_check +=1
         dg.saveimfig('-check', [ic_check, fin_check], [ic, fin], './tmp/')
         dg.save2ptfig('-check', [ic_check, fin_check], [ic, fin], './tmp/', bs)
+        dg.saveimfig('-bmodel', [ic_check, bmodel], [ic, fin], './tmp/')
+        dg.save2ptfig('-bmodel', [ic_check, bmodel], [ic, fin], './tmp/', bs)
 
-    ppars, mpars, kernel = setupfnn()
-    pwts, pbias, pmx, psx = ppars
-    mwts, mbias, mmx, msx, mmy, msy = mpars
-    print("mmy : ", mmy)
-    
 ##
     exit(0)
 
