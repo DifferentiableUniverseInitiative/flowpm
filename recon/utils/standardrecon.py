@@ -127,7 +127,7 @@ if __name__=="__main__":
     plt.subplot(131)
     plt.imshow(ic.sum(axis=0))
     plt.subplot(132)
-    plt.imshow(fin.sum(axis=0))
+    plt.imshow(final.sum(axis=0))
     plt.subplot(133)
     plt.imshow(recon.sum(axis=0))
     plt.savefig('tmp.png')

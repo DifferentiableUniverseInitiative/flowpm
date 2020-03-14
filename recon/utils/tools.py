@@ -169,6 +169,32 @@ def decic(mesh, k, kny, n=2):
     return np.fft.irfftn(meshc)*np.prod(mesh.shape)
 
 
+def diracdelta(i, j):
+    if i == j: return 1
+    else: return 0
+
+def shear(mesh, k):                                                                                                                                          
+    '''Takes in a PMesh object in real space. Returns am array of shear'''          
+    #kmesh = sum([i ** 2 for i in k])**0.5
+    nc = mesh.shape[0]
+    k2 = sum(ki**2 for ki in k)                                                                          
+    k2[0,0,0] =  1                                                                  
+    meshc = np.fft.rfftn(mesh)/np.prod(mesh.shape)
+
+    s2 = np.zeros([nc, nc, nc])
+    for i in range(3):
+        for j in range(i, 3):                                                       
+            intermc = meshc * (k[i]*k[j] / k2 - diracdelta(i, j)/3.)              
+            interm = np.fft.irfftn(intermc)*np.prod(mesh.shape)        
+            s2[...] += interm**2                                                        
+            if i != j:                                                              
+                s2[...] += interm**2                                                    
+                                                                                    
+    return s2  
+
+
+    
+
 
 def tophatfunction(k, R):
     '''Takes in k, R scalar to return tophat window for the tuple'''

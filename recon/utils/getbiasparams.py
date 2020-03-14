@@ -110,6 +110,9 @@ def getbias(bs, nc, hmesh, basemesh, pos, doed=False, fpos=None, kmax=0.3):
 
     print('\nBias fit params are : ', b1, b2, bs2)
     
+    ed0 = tools.paintcic(pos, bs, nc, mass=d0.flatten())
+    ed2 = tools.paintcic(pos, bs, nc, mass=d2.flatten())
+    es2 = tools.paintcic(pos, bs, nc, mass=s2.flatten())
     if fpos is not None:
         ed0 = tools.paintcic(fpos, bs, nc, mass=d0.flatten())
         ed2 = tools.paintcic(fpos, bs, nc, mass=d2.flatten())
@@ -117,7 +120,9 @@ def getbias(bs, nc, hmesh, basemesh, pos, doed=False, fpos=None, kmax=0.3):
         mod = b1*ed0 + b2*ed2 + bs2*es2
     else:
         mod = b1*ed0 + b2*ed2 + bs2*es2
-    if doed: mod += ed
+    if doed:
+        ed = tools.paintcic(pos, bs, nc, mass=np.ones(pos.shape[0]))
+        mod += ed
     
     return params, mod
 

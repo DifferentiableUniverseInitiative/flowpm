@@ -76,10 +76,14 @@ def save2ptfig(i, iterand, truth, fpath, bs, fsize=12):
     ic1, fin1 = iterand
 
     pks = []
+    if ic1[0].mean() < 1e-3: ic1[0] += 1
+    if ic[0].mean() < 1e-3: ic[0] += 1
     k, p1 = tools.power(1+ic1[0], boxsize=bs)
     k, p2 = tools.power(1+ic[0], boxsize=bs)
     k, p12 = tools.power(1+ic1[0], f2=1+ic[0], boxsize=bs)
     pks.append([p1, p2, p12])
+    if fin1[0].mean() < 1e-3: fin1[0] += 1
+    if fin[0].mean() < 1e-3: fin[0] += 1
     k, p1 = tools.power(fin1[0], boxsize=bs)
     k, p2 = tools.power(fin[0], boxsize=bs)
     k, p12 = tools.power(fin1[0], f2=fin[0], boxsize=bs)
