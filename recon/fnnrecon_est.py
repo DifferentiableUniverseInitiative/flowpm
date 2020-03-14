@@ -13,6 +13,7 @@ import flowpm
 import flowpm.mesh_ops as mpm
 import flowpm.mtfpm as mtfpm
 import flowpm.mesh_utils as mesh_utils
+import flowpm.mesh_composite as mcomp
 from astropy.cosmology import Planck15
 from flowpm.tfpm import PerturbationGrowth
 from flowpm import linear_field, lpt_init, nbody, cic_paint
@@ -168,6 +169,7 @@ def recon_model(mesh, datasm, M0, R0, width, off, istd, x0, nc=FLAGS.nc, bs=FLAG
     lr_shape = [batch_dim, fx_dim, fy_dim, fz_dim]
     hr_shape = [batch_dim, nx_dim, ny_dim, nz_dim, sx_dim, sy_dim, sz_dim]
     part_shape = [batch_dim, fx_dim, fy_dim, fz_dim]
+    splittables = lr_shape[:-1]+hr_shape[1:4]+part_shape[1:3]
 
 #
     # Begin simulation
@@ -182,24 +184,9 @@ def recon_model(mesh, datasm, M0, R0, width, off, istd, x0, nc=FLAGS.nc, bs=FLAG
     state = mtfpm.lpt_init_single(fieldvar, a0, kv_lr, halo_size, lr_shape, hr_shape, part_shape[1:], antialias=True,)
     final_state = mtfpm.nbody_single(state, stages, lr_shape, hr_shape, kv_lr, halo_size)
     
-    # paint the field
-    final_field = mtf.zeros(mesh, shape=hr_shape)
-    for block_size_dim in hr_shape[-3:]:
-        final_field = mtf.pad(final_field, [halo_size, halo_size], block_size_dim.name)
-    final_field = mesh_utils.cic_paint(final_field, final_state[0], halo_size)
-    # Halo exchange
-    for blocks_dim, block_size_dim in zip(hr_shape[1:4], final_field.shape[-3:]):
-        final_field = mpm.halo_reduce(final_field, blocks_dim, block_size_dim, halo_size)
-    # Remove borders
-    for block_size_dim in hr_shape[-3:]:
-        final_field = mtf.slice(final_field, halo_size, block_size_dim.size, block_size_dim.name)
+    final_field = mtf.zeros(mesh, shape=part_shape)
+    final_field = mcomp.cic_paint_fr(final_field, final_state, output_shape=part_shape, hr_shape=hr_shape, halo_size=halo_size, splittables=splittables, mesh=mesh)
 
-    final_field = mtf.slicewise(lambda x: x[:,0,0,0],
-                        [final_field],
-                        output_dtype=dtype,
-                        output_shape=[batch_dim, fx_dim, fy_dim, fz_dim],
-                        name='my_dumb_reshape',
-                        splittable_dims=part_shape[:-1]+hr_shape[:4])
     ##
     x = final_field
     
@@ -207,7 +194,6 @@ def recon_model(mesh, datasm, M0, R0, width, off, istd, x0, nc=FLAGS.nc, bs=FLAG
     pwts, pbias, pmx, psx = ppars
     mwts, mbias, mmx, msx, mmy, msy = mpars
     msy, mmy = msy[0], mmy[0]
-    print("mmy : ", mmy)
     size = 3
     
 
@@ -496,11 +482,10 @@ def main(_):
     plin = np.loadtxt('../flowpm/data/Planck15_a1p00.txt').T[1]
     ipklin = iuspline(klin, plin)
 
+    #pypath = '/global/cscratch1/sd/chmodi/cosmo4d/output/version2/L0400_N0128_05step-fof/lhd_S0100/n10/opt_s999_iM12-sm3v25off/meshes/'
     final = tools.readbigfile('/project/projectdirs/m3058/chmodi/cosmo4d/data/L0400_N0128_S0100_05step/mesh/d/')
     ic = tools.readbigfile('/project/projectdirs/m3058/chmodi/cosmo4d/data/L0400_N0128_S0100_05step/mesh/s/')
-
-    pypath = '/global/cscratch1/sd/chmodi/cosmo4d/output/version2/L0400_N0128_05step-fof/lhd_S0100/n10/opt_s999_iM12-sm3v25off/meshes/'
-    fin = tools.readbigfile(pypath + 'decic//') 
+    fpos = tools.readbigfile('/project/projectdirs/m3058/chmodi/cosmo4d/data/L0400_N0128_S0100_05step/dynamic/1/Position/')
     
     hpos = tools.readbigfile('/project/projectdirs/m3058/chmodi/cosmo4d/data/L0400_N0512_S0100_40step/FOF/PeakPosition//')[1:int(bs**3 *numd)]
     hmass = tools.readbigfile('/project/projectdirs/m3058/chmodi/cosmo4d/data/L0400_N0512_S0100_40step/FOF/Mass//')[1:int(bs**3 *numd)].flatten()

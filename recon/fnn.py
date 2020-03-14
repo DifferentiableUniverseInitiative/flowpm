@@ -126,3 +126,22 @@ def cwise_fingauss(kfield, R, kx, ky, kz, nc, bs):
     kk = tf.sqrt((2*kny/np.pi*tf.sin(kx*np.pi/(2*kny)))**2 + (2*kny/np.pi*tf.sin(ky*np.pi/(2*kny)))**2 + (2*kny/np.pi*tf.sin(kz*np.pi/(2*kny)))**2)
     wts = tf.exp(-0.5 * R**2 * kk**2)
     return kfield * tf.cast(wts, kfield.dtype)
+
+
+
+def shear(pm, base):
+    '''Takes in a PMesh object in real space. Returns am array of shear'''
+    s2 = pm.create(mode='real', value=0)
+    kk = base.r2c().x
+    k2 = sum(ki**2 for ki in kk)
+    k2[0,0,0] =  1
+    for i in range(3):
+        for j in range(i, 3):
+            basec = base.r2c()
+            basec *= (kk[i]*kk[j] / k2 - diracdelta(i, j)/3.)
+            baser = basec.c2r()
+            s2[...] += baser**2
+            if i != j:
+                s2[...] += baser**2
+            
+    return s2

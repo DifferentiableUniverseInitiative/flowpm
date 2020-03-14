@@ -180,7 +180,6 @@ def recon_prototype(mesh, data, nc=FLAGS.nc, bs=FLAGS.box_size, batch_size=FLAGS
     initc = fieldvar
 
 
-
     print("initc : ", initc)
     
     # Here we can run our nbody
