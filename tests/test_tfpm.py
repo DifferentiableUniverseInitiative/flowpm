@@ -1,5 +1,4 @@
-import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()
+import tensorflow as tf
 
 import numpy as np
 from numpy.testing import assert_allclose
@@ -26,11 +25,7 @@ def test_linear_field_shape():
   plin = np.loadtxt('flowpm/data/Planck15_a1p00.txt').T[1]
   ipklin = iuspline(klin, plin)
 
-  with tf.Session() as sess:
-    field = tfpm.linear_field(nc, bs, ipklin, batch_size=5)
-
-    tfread = sess.run(field)
-
+  tfread = tfpm.linear_field(nc, bs, ipklin, batch_size=5).numpy()
   assert tfread.shape == (5, 16, 16, 16)
 
 def test_lpt_init():
@@ -49,11 +44,8 @@ def test_lpt_init():
   statelpt = solver.lpt(lineark, grid, a0, order=1)
 
   # Same thing with flowpm
-  with tf.Session() as sess:
-    tlinear = tf.expand_dims(tf.constant(lineark.c2r()), 0)
-    tflptic = tfpm.lpt_init(tlinear, a0, order=1)
-
-    tfread = sess.run(tflptic)
+  tlinear = tf.expand_dims(np.array(lineark.c2r()), 0)
+  tfread = tfpm.lpt_init(tlinear, a0, order=1).numpy()
 
   assert_allclose(statelpt.X, tfread[0,0]*bs/nc, rtol=1e-2)
 
@@ -70,9 +62,7 @@ def test_lpt1():
   lpt = fpmops.lpt1(lineark, grid)
 
   # Same thing from tensorflow
-  with tf.Session() as sess:
-    state = tfpm.lpt1(pmutils.r2c3d(tf.expand_dims(tf.constant(lineark.c2r()), axis=0)), grid.reshape((1, -1, 3))*nc/bs)
-    tfread = sess.run(state)
+  tfread = tfpm.lpt1(pmutils.r2c3d(tf.expand_dims(np.array(lineark.c2r()), axis=0)), grid.reshape((1, -1, 3))*nc/bs).numpy()
 
   assert_allclose(lpt, tfread[0]*bs/nc, atol=1e-5)
 
@@ -91,9 +81,7 @@ def test_lpt1_64():
   lpt = fpmops.lpt1(lineark, grid)
 
   # Same thing from tensorflow
-  with tf.Session() as sess:
-    state = tfpm.lpt1(pmutils.r2c3d(tf.expand_dims(tf.constant(lineark.c2r()), axis=0)), grid.reshape((1, -1, 3))*nc/bs)
-    tfread = sess.run(state)
+  tfread = tfpm.lpt1(pmutils.r2c3d(tf.expand_dims(np.array(lineark.c2r()), axis=0)), grid.reshape((1, -1, 3))*nc/bs).numpy()
 
   assert_allclose(lpt, tfread[0]*bs/nc, atol=5e-5)
 
@@ -110,9 +98,8 @@ def test_lpt2():
   source = fpmops.lpt2source(lineark).c2r()
 
   # Same thing from tensorflow
-  with tf.Session() as sess:
-    tfsource = tfpm.lpt2_source(pmutils.r2c3d(tf.expand_dims(tf.constant(lineark.c2r()), axis=0)))
-    tfread = sess.run(pmutils.c2r3d(tfsource))
+  tfsource = tfpm.lpt2_source(pmutils.r2c3d(tf.expand_dims(np.array(lineark.c2r()), axis=0)))
+  tfread = pmutils.c2r3d(tfsource).numpy()
 
   assert_allclose(source, tfread[0], atol=1e-5)
 
@@ -134,11 +121,9 @@ def test_nody():
   final_cube = pm.paint(finalstate.X)
 
   # Same thing with flowpm
-  with tf.Session() as sess:
-    tlinear = tf.expand_dims(tf.constant(lineark.c2r()), 0)
-    state = tfpm.lpt_init(tlinear, a0, order=1)
-    state = tfpm.nbody(state, stages, nc)
-    field = pmutils.cic_paint(tf.zeros_like(tlinear), state[0])
-    tfread = sess.run(field)
+  tlinear = tf.expand_dims(np.array(lineark.c2r()), 0)
+  state = tfpm.lpt_init(tlinear, a0, order=1)
+  state = tfpm.nbody(state, stages, nc)
+  tfread = pmutils.cic_paint(tf.zeros_like(tlinear), state[0]).numpy()
 
   assert_allclose(final_cube, tfread[0], atol=1.2)

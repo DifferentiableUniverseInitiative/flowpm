@@ -4,8 +4,6 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()
 
 def fftk(shape, symmetric=True, finite=False, dtype=np.float64):
   """ Return k_vector given a shape (nc, nc, nc) and box_size
