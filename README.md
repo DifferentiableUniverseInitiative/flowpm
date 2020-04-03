@@ -9,6 +9,7 @@ $ pip install flowpm
 For a minimal working example of FlowPM, see this [notebook](notebook/flowpm_tutorial.ipynb). The steps are as follows:
 ```python
 import tensorflow as tf
+import numpy as np
 import flowpm
 
 stages = np.linspace(0.1, 1.0, 10, endpoint=True)
