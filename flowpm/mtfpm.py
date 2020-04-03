@@ -5,11 +5,10 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()
+import mesh_tensorflow as mtf
+
 import tensorflow_probability as tfp
 from astropy.cosmology import Planck15
-
-import mesh_tensorflow as mtf
 
 from .background import MatterDominated
 from . import mesh_ops
@@ -324,8 +323,6 @@ def nbody(state, stages, lr_shape, hr_shape, kvec_lr, kvec_hr, halo_size, cosmol
 
   return state
 
-
-
 def lpt_init_single(lr_field, a0, kvec_lr, halo_size, lr_shape, hr_shape, part_shape, antialias=True, order=1, post_filtering=True, cosmology=Planck15):
   a = a0
   batch_dim = lr_field.shape[0]
@@ -335,12 +332,12 @@ def lpt_init_single(lr_field, a0, kvec_lr, halo_size, lr_shape, hr_shape, part_s
   mstate = mesh_ops.mtf_indices(lr_field.mesh, shape=part_shape, dtype=tf.float32)
   X = mtf.einsum([mtf.ones(lr_field.mesh, [batch_dim]), mstate], output_shape=[batch_dim] + mstate.shape[:])
 
-  
+
   k_dims_lr = [d.shape[0] for d in kvec_lr]
   k_dims_lr = [k_dims_lr[2], k_dims_lr[0], k_dims_lr[1]]
-  
+
   lr_kfield = mesh_utils.r2c3d(lr_field, k_dims_lr)
-  
+
   grad_kfield_lr = mesh_kernels.apply_gradient_laplace_kernel(lr_kfield, kvec_lr)
 
   # Reorder the low res FFTs which where transposed# y,z,x
@@ -380,11 +377,6 @@ def lpt_init_single(lr_field, a0, kvec_lr, halo_size, lr_shape, hr_shape, part_s
 
   return X, P, F
 
-
-
-
-
-
 def force_single(state, lr_shape, hr_shape, kvec_lr, halo_size, cosmology=Planck15,
           pm_nc_factor=1, **kwargs):
   """
@@ -422,7 +414,7 @@ def force_single(state, lr_shape, hr_shape, kvec_lr, halo_size, cosmology=Planck
   for block_size_dim in hr_shape[-3:]:
     field = mtf.slice(field, halo_size, block_size_dim.size, block_size_dim.name)
 
-  
+
   # Hack usisng  custom reshape because mesh is pretty dumb
   lr_field = mtf.slicewise(lambda x: x[:,0,0,0],
                         [field],
@@ -431,9 +423,9 @@ def force_single(state, lr_shape, hr_shape, kvec_lr, halo_size, cosmology=Planck
                         name='my_dumb_reshape',
                         splittable_dims=lr_shape[:-1]+hr_shape[:4])
 
-  
+
   k_dims_lr = [d.shape[0] for d in kvec_lr]
-  k_dims_lr = [k_dims_lr[2], k_dims_lr[0], k_dims_lr[1]]  
+  k_dims_lr = [k_dims_lr[2], k_dims_lr[0], k_dims_lr[1]]
   lr_kfield = mesh_utils.r2c3d(lr_field, k_dims_lr)
 
   kfield_lr = mesh_kernels.apply_gradient_laplace_kernel(lr_kfield, kvec_lr)
@@ -467,9 +459,6 @@ def force_single(state, lr_shape, hr_shape, kvec_lr, halo_size, cosmology=Planck
 
   F = F * 1.5 * cosmology.Om0
   return X, P, F
-
-
-
 
 def nbody_single(state, stages, lr_shape, hr_shape, kvec_lr, halo_size, cosmology=Planck15,
           pm_nc_factor=1):
