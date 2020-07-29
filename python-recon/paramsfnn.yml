@@ -1,0 +1,84 @@
+mods:
+    objective : SmoothedLogObjective
+    map : mapmass
+
+basep:
+    bs : 400
+    nc : 128
+    seed : 100
+    nsteps : 5
+    zz : 0.0
+    nfsteps : 40
+    numd : 0.001             #check fine and hofolder with this
+    fine : 4
+
+    foldername : 'testfnn-'
+    note : 'first M0, then smooth'
+    
+    position : False
+    roundpos : null
+    Mdown : [12, 11, 10]
+    abund : False
+    rsd : False
+    Rrsd : 3
+    itf : 1
+    saveit : 20
+    outputfolder : '/global/cscratch1/sd/chmodi/flowpm/'
+
+
+freshrunp:
+    isit : True
+    Nmesh : 128
+    W0 : 2.0
+    N0 : 2.0
+    Ms : 12
+    nit : 0
+    bestfit : True
+    sfolder : null
+    dfolder : null
+    #sfolder : '/global/cscratch1/sd/chmodi/cosmo4d/output/L0400_N0128_05step-fof/lhd_S0100/n10/rsd/z05/opt_s999_MdowniM12-naV2sm3sm3off/M0_100/128-03-0.00/best-fit/'
+    #dfolder : '/global/cscratch1/sd/chmodi/cosmo4d/output/L0400_N0128_05step-fof/lhd_S0100/n10/rsd/z05/opt_s999_MdowniM12-naV2sm3sm3off/'
+
+
+foldersp:
+    hofolder : 'highres%d_S%04d/'
+
+modelp:
+    cfgfile : True
+    cfgfilepath : '/global/project/projectdirs/m3058/chmodi/cosmo4d/train/models.yaml'
+
+optp:
+    maxwidthonly : False
+    nomultismooth : False
+    Nss : [4.0, 2.0, 1.0, 0.5, 0] 
+    ss : [0] 
+    Nsub : 3 #1
+    tol : 1e-3
+    optimizer : 'LBFGS'
+    maxiter : 101
+    linesearchiter : 100
+    rate : 1
+
+noisep:
+    smooth : 3
+    noisevar : 0.25
+    noised : 2
+    offset : True
+    L1 : False
+    noisefile : hist_M%d_na.txt
+    ninf : null
+    mlim : False
+
+scatterp:
+    sigma : null
+    rseed : 666
+    truemass : False
+
+
+initp:
+    seed : 999
+    power: 0.1
+    #infolder : '/global/cscratch1/sd/chmodi/cosmo4d/output/L0400_N0128_05step-fof/lhd_S0100/n10/opt_s999_MdowniM12-narsd2sm3off/M0_110/128-03-0.00/best-fit'
+    infolder : null
+
+

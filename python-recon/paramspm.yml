@@ -1,0 +1,23 @@
+mods:
+    objective : SmoothedObjective
+    map : mapfinal
+
+basep:
+    bs : 400
+    nc : 128
+    seed : 100
+    nsteps : 5
+    zz : 0.0
+    nbody : False
+    prefix : 'testflowpm-'
+    saveit : 20
+    showit : 5
+    iseed : 999
+    smoothings : [0, 0.5, 1.0, 2.0, 4.0]
+    noisevar : 1
+    outputfolder : '/global/cscratch1/sd/chmodi/flowpm/'
+    createdata : True
+    optimizer : 'LBFGS'
+    maxiter : 21
+    linesearchiter : 100
+    rate : 1
