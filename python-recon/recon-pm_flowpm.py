@@ -48,7 +48,7 @@ B = 1
 #
 #mainfolder = '/global/cscratch1/sd/chmodi/cosmo4d/'
 dfolder = '/project/projectdirs/m3058/chmodi/cosmo4d/data/z%02d/L%04d_N%04d_S%04d_%dstep/'%(zz, bs, nc, seed, 40)
-ofolder = outputfolder + '/z%02d/L%04d_N%04d_S%04d/pm/'%(zz, bs, nc, seed)
+ofolder = outputfolder + '/z%02d/L%04d_N%04d_S%04d-pm/'%(zz, bs, nc, seed)
 
 #prefix = 'flowpm_gd_r0p02_rtole-6_lsiter0'
 fname = '%s'%(prefix)

@@ -64,7 +64,7 @@ map = getattr(lab, mods['map'])
 
 #########################################
 #Folder and file names
-ofolder = outputfolder + '/L%04d_N%04d_%02dstep-fof/lhd_S%04d/n%02d/'%(bs, nc, nsteps, seed, numd*1e4)
+ofolder = outputfolder + '/L%04d_N%04d_%02dstep_S%04d-fof-n%02d/'%(bs, nc, nsteps, seed, numd*1e4)
 if basep['position'] : 
     ofolder += 'position/initp%d/'%(initp['power']*100)
     

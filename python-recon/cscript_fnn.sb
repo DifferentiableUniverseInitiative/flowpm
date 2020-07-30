@@ -20,10 +20,8 @@ export OMP_NUM_THREADS=1
 
 bcast-pip -U --no-deps https://github.com/bccp/nbodykit/archive/master.zip
 bcast-pip -U --no-deps https://github.com/rainwoodman/fastpm-python/archive/master.zip
-#bcast-pip -U --no-deps /global/homes/c/chmodi/Programs/abopt
 bcast-pip -U --no-deps https://github.com/bccp/abopt/archive/master.zip
 
-##source /global/homes/c/chmodi/.conda/envs/fastpm/bin/activate
 echo 'Finally starting'
 
 time srun -n 128 python -u recon-fnn_flowpm.py paramsfnn.yml
