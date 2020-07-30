@@ -1,0 +1,29 @@
+#!/bin/bash
+
+#SBATCH -J pm
+#SBATCH -N 4
+#SBATCH -p debug
+#SBATCH -t 00:30:00
+#SBATCH -o pm.o%j
+#SBATCH -L cscratch1
+#SBATCH -C haswell
+#SBATCH -A m3058
+
+module unload darshan
+module unload python
+
+module swap PrgEnv-intel PrgEnv-gnu
+module swap gcc gcc/5.3.0
+
+source /global/common/software/m3035/conda-activate.sh 3.7
+export OMP_NUM_THREADS=1
+
+bcast-pip -U --no-deps https://github.com/bccp/nbodykit/archive/master.zip
+bcast-pip -U --no-deps https://github.com/rainwoodman/fastpm-python/archive/master.zip
+#bcast-pip -U --no-deps /global/homes/c/chmodi/Programs/abopt
+bcast-pip -U --no-deps https://github.com/bccp/abopt/archive/master.zip
+
+##source /global/homes/c/chmodi/.conda/envs/fastpm/bin/activate
+echo 'Finally starting'
+
+time srun -n 128 python -u recon-pm_flowpm.py paramspm.yml
