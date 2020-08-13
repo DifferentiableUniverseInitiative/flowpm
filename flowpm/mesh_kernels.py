@@ -6,7 +6,6 @@ from __future__ import print_function
 import numpy as np
 import mesh_tensorflow as mtf
 import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()
 
 def get_bspline_kernel(x, channels, transpose=False, dtype=tf.float32, order=4):
   """Creates a 5x5x5 b-spline kernel.

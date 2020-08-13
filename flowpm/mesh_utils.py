@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import mesh_tensorflow as mtf
 import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()
+
 from . import mesh_ops
 from . import mesh_kernels
 

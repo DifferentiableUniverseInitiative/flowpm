@@ -7,7 +7,6 @@ from six.moves import xrange  # pylint: disable=redefined-builtin
 import mesh_tensorflow as mtf
 import tensorflow.compat.v1 as tf
 import numpy as np
-tf.disable_v2_behavior()
 
 class IndicesOperation(mtf.Operation):
   """Distributed equivalent of np.indices"""
