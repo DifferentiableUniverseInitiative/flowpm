@@ -42,7 +42,7 @@ def benchmark_model(mesh):
   tz_dim = mtf.Dimension("tnz", FLAGS.cube_size)
 
   # Create field
-  field = mpm.random_normal(mesh, [batch_dim, x_dim, y_dim, z_dim])
+  field = mtf.random_normal(mesh, [batch_dim, x_dim, y_dim, z_dim])
 
   input_field = field
   field = mtf.cast(field, tf.complex64)

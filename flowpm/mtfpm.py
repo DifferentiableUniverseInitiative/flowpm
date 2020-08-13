@@ -43,7 +43,7 @@ def linear_field(mesh, shape, boxsize, nc, pk, kvec,
   k_dims = [k_dims[2], k_dims[0], k_dims[1]]
 
   # Generates the random field
-  field = mesh_ops.random_normal(mesh, shape=shape,
+  field = mtf.random_normal(mesh, shape=shape,
                                  mean=0, stddev=nc**1.5, dtype=tf.float32)
 
   # Apply power spectrum on both grids

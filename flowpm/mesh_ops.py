@@ -167,17 +167,3 @@ class iFFT3DOperation(mtf.Operation):
 
 def ifft3d(x, k_dims):
   return iFFT3DOperation(x, k_dims).outputs[0]
-
-def random_normal(mesh, shape, **kwargs):
-  """Random normal.
-
-  Args:
-    mesh: a Mesh
-    shape: a Shape
-    **kwargs: keyword args for tf.random.normal, except seed
-
-  Returns:
-    a Tensor
-  """
-  shape = mtf.convert_to_shape(shape)
-  return mtf.RandomOperation(mesh, shape, tf.random.normal, **kwargs).outputs[0]

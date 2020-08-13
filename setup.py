@@ -14,7 +14,7 @@ setup(name='flowpm',
       author_email='modichirag@berkeley.edu',
       license='MIT',
       packages=['flowpm'],
-      install_requires=['astropy', 'scipy', 'tensorflow>=2.1', 'mesh-tensorflow'],
+      install_requires=['astropy', 'scipy', 'mesh-tensorflow'],
       tests_require=['fastpm'],
       extras_require={
         'testing':  ["fastpm"],

@@ -20,7 +20,7 @@ def linear_field(mesh, hr_shape, lr_shape,
       return kfield
 
   # Generates the random field
-  random_field = mesh_ops.random_normal(mesh, shape=hr_shape,
+  random_field = mtf.random_normal(mesh, shape=hr_shape,
                                         mean=0, stddev=nc**1.5,
                                         dtype=tf.float32)
   field = random_field
