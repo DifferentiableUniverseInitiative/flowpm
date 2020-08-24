@@ -79,7 +79,7 @@ def lpt1(dlin_k, pos, kvec=None, name="LTP1"):
     pos = tf.convert_to_tensor(pos, name="pos")
 
     shape = dlin_k.get_shape()
-    batch_size, nc = shape[0], shape[1]
+    batch_size, nc = shape[0], int(shape[1])
     if kvec is None:
       kvec = fftk((nc, nc, nc), symmetric=False)
 
@@ -157,7 +157,7 @@ def lpt_init(linear, a0, order=2, cosmology=Planck15, kvec=None, name="LPTInit")
 
     assert order in (1, 2)
     shape = linear.get_shape()
-    batch_size, nc = shape[0], shape[1]
+    batch_size, nc = shape[0], int(shape[1])
 
     dtype = np.float32
     Q = np.indices((nc, nc, nc)).reshape(3, -1).T.astype(dtype)
@@ -193,7 +193,7 @@ def apply_longrange(x, delta_k, split=0, factor=1, kvec=None, name="ApplyLongran
     delta_k = tf.convert_to_tensor(delta_k, name="delta_k")
 
     shape = delta_k.get_shape()
-    batch_size, nc = shape[1], shape[2]
+    batch_size, nc = shape[1], int(shape[2])
 
     if kvec is None:
       kvec = fftk((nc, nc, nc), symmetric=False)
