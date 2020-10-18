@@ -6,7 +6,7 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
-def cic_paint(mesh, part, weight=None, name=None):
+def cic_paint(mesh, part, weight=None, name="CiCPaint"):
   """
   Paints particules on a 3D mesh.
 
@@ -22,9 +22,19 @@ def cic_paint(mesh, part, weight=None, name=None):
   weight: tensor (batch_size, npart)
     List of weights  for each particle
   """
-  with tf.name_scope(name, "CiCPaint", [mesh, part, weight]):
+  with tf.name_scope(name):
+    mesh = tf.convert_to_tensor(mesh, name="mesh")
+    part = tf.convert_to_tensor(part, name="part")
+    if weight is not None:
+      weight = tf.convert_to_tensor(weight, name="weight")
+
     shape = tf.shape(mesh)
-    batch_size, nc = shape[0], shape[1]
+    batch_size, nx, ny, nz = shape[0], shape[1], shape[2], shape[3]
+    nc = nz
+
+    # Flatten part if it's not already done
+    if len(part.shape) > 3:
+      part = tf.reshape(part, (batch_size, -1, 3))
 
     # Extract the indices of all the mesh points affected by each particles
     part = tf.expand_dims(part, 2)
@@ -52,11 +62,11 @@ def cic_paint(mesh, part, weight=None, name=None):
 
     update = tf.scatter_nd(tf.reshape(neighboor_coords, (-1, 8,4)),
                            tf.reshape(kernel, (-1, 8)),
-                           [batch_size, nc, nc, nc])
+                           [batch_size, nx, ny, nz])
     mesh = mesh + update
     return mesh
 
-def cic_readout(mesh, part, name=None):
+def cic_readout(mesh, part, name="CiCReadout"):
   """
   Reads out particles from mesh.
 
@@ -74,9 +84,17 @@ def cic_readout(mesh, part, name=None):
   value: tensor (batch_size, npart)
     Value of the field sampled at the particle locations
   """
-  with tf.name_scope(name, "CiCReadout", [mesh, part]):
+  with tf.name_scope("CiCReadout"):
+    mesh = tf.convert_to_tensor(mesh, name="mesh")
+    part = tf.convert_to_tensor(part, name="part")
+
     shape = tf.shape(mesh)
-    batch_size, nc = shape[0], shape[1]
+    batch_size, nx, ny, nz = shape[0], shape[1], shape[2], shape[3]
+    nc = nz
+
+    # Flatten part if it's not already done
+    if len(part.shape) > 3:
+      part = tf.reshape(part, (batch_size, -1, 3))
 
     # Extract the indices of all the mesh points affected by each particles
     part = tf.expand_dims(part, 2)
@@ -97,7 +115,7 @@ def cic_readout(mesh, part, name=None):
     value = tf.reduce_sum(weightedvals, axis=-1)
     return value
 
-def r2c3d(rfield, norm=None, dtype=tf.complex64, name=None):
+def r2c3d(rfield, norm=None, dtype=tf.complex64, name="R2C3D"):
   """
   Converts a real field to its complex Fourier Transform
 
@@ -117,13 +135,14 @@ def r2c3d(rfield, norm=None, dtype=tf.complex64, name=None):
   cfield: tensor (batch_size, nc, nc, nc)
     Complex field
   """
-  with tf.name_scope(name, "R2C3D", [rfield]):
+  with tf.name_scope(name):
+    rfield = tf.convert_to_tensor(rfield, name="mesh")
     if norm is None: norm = tf.cast(tf.reduce_prod(rfield.get_shape()[1:]), dtype)
     else: norm = tf.cast(norm, dtype)
     cfield = tf.multiply(tf.signal.fft3d(tf.cast(rfield, dtype)), 1/norm, name=name)
     return cfield
 
-def c2r3d(cfield, norm=None, dtype=tf.float32, name=None):
+def c2r3d(cfield, norm=None, dtype=tf.float32, name="C2R3D"):
   """
   Converts a complex Fourier domain field to a real field
 
@@ -143,19 +162,20 @@ def c2r3d(cfield, norm=None, dtype=tf.float32, name=None):
   rfield: tensor (batch_size, nc, nc, nc)
     Real valued field
   """
-  with tf.name_scope(name, "C2R3D", [cfield]):
+  with tf.name_scope(name):
+    cfield = tf.convert_to_tensor(cfield, name="mesh")
     if norm is None: norm = tf.cast(tf.reduce_prod(cfield.get_shape()[1:]), dtype)
     else: norm = tf.cast(norm, dtype)
     rfield = tf.multiply(tf.cast(tf.signal.ifft3d(cfield), dtype), norm, name=name)
     return rfield
 
-def white_noise(nc, batch_size=1, seed=None, type='complex', name=None):
+def white_noise(nc, batch_size=1, seed=None, type='complex', name="WhiteNoise"):
   """
   Samples a 3D cube of white noise of desired size
   """
-  with tf.name_scope(name, "WhiteNoise"):
+  with tf.name_scope(name):
     assert batch_size >= 1
-    white = tf.random_normal(shape=(batch_size, nc, nc, nc),
+    white = tf.random.normal(shape=(batch_size, nc, nc, nc),
                              mean=0, stddev=nc**1.5, seed=seed)
     if type == 'real': return white
     elif type == 'complex':
