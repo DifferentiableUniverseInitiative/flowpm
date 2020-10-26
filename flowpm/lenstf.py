@@ -64,20 +64,13 @@ def rotate(x, M, boxsize, boxshift, name='rotate'):
         xy = tf.gather(y, (0, 1), axis=1, name='gather_xy')
         return xy, d
 
-
-
 def z_chi(d, cosmo, name='z_chi'):
     with tf.name_scope(name):
         # redshift as a function of comsoving distance for underlying cosmology
         z_int          = np.logspace(-12,np.log10(1500),40000)
         chis           = cosmo.comoving_distance(z_int) #Mpc/h
-        z_chi_int = scipy.interpolate.interp1d(chis, z_int, kind='linear', bounds_error=False, fill_value='extrapolate')
-        z = z_chi_int(d)
-        return z 
-
-@tf.RegisterGradient('z_chi')
-def _z_chi(z, cosmo):
-    return cosmo.efunc(z)*cosmo.H0/cosmo.C
+        z = tfp.math.interp_regular_1d_grid(d, 1e-12, 1.5e3, tf.convert_to_tensor(chis, dtype='float'), name='interpolation')
+        return z
 
 def wlen(d, ds, cosmo, boxsize, boxsize2D, mesh2D):
         """
