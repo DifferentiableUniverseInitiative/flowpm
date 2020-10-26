@@ -115,7 +115,7 @@ def cic_readout(mesh, part, name="CiCReadout"):
     value = tf.reduce_sum(weightedvals, axis=-1)
     return value
 
-def r2c3d(rfield, norm=None, dtype=tf.complex64, name="R2C3D"):
+def r2c3d(rfield, norm=None, dims=3, dtype=tf.complex64, name="R2C3D"):
   """
   Converts a real field to its complex Fourier Transform
 
@@ -139,10 +139,13 @@ def r2c3d(rfield, norm=None, dtype=tf.complex64, name="R2C3D"):
     rfield = tf.convert_to_tensor(rfield, name="mesh")
     if norm is None: norm = tf.cast(tf.reduce_prod(rfield.get_shape()[1:]), dtype)
     else: norm = tf.cast(norm, dtype)
-    cfield = tf.multiply(tf.signal.fft3d(tf.cast(rfield, dtype)), 1/norm, name=name)
+    if dims == 3: cfield = tf.multiply(tf.signal.fft3d(tf.cast(rfield, dtype)), 1/norm, name=name)
+    elif dims == 2: cfield = tf.multiply(tf.signal.fft2d(tf.cast(rfield, dtype)), 1/norm, name=name)
+    else:
+        raise ValueError('Only supports 2D or 3D fields')
     return cfield
 
-def c2r3d(cfield, norm=None, dtype=tf.float32, name="C2R3D"):
+def c2r3d(cfield, norm=None, dims=3, dtype=tf.float32, name="C2R3D"):
   """
   Converts a complex Fourier domain field to a real field
 
@@ -166,7 +169,10 @@ def c2r3d(cfield, norm=None, dtype=tf.float32, name="C2R3D"):
     cfield = tf.convert_to_tensor(cfield, name="mesh")
     if norm is None: norm = tf.cast(tf.reduce_prod(cfield.get_shape()[1:]), dtype)
     else: norm = tf.cast(norm, dtype)
-    rfield = tf.multiply(tf.cast(tf.signal.ifft3d(cfield), dtype), norm, name=name)
+    if dims == 3: rfield = tf.multiply(tf.cast(tf.signal.ifft3d(cfield), dtype), norm, name=name)
+    elif dims == 2: rfield = tf.multiply(tf.cast(tf.signal.ifft2d(cfield), dtype), norm, name=name)
+    else:
+        raise ValueError('Only Supports 2D or 3D fields)
     return rfield
 
 def white_noise(nc, batch_size=1, seed=None, type='complex', name="WhiteNoise"):
