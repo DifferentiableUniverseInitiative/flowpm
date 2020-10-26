@@ -1,3 +1,10 @@
+import tensorflow as tf
+import tensorflow_probability as tfp
+from nbodykit import cosmology
+import numpy as np
+from flowpm.utils import r2c2d, c2r2d
+
+
 def generate(di, df, ds, boxsize, boxsize2D, ):
     """ Returns a list of rotation matrices and shifts that are applied to the box
     di : distance to inital redshift (before taking fastpm step)
@@ -72,19 +79,20 @@ def z_chi(d, cosmo, name='z_chi'):
         z = tfp.math.interp_regular_1d_grid(d, 1e-12, 1.5e3, tf.convert_to_tensor(chis, dtype='float'), name='interpolation')
         return z
 
-def wlen(d, ds, cosmo, boxsize, boxsize2D, mesh2D):
-        """
+def wlen(d, ds, cosmo, boxsize, boxsize2D, mesh2D, name='efficiency_kernel'):
+    """
     returns the correctly weighted lensing efficiency kernel
     d:   particle distance (assuming parllel projection)
     ds:  source redshift
     """
-    # Find the redshift at ds
-    z          = z_chi(d, cosmo)
-    # Find the number density of simulated particles
-    nbar = tf.shape(d)/boxsize[0]**3
+    with tf.name_scope(name):
+        # Find the redshift at ds
+        z= z_chi(d, cosmo)
+        # Find the number density of simulated particles
+        nbar = tf.shape(d)/boxsize[0]**3
 
-    #Find angular pixel area for projection
-    A = mesh2D[0]**2/boxsize2D**2
-    columndens = tf.multiply(tf.pow(d,2),float(nbar*A)) #particles/Volume*angular pixel area* distance^2 -> 1/L units
-    w          = tf.divide(tf.multiply(tf.multiply(tf.subtract(ds, d), tf.divide(d, ds)), (1.+z)), columndens) #distance
-    return w
+        #Find angular pixel area for projection
+        A = mesh2D[0]**2/boxsize2D**2
+        columndens = tf.multiply(tf.pow(d,2),float(nbar*A)) #particles/Volume*angular pixel area* distance^2 -> 1/L units
+        w          = tf.divide(tf.multiply(tf.multiply(tf.subtract(ds, d), tf.divide(d, ds)), (1.+z)), columndens) #distance
+        return w
