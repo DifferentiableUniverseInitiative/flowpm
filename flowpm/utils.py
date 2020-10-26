@@ -172,7 +172,7 @@ def c2r3d(cfield, norm=None, dims=3, dtype=tf.float32, name="C2R3D"):
     if dims == 3: rfield = tf.multiply(tf.cast(tf.signal.ifft3d(cfield), dtype), norm, name=name)
     elif dims == 2: rfield = tf.multiply(tf.cast(tf.signal.ifft2d(cfield), dtype), norm, name=name)
     else:
-        raise ValueError('Only Supports 2D or 3D fields)
+        raise ValueError('Only Supports 2D or 3D fields')
     return rfield
 
 def white_noise(nc, batch_size=1, seed=None, type='complex', name="WhiteNoise"):
