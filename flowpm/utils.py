@@ -66,6 +66,63 @@ def cic_paint(mesh, part, weight=None, name="CiCPaint"):
     mesh = mesh + update
     return mesh
 
+
+def cic_paint_2d(mesh, part, weight=None, name="CiCPaint2D"):
+  """
+  Paints particules on a 2D mesh.
+
+  Parameters:
+  -----------
+  mesh: tensor (batch_size, nc, nc)
+    Input 2D mesh tensor
+
+  part: tensor (batch_size, npart, 2)
+    List of 2D particle coordinates, assumed to be in mesh units.
+
+  weight: tensor (batch_size, npart)
+    List of weights  for each particle
+  """
+  with tf.name_scope(name):
+    mesh = tf.convert_to_tensor(mesh, name="mesh")
+    part = tf.convert_to_tensor(part, name="part")
+    if weight is not None:
+      weight = tf.convert_to_tensor(weight, name="weight")
+
+    shape = tf.shape(mesh)
+    batch_size, nx, ny = shape[0], shape[1], shape[2]
+    nc = ny
+
+    # Flatten part if it's not already done
+    if len(part.shape) > 2:
+      part = tf.reshape(part, (batch_size, -1, 2))
+
+    # Extract the indices of all the mesh points affected by each particles
+    part = tf.expand_dims(part, 2)
+    floor = tf.floor(part)
+    connection = tf.expand_dims(tf.constant([[[0, 0], [1., 0], 
+                                              [0., 1], [1., 1]]]), 0)
+                                              
+    neighboor_coords = floor + connection
+    kernel = 1. - tf.abs(part - neighboor_coords)
+    kernel = kernel[..., 0] * kernel[..., 1]
+
+    if weight is not None: kernel = tf.multiply(tf.expand_dims(weight, axis=-1) , kernel)
+
+    neighboor_coords = tf.cast(neighboor_coords, tf.int32)
+    neighboor_coords = tf.math.mod(neighboor_coords , nc)
+    
+    # Adding batch dimension to the neighboor coordinates
+    batch_idx = tf.range(0, batch_size)
+    batch_idx = tf.reshape(batch_idx, (batch_size, 1, 1, 1))
+    b = tf.tile(batch_idx, [1] + list(neighboor_coords.get_shape()[1:-1]) + [1])
+    neighboor_coords = tf.concat([b, neighboor_coords], axis=-1)
+
+    update = tf.scatter_nd(tf.reshape(neighboor_coords, (-1, 4,3)),
+                           tf.reshape(kernel, (-1, 4)),
+                           [batch_size, nx, ny])
+    mesh = mesh + update
+    return mesh
+
 def cic_readout(mesh, part, name="CiCReadout"):
   """
   Reads out particles from mesh.
