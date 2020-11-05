@@ -19,7 +19,29 @@ def w(cosmo,a):
   return w0+wa*(1.0-a)
 
 def E(cosmo,a):
-  """TODO: add documentation
+  """Scale factor dependent factor E(a) in the Hubble parameter.
+
+  Parameters
+  ----------
+  cosmo: (dict)
+    Cosmology dictionary
+  a: array
+    Scale factor
+
+  Returns
+  -------
+  E(a): array
+    Scale factor dependent factor E(a)
+
+  Notes
+  -----
+  The Hubble parameter at scale factor `a` is given by
+  :math:`H^2(a) = E^2(a) H_o^2` where :math:`E^2` is obtained through
+  Friedman's Equation (see :cite:`2005:Percival`) :
+  .. math::
+      E^2(a) = \Omega_m a^{-3} + \Omega_k a^{-2} + \Omega_{de} a^{f(a)}
+  where :math:`f(a)` is the Dark Energy evolution parameter computed
+  by :py:meth:`.f_de`.
   """
   a=tf.convert_to_tensor(a,dtype=tf.float32)
   return(tf.math.sqrt(
