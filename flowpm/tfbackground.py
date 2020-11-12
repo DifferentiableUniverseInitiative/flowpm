@@ -227,7 +227,7 @@ def Omega_m_a(cosmo,a):
 
     .. math::
 
-        \Omega_m(a) = \frac{\Omega_m a^{-3}}{E^2(a)}
+        \Omega_m(a) = \frac{\Omega_{0,m} a^{-3}}{E^2(a)}
 
     see :cite:`2005:Percival` Eq. (6)
     """
@@ -255,7 +255,7 @@ def Omega_de_a(cosmo,a):
 
     .. math::
 
-        \Omega_{de}(a) = \frac{\Omega_{de} a^{f(a)}}{E^2(a)}
+        \Omega_{de}(a) = \frac{\Omega_{0,de} a^{f(a)}}{E^2(a)}
 
     where :math:`f(a)` is the Dark Energy evolution parameter computed by
     :py:meth:`.f_de` (see :cite:`2005:Percival` Eq. (6)).
@@ -311,7 +311,7 @@ def growth_func(a,y):
     # ODE for d1
     dy1dt= d1_f,1.5*Omega_m_a(cosmo,a)*d1/tf.pow(a,2)-(d1_f/a)*(Omega_de_a(cosmo,a)-0.5*Omega_m_a(cosmo,a)+2)
     # ODE for d2
-    dy2dt = d2_f,1.5*Omega_m_a(cosmo,a)*d2/tf.pow(a,2)-(d2_f/a)*(Omega_de_a(cosmo,a)-0.5*Omega_m_a(cosmo,a)+2)  - 1.5*Omega_m_a(cosmo,a)*d1**2/tf.pow(a,2)   
+    dy2dt = d2_f,1.5*Omega_m_a(cosmo,a)*d2/tf.pow(a,2)-(d2_f/a)*(Omega_de_a(cosmo,a)-0.5*Omega_m_a(cosmo,a)+2)  - 1.5*(Omega_m_a(cosmo,a)*d1**2)/tf.pow(a,2)   
     
     # Concatenate output
     dydt = [[dy1dt[0], dy2dt[0]], 
@@ -320,7 +320,7 @@ def growth_func(a,y):
 
 @tf.function
 def odesolve_func(atab,y0):
-    solver=tfp.math.ode.BDF()
+    solver=tfp.math.ode.BDF(rtol=1e-4)
     results = solver.solve(growth_func,atab[0], y0, solution_times=atab)
     return results
 
@@ -339,3 +339,4 @@ plt.xlabel('Scale factor')
 plt.ylabel('Growth function')
 plt.legend()
 plt.show()
+
