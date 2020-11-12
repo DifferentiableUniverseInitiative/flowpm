@@ -65,11 +65,11 @@ def test_growth_1order():
     """
     
     M_d=MatterDominated(Omega0_m=0.3075)
-    a = np.logspace(-3, 0)
-    log10_amin=-3
+    a = np.logspace(-2, 0)
+    log10_amin=-2
     steps=128
     atab =np.logspace(log10_amin, 0.0, steps)
-    y0=tf.constant([[atab[0], -3./7 * 0.001**2], [1.0, -6. / 7 *0.001]],dtype=tf.float32)
+    y0=tf.constant([[atab[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
     gback = M_d.D1(a)
     results_func=odesolve_func(a,y0)
     gtfback =results_func.states[:,0,0]/results_func.states[-1,0,0]
@@ -82,11 +82,11 @@ def test_growth_2order():
     """
     
     M_d=MatterDominated(Omega0_m=0.3075)
-    a = np.logspace(-3, 0)
-    log10_amin=-3
+    a = np.logspace(-2, 0)
+    log10_amin=-2
     steps=128
     atab =np.logspace(log10_amin, 0.0, steps)
-    y0=tf.constant([[atab[0], -3./7 * 0.001**2], [1.0, -6. / 7 *0.001]],dtype=tf.float32)
+    y0=tf.constant([[atab[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
     g2back = M_d.D2(a)
     results_func=odesolve_func(a,y0)
     g2tfback =results_func.states[:,0,1]/results_func.states[-1,0,1]
