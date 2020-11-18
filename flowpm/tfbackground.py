@@ -328,6 +328,8 @@ if __name__ == "__main__":
   #normalise D1 and D2 such that D1(a=1) = 1 and D2(a=1) = 1
   D1_norm=results_func.states[:,0,0]/results_func.states[-1,0,0]
   D2_norm=results_func.states[:,0,1]/results_func.states[-1,0,1]
+  d1_fn=results_func.states[:,1,0]/results_func.states[-1,0,0]
+  d2_fn=results_func.states[:,1,1]/results_func.states[-1,0,1]
 
   plt.plot(results_func.times,D1_norm,label='$D_1$')
   plt.plot(results_func.times,D2_norm,label='$D_2$')
@@ -335,3 +337,61 @@ if __name__ == "__main__":
   plt.ylabel('Growth function')
   plt.legend()
   plt.show()
+       
+       
+       
+       
+
+################################################################
+
+
+#for first derivative of D1 and D2 against log a
+def F1(a):
+    """
+    First derivative of D1 against log a
+    """
+    #results_func=odesolve_func(atab,y0)
+    return results_func.states[:,1,0]*a/results_func.states[:,0,0]
+
+
+def F2(a):
+    """
+    First derivative of D2 against log a
+    """
+    #results_func=odesolve_func(atab,y0)
+    return results_func.states[:,1,1]*a/results_func.states[:,0,1]
+
+###############################################################
+def Gf(a):
+    """
+    FastPM growth factor function
+    """
+    #results_func=odesolve_func(atab,y0)
+    d1_f=results_func.states[:,1,0]
+    d1_f_norm=d1_f/results_func.states[-1,0,0]
+    return (d1_f_norm)*a**3*E(cosmo,a)
+
+def Gf2(a):
+    """ Gf but for second order LPT
+    """
+    #results_func=odesolve_func(atab,y0)
+    d2_f=results_func.states[:,1,1]
+    d2_f_norm=d2_f/results_func.states[-1,0,1]
+    return (d2_f_norm)*a**3*E(cosmo,a) 
+  
+################################################################
+
+def gf(a):
+    D1_order2=1.5*Omega_m_a(cosmo,a)*D1/tf.pow(a,2)-(d1_f/a)*(Omega_de_a(cosmo,a)-0.5*Omega_m_a(cosmo,a)+2)
+    D1_order2=D1_order2/results_func.states[-1,0,0]
+    return  (D1_order2 * a ** 3 *E(cosmo,a) +  d1_fn*a ** 3 * dEa(cosmo,a)
+                +   3 * a ** 2 * E(cosmo,a)*d1_fn)
+
+
+
+def gf2(a):
+    D2_order2=1.5*Omega_m_a(cosmo,a)*D2/tf.pow(a,2)-(d2_f/a)*(Omega_de_a(cosmo,a)-0.5*Omega_m_a(cosmo,a)+2)- 1.5*(Omega_m_a(cosmo,a)*D1**2)/tf.pow(a,2) 
+    D2_order2=D2_order2/results_func.states[-1,0,1]
+    return  (D2_order2 * a ** 3 *E(cosmo,a) +  d2_fn*a ** 3 * dEa(cosmo,a)
+                +   3 * a ** 2 * E(cosmo,a)*d2_fn)
+
