@@ -382,6 +382,9 @@ def Gf2(a):
 ################################################################
 
 def gf(a):
+    D1=results_func.states[:,0,0]
+    d1_f=results_func.states[:,1,0]
+    d1_fn=results_func.states[:,1,0]/results_func.states[-1,0,0]
     D1_order2=1.5*Omega_m_a(cosmo,a)*D1/tf.pow(a,2)-(d1_f/a)*(Omega_de_a(cosmo,a)-0.5*Omega_m_a(cosmo,a)+2)
     D1_order2=D1_order2/results_func.states[-1,0,0]
     return  (D1_order2 * a ** 3 *E(cosmo,a) +  d1_fn*a ** 3 * dEa(cosmo,a)
@@ -390,6 +393,10 @@ def gf(a):
 
 
 def gf2(a):
+    D1=results_func.states[:,0,0]
+    d2_f=results_func.states[:,1,1]
+    D2=results_func.states[:,0,1]
+    d2_fn=results_func.states[:,1,1]/results_func.states[-1,0,1]
     D2_order2=1.5*Omega_m_a(cosmo,a)*D2/tf.pow(a,2)-(d2_f/a)*(Omega_de_a(cosmo,a)-0.5*Omega_m_a(cosmo,a)+2)- 1.5*(Omega_m_a(cosmo,a)*D1**2)/tf.pow(a,2) 
     D2_order2=D2_order2/results_func.states[-1,0,1]
     return  (D2_order2 * a ** 3 *E(cosmo,a) +  d2_fn*a ** 3 * dEa(cosmo,a)
