@@ -18,8 +18,8 @@ PerturbationGrowth = lambda cosmo, *args, **kwargs: MatterDominated(Omega0_lambd
                                                                     Omega0_k = cosmo.Ok0,
                                                                     *args, **kwargs)
 
-def linear_field(nc, boxsize, pk, batch_size=1,
-                 kvec=None, seed=None, name=None, dtype=tf.float32):
+def linear_field(nc, boxsize, pk, kvec=None, batch_size=1,
+                 seed=None, dtype=tf.float32, name="LinearField"):
   """Generates a linear field with a given linear power spectrum
 
   Parameters:
@@ -36,12 +36,21 @@ def linear_field(nc, boxsize, pk, batch_size=1,
   kvec: array
     k_vector corresponding to the cube, optional
 
+  batch_size: int
+    Size of batches
+
+  seed: int
+    Seed to initialize the gaussian random field
+
+  dtype: tf.dtype
+    Type of the sampled field, e.g. tf.float32 or tf.float64
+
   Returns
   ------
   linfield: tensor (batch_size, nc, nc, nc)
     Realization of the linear field with requested power spectrum
   """
-  with tf.name_scope(name, "LinearField"):
+  with tf.name_scope(name):
     if kvec is None:
       kvec = fftk((nc, nc, nc), symmetric=False)
     kmesh = sum((kk / boxsize * nc)**2 for kk in kvec)**0.5
@@ -52,7 +61,7 @@ def linear_field(nc, boxsize, pk, batch_size=1,
     linear = c2r3d(lineark, norm=nc**3, name=name, dtype=dtype)
     return linear
 
-def lpt1(dlin_k, pos, kvec=None, name=None):
+def lpt1(dlin_k, pos, kvec=None, name="LTP1"):
   """ Run first order LPT on linear density field, returns displacements of particles
       reading out at q. The result has the same dtype as q.
 
@@ -65,9 +74,12 @@ def lpt1(dlin_k, pos, kvec=None, name=None):
   displacement: tensor (batch_size, npart, 3)
     Displacement field
   """
-  with tf.name_scope(name, "LPT1", [dlin_k, pos]):
+  with tf.name_scope(name):
+    dlin_k = tf.convert_to_tensor(dlin_k, name="lineark")
+    pos = tf.convert_to_tensor(pos, name="pos")
+
     shape = dlin_k.get_shape()
-    batch_size, nc = shape[0], shape[1].value
+    batch_size, nc = shape[0], shape[1]
     if kvec is None:
       kvec = fftk((nc, nc, nc), symmetric=False)
 
@@ -81,8 +93,8 @@ def lpt1(dlin_k, pos, kvec=None, name=None):
       displacement.append(cic_readout(disp, pos))
     displacement = tf.stack(displacement, axis=2)
     return displacement
-#    
-def lpt2_source(dlin_k, kvec=None, name=None):
+
+def lpt2_source(dlin_k, kvec=None, name="LPT2Source"):
   """ Generate the second order LPT source term.
 
   Parameters:
@@ -94,9 +106,11 @@ def lpt2_source(dlin_k, kvec=None, name=None):
   source: tensor (batch_size, nc, nc, nc)
     Source term
   """
-  with tf.name_scope(name, "LPT2Source", [dlin_k]):
+  with tf.name_scope(name):
+    dlin_k = tf.convert_to_tensor(dlin_k, name="lineark")
+
     shape = dlin_k.get_shape()
-    batch_size, nc = shape[0], shape[1].value
+    batch_size, nc = shape[0], shape[1]
     if kvec is None:
       kvec = fftk((nc, nc, nc), symmetric=False)
     source = tf.zeros(tf.shape(dlin_k))
@@ -131,17 +145,19 @@ def lpt2_source(dlin_k, kvec=None, name=None):
     source = tf.multiply(source, 3.0/7.)
     return r2c3d(source, norm=nc**3)
 
-def lpt_init(linear, a0, order=2, cosmology=Planck15, kvec=None, name=None):
+def lpt_init(linear, a0, order=2, cosmology=Planck15, kvec=None, name="LPTInit"):
   """ Estimate the initial LPT displacement given an input linear (real) field
 
   Parameters:
   -----------
   TODO: documentation
   """
-  with tf.name_scope(name, "LPTInit", [linear]):
+  with tf.name_scope(name):
+    linear = tf.convert_to_tensor(linear, name="linear")
+
     assert order in (1, 2)
     shape = linear.get_shape()
-    batch_size, nc = shape[0], shape[1].value
+    batch_size, nc = shape[0], shape[1]
 
     dtype = np.float32
     Q = np.indices((nc, nc, nc)).reshape(3, -1).T.astype(dtype)
@@ -167,14 +183,17 @@ def lpt_init(linear, a0, order=2, cosmology=Planck15, kvec=None, name=None):
     X = tf.add(DX, Q)
     return tf.stack((X, P, F), axis=0)
 
-def apply_longrange(x, delta_k, split=0, factor=1, kvec=None, name=None):
+def apply_longrange(x, delta_k, split=0, factor=1, kvec=None, name="ApplyLongrange"):
   """ like long range, but x is a list of positions
   TODO: Better documentation, also better name?
   """
   # use the four point kernel to suppresse artificial growth of noise like terms
-  with tf.name_scope(name, "ApplyLongrange", [x, delta_k]):
+  with tf.name_scope(name):
+    x = tf.convert_to_tensor(x, name="pos")
+    delta_k = tf.convert_to_tensor(delta_k, name="delta_k")
+
     shape = delta_k.get_shape()
-    batch_size, nc = shape[1], shape[2].value
+    batch_size, nc = shape[1], shape[2]
 
     if kvec is None:
       kvec = fftk((nc, nc, nc), symmetric=False)
@@ -197,7 +216,7 @@ def apply_longrange(x, delta_k, split=0, factor=1, kvec=None, name=None):
     f = tf.multiply(f, factor)
     return f
 
-def kick(state, ai, ac, af, cosmology=Planck15, dtype=np.float32, name=None,
+def kick(state, ai, ac, af, cosmology=Planck15, dtype=np.float32, name="Kick",
          **kwargs):
   """Kick the particles given the state
 
@@ -208,7 +227,9 @@ def kick(state, ai, ac, af, cosmology=Planck15, dtype=np.float32, name=None,
 
   ai, ac, af: float
   """
-  with tf.name_scope(name, "Kick", [state]):
+  with tf.name_scope(name):
+    state = tf.convert_to_tensor(state, name="state")
+
     pt = PerturbationGrowth(cosmology, a=[ai, ac, af], a_normalize=1.0)
     fac = 1 / (ac ** 2 * pt.E(ac)) * (pt.Gf(af) - pt.Gf(ai)) / pt.gf(ac)
     indices = tf.constant([[1]])
@@ -219,7 +240,7 @@ def kick(state, ai, ac, af, cosmology=Planck15, dtype=np.float32, name=None,
     return state
 
 def drift(state, ai, ac, af, cosmology=Planck15, dtype=np.float32,
-          name=None, **kwargs):
+          name="Drift", **kwargs):
   """Drift the particles given the state
 
   Parameters
@@ -229,7 +250,9 @@ def drift(state, ai, ac, af, cosmology=Planck15, dtype=np.float32,
 
   ai, ac, af: float
   """
-  with tf.name_scope(name, "Drift", [state]):
+  with tf.name_scope(name):
+    state = tf.convert_to_tensor(state, name="state")
+
     pt = PerturbationGrowth(cosmology, a=[ai, ac, af], a_normalize=1.0)
     fac = 1. / (ac ** 3 * pt.E(ac)) * (pt.Gp(af) - pt.Gp(ai)) / pt.gp(ac)
     indices = tf.constant([[0]])
@@ -240,7 +263,7 @@ def drift(state, ai, ac, af, cosmology=Planck15, dtype=np.float32,
     return state
 
 def force(state, nc, cosmology=Planck15, pm_nc_factor=1, kvec=None,
-          dtype=np.float32, name=None, **kwargs):
+          dtype=np.float32, name="Force", **kwargs):
   """
   Estimate force on the particles given a state.
 
@@ -258,7 +281,9 @@ def force(state, nc, cosmology=Planck15, pm_nc_factor=1, kvec=None,
   pm_nc_factor: int
     TODO: @modichirag please add doc
   """
-  with tf.name_scope(name, "Force", [state]):
+  with tf.name_scope(name):
+    state = tf.convert_to_tensor(state, name="state")
+
     shape = state.get_shape()
     batch_size = shape[1]
     ncf = nc * pm_nc_factor
@@ -283,7 +308,7 @@ def force(state, nc, cosmology=Planck15, pm_nc_factor=1, kvec=None,
     state = tf.add(state, update)
     return state
 
-def nbody(state, stages, nc, cosmology=Planck15, pm_nc_factor=1, name=None):
+def nbody(state, stages, nc, cosmology=Planck15, pm_nc_factor=1, name="NBody"):
   """
   Integrate the evolution of the state across the givent stages
 
@@ -306,7 +331,9 @@ def nbody(state, stages, nc, cosmology=Planck15, pm_nc_factor=1, name=None):
   state: tensor (3, batch_size, npart, 3)
     Integrated state to final condition
   """
-  with tf.name_scope(name, "NBody", [state]):
+  with tf.name_scope(name):
+    state = tf.convert_to_tensor(state, name="state")
+
     shape = state.get_shape()
 
     # Unrolling leapfrog integration to make tf Autograph happy

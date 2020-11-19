@@ -3,7 +3,6 @@ import numpy as np
 import tensorflow as tf
 import flowpm
 import tensorflow_probability as tfp
-import matplotlib.pyplot as plt
 
 #Planck 2015 results
 cosmo={"w0":-1.0,
@@ -147,7 +146,7 @@ def H(cosmo, a):
 def dfde(cosmo,a,epsilon=1e-5):
     r"""Derivative of the evolution parameter for the Dark Energy density
     f(a) with respect to the scale factor.
-    
+
     Parameters
     ----------
     a : array_like or tf.TensorArray
@@ -198,7 +197,7 @@ def dEa(cosmo,a,epsilon=1e-5):
     The expression for :math:`\frac{dE}{da}` is:
 
     .. math::
-    
+
         \frac{dE(a)}{da}=\frac{-3a^{-4}\Omega_{0m}
         -2a^{-3}\Omega_{0k}
         +f'_{de}\Omega_{0de}a^{f_{de}(a)}}{2E(a)}
@@ -264,14 +263,6 @@ def Omega_de_a(cosmo,a):
     return cosmo["Omega0_de"]*tf.math.pow(a,fde(cosmo,a))/E(cosmo,a)**2
 
 
-
-log10_amin=-2
-steps=128
-atab =np.logspace(log10_amin, 0.0, steps)
-y0=tf.constant([[atab[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
-
-
-
 #Equation 1.96 from Florent Leclercq thesis
 @tf.function
 def growth_func(a,y):
@@ -311,11 +302,11 @@ def growth_func(a,y):
     # ODE for d1
     dy1dt= d1_f,1.5*Omega_m_a(cosmo,a)*d1/tf.pow(a,2)-(d1_f/a)*(Omega_de_a(cosmo,a)-0.5*Omega_m_a(cosmo,a)+2)
     # ODE for d2
-    dy2dt = d2_f,1.5*Omega_m_a(cosmo,a)*d2/tf.pow(a,2)-(d2_f/a)*(Omega_de_a(cosmo,a)-0.5*Omega_m_a(cosmo,a)+2)  - 1.5*(Omega_m_a(cosmo,a)*d1**2)/tf.pow(a,2)   
-    
+    dy2dt = d2_f,1.5*Omega_m_a(cosmo,a)*d2/tf.pow(a,2)-(d2_f/a)*(Omega_de_a(cosmo,a)-0.5*Omega_m_a(cosmo,a)+2)  - 1.5*(Omega_m_a(cosmo,a)*d1**2)/tf.pow(a,2)
+
     # Concatenate output
-    dydt = [[dy1dt[0], dy2dt[0]], 
-            [dy1dt[1], dy2dt[1]]] 
+    dydt = [[dy1dt[0], dy2dt[0]],
+            [dy1dt[1], dy2dt[1]]]
     return dydt
 
 @tf.function
@@ -324,19 +315,33 @@ def odesolve_func(atab,y0):
     results = solver.solve(growth_func,atab[0], y0, solution_times=atab)
     return results
 
-results_func=odesolve_func(atab,y0)
+if __name__ == "__main__":
+  """ Tests implementation and draws first and second order growth.
+  """
+  import matplotlib.pyplot as plt
+  log10_amin=-3
+  steps=128
+  atab =np.logspace(log10_amin, 0.0, steps)
+  y0=tf.constant([[atab[0], -3./7 * 0.001**2], [1.0, -6. / 7 *0.001]],dtype=tf.float32)
 
+  results_func=odesolve_func(atab,y0)
 
-#normalise D1 and D2 such that D1(a=1) = 1 and D2(a=1) = 1 
-D1=results_func.states[:,0,0]
-D1_norm=results_func.states[:,0,0]/results_func.states[-1,0,0]
-D2=results_func.states[:,0,1]
-D2_norm=results_func.states[:,0,1]/results_func.states[-1,0,1]
-#d1_fn=results_func.states[:,1,0]/results_func.states[-1,0,0]
-d1_f=results_func.states[:,1,0]
-d2_fn=results_func.states[:,1,1]/results_func.states[-1,0,1]
-d2_f=results_func.states[:,1,1]
+  #normalise D1 and D2 such that D1(a=1) = 1 and D2(a=1) = 1
+  D1_norm=results_func.states[:,0,0]/results_func.states[-1,0,0]
+  D2_norm=results_func.states[:,0,1]/results_func.states[-1,0,1]
+  d1_fn=results_func.states[:,1,0]/results_func.states[-1,0,0]
+  d2_fn=results_func.states[:,1,1]/results_func.states[-1,0,1]
 
+  plt.plot(results_func.times,D1_norm,label='$D_1$')
+  plt.plot(results_func.times,D2_norm,label='$D_2$')
+  plt.xlabel('Scale factor')
+  plt.ylabel('Growth function')
+  plt.legend()
+  plt.show()
+       
+       
+       
+       
 
 ################################################################
 
@@ -378,6 +383,8 @@ def Gf2(a):
 ################################################################
 
 def gf(a):
+    D1=results_func.states[:,0,0]
+    d1_f=results_func.states[:,1,0]
     d1_fn=results_func.states[:,1,0]/results_func.states[-1,0,0]
     D1_order2=1.5*Omega_m_a(cosmo,a)*D1/tf.pow(a,2)-(d1_f/a)*(Omega_de_a(cosmo,a)-0.5*Omega_m_a(cosmo,a)+2)
     D1_order2=D1_order2/results_func.states[-1,0,0]
@@ -387,24 +394,11 @@ def gf(a):
 
 
 def gf2(a):
-    d2_fn=results_func.states[:,1,1]/results_func.states[-1,0,0]
+    D1=results_func.states[:,0,0]
+    d2_f=results_func.states[:,1,1]
+    D2=results_func.states[:,0,1]
+    d2_fn=results_func.states[:,1,1]/results_func.states[-1,0,1]
     D2_order2=1.5*Omega_m_a(cosmo,a)*D2/tf.pow(a,2)-(d2_f/a)*(Omega_de_a(cosmo,a)-0.5*Omega_m_a(cosmo,a)+2)- 1.5*(Omega_m_a(cosmo,a)*D1**2)/tf.pow(a,2) 
     D2_order2=D2_order2/results_func.states[-1,0,1]
     return  (D2_order2 * a ** 3 *E(cosmo,a) +  d2_fn*a ** 3 * dEa(cosmo,a)
                 +   3 * a ** 2 * E(cosmo,a)*d2_fn)
-
-
-
-# plt.plot(results_func.times,gf(results_func.times))
-# plt.plot(results_func.times,Gf2(results_func.times))
-# plt.plot(results_func.times,Gf(results_func.times))
-# plt.plot(results_func.times,F2(results_func.times))
-# plt.plot(results_func.times,F1(results_func.times))
-# plt.plot(results_func.times,M_D.gf(results_func.times),linestyle='dashed')
-# plt.plot(results_func.times,M_D.Gf2(results_func.times),linestyle='dashed')
-# plt.plot(results_func.times,M_D.Gf(results_func.times),linestyle='dashed')
-# plt.plot(results_func.times,M_D.f2(results_func.times),linestyle='dashed')
-# plt.plot(results_func.times,M_D.f1(results_func.times),linestyle='dashed')
-# plt.show()
-# plt.close()
-

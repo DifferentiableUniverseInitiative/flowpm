@@ -4,7 +4,6 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-import tensorflow as tf
 
 def fftk(shape, symmetric=True, finite=False, dtype=np.float64):
   """ Return k_vector given a shape (nc, nc, nc) and box_size
@@ -45,7 +44,7 @@ def laplace_kernel(kvec):
   wts *= imask
   return wts
 
-def gradient_kernel(kvec, direction, order=0):
+def gradient_kernel(kvec, direction, order=1):
   """
   Computes the gradient kernel in the requested direction
 
@@ -63,7 +62,7 @@ def gradient_kernel(kvec, direction, order=0):
     Complex kernel
   """
   if order == 0:
-    wts = 1j * kvec[direction] 
+    wts = 1j * kvec[direction]
     wts = np.squeeze(wts)
     wts[len(wts) //2] = 0
     wts = wts.reshape(kvec[direction].shape)
