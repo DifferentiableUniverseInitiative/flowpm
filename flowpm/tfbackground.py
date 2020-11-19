@@ -319,10 +319,10 @@ if __name__ == "__main__":
   """ Tests implementation and draws first and second order growth.
   """
   import matplotlib.pyplot as plt
-  log10_amin=-3
+  log10_amin=-2
   steps=128
   atab =np.logspace(log10_amin, 0.0, steps)
-  y0=tf.constant([[atab[0], -3./7 * 0.001**2], [1.0, -6. / 7 *0.001]],dtype=tf.float32)
+  y0=tf.constant([[atab[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
 
   results_func=odesolve_func(atab,y0)
 
@@ -338,20 +338,55 @@ if __name__ == "__main__":
   plt.ylabel('Growth function')
   plt.legend()
   plt.show()
-       
-       
-       
-       
+
+#################################################################    
+
+def D1_norm(atab):
+    """
+
+    Parameters
+    ----------
+    atab : tf.TensorArray
+        Scale factor.
+
+    Returns
+    -------
+    Scalar float Tensor
+        normalised D1.
+
+    """
+    y0=tf.constant([[atab[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
+    results_func=odesolve_func(atab,y0)
+    return results_func.states[:,0,0]/results_func.states[-1,0,0]
+
+
+def D2_norm(atab):
+    """
+
+    Parameters
+    ----------
+    atab : tf.TensorArray
+        Scale factor.
+
+    Returns
+    -------
+    Scalar float Tensor
+        normalised D2.
+
+    """
+    y0=tf.constant([[atab[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
+    results_func=odesolve_func(atab,y0)
+    return results_func.states[:,0,1]/results_func.states[-1,0,1]
 
 ################################################################
-
 
 #for first derivative of D1 and D2 against log a
 def F1(a):
     """
     First derivative of D1 against log a
     """
-    #results_func=odesolve_func(atab,y0)
+    y0=tf.constant([[a[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
+    results_func=odesolve_func(a,y0)
     return results_func.states[:,1,0]*a/results_func.states[:,0,0]
 
 
@@ -359,7 +394,8 @@ def F2(a):
     """
     First derivative of D2 against log a
     """
-    #results_func=odesolve_func(atab,y0)
+    y0=tf.constant([[a[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
+    results_func=odesolve_func(a,y0)
     return results_func.states[:,1,1]*a/results_func.states[:,0,1]
 
 ###############################################################
@@ -367,7 +403,8 @@ def Gf(a):
     """
     FastPM growth factor function
     """
-    #results_func=odesolve_func(atab,y0)
+    y0=tf.constant([[a[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
+    results_func=odesolve_func(a,y0)
     d1_f=results_func.states[:,1,0]
     d1_f_norm=d1_f/results_func.states[-1,0,0]
     return (d1_f_norm)*a**3*E(cosmo,a)
@@ -375,7 +412,8 @@ def Gf(a):
 def Gf2(a):
     """ Gf but for second order LPT
     """
-    #results_func=odesolve_func(atab,y0)
+    y0=tf.constant([[a[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
+    results_func=odesolve_func(a,y0)
     d2_f=results_func.states[:,1,1]
     d2_f_norm=d2_f/results_func.states[-1,0,1]
     return (d2_f_norm)*a**3*E(cosmo,a) 
@@ -383,6 +421,8 @@ def Gf2(a):
 ################################################################
 
 def gf(a):
+    y0=tf.constant([[a[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
+    results_func=odesolve_func(a,y0)
     D1=results_func.states[:,0,0]
     d1_f=results_func.states[:,1,0]
     d1_fn=results_func.states[:,1,0]/results_func.states[-1,0,0]
@@ -394,6 +434,8 @@ def gf(a):
 
 
 def gf2(a):
+    y0=tf.constant([[a[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
+    results_func=odesolve_func(a,y0)
     D1=results_func.states[:,0,0]
     d2_f=results_func.states[:,1,1]
     D2=results_func.states[:,0,1]
