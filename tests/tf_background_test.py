@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from flowpm.tfbackground import E,dEa,Omega_m_a,odesolve_func
+from flowpm.tfbackground import dEa,Omega_m_a, F1, E, F2, Gf,Gf2, gf,gf2,D1_norm,D2_norm,D1f_norm,D2f_norm
 from numpy.testing import assert_allclose
 from flowpm.background import MatterDominated 
 
@@ -65,14 +65,9 @@ def test_growth_1order():
     """
     
     M_d=MatterDominated(Omega0_m=0.3075)
-    a = np.logspace(-2, 0)
-    log10_amin=-2
-    steps=128
-    atab =np.logspace(log10_amin, 0.0, steps)
-    y0=tf.constant([[atab[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
+    a =np.logspace(-2, 0.0, 128)
     gback = M_d.D1(a)
-    results_func=odesolve_func(a,y0)
-    gtfback =results_func.states[:,0,0]/results_func.states[-1,0,0]
+    gtfback =D1_norm(a)
 
     assert_allclose(gback, gtfback, rtol=1e-2)
 
@@ -82,14 +77,86 @@ def test_growth_2order():
     """
     
     M_d=MatterDominated(Omega0_m=0.3075)
-    a = np.logspace(-2, 0)
-    log10_amin=-2
-    steps=128
-    atab =np.logspace(log10_amin, 0.0, steps)
-    y0=tf.constant([[atab[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
+    a = np.logspace(-2, 0.0,128)
     g2back = M_d.D2(a)
-    results_func=odesolve_func(a,y0)
-    g2tfback =results_func.states[:,0,1]/results_func.states[-1,0,1]
+    g2tfback =D2_norm(a)
 
     assert_allclose(g2back, g2tfback, rtol=1e-2)
+    
+def test_D1_fnorm():
+    """ Testing  D'_1(a) 
+    """
+    
+    M_d=MatterDominated(Omega0_m=0.3075)
+    a =np.logspace(-2, 0.0, 128)
+    gback = M_d.gp(a)
+    gtfback =D1f_norm(a)
+
+    assert_allclose(gback, gtfback, rtol=1e-2)
+
+
+def test_D2_fnorm():
+    """ Testing  D'_2(a)
+    """
+    
+    M_d=MatterDominated(Omega0_m=0.3075)
+    a = np.logspace(-2, 0.0,128)
+    g2back = M_d.gp2(a)
+    g2tfback =D2f_norm(a)
+
+    assert_allclose(g2back, g2tfback, rtol=1e-2)    
+    
+    
 # =============================================================================
+def testf1():
+    M_d=MatterDominated(Omega0_m=0.3075)
+    a = np.logspace(-2, 0,128)
+    f1_back=M_d.f1(a)
+    f1_tf=F1(a)
+    
+    assert_allclose(f1_back, f1_tf, rtol=1e-2)
+    
+    
+    
+def testf2():
+    M_d=MatterDominated(Omega0_m=0.3075)
+    a = np.logspace(-2, 0,128)
+    f2_back=M_d.f2(a)
+    f2_tf=F2(a)
+    
+    assert_allclose(f2_back, f2_tf, rtol=1e-2)
+    
+    
+def testGf():
+    M_d=MatterDominated(Omega0_m=0.3075)
+    a = np.logspace(-2, 0,128)
+    Gf_back=M_d.Gf(a)
+    Gf_tf=Gf(a)
+    
+    assert_allclose(Gf_back, Gf_tf, rtol=1e-2)
+    
+def testGf2():
+    M_d=MatterDominated(Omega0_m=0.3075)
+    a = np.logspace(-2, 0,128)
+    Gf2_back=M_d.Gf2(a)
+    Gf2_tf=Gf2(a)
+    
+    assert_allclose(Gf2_back, Gf2_tf, rtol=1e-2)
+    
+    
+def testgf():
+    M_d=MatterDominated(Omega0_m=0.3075)
+    a = np.logspace(-2, 0,128)
+    gf_back=M_d.gf(a)
+    gf_tf=gf(a)
+    
+    assert_allclose(gf_back, gf_tf, rtol=1e-2)
+    
+def testgf2():
+    M_d=MatterDominated(Omega0_m=0.3075)
+    a = np.logspace(-2, 0,128)
+    gf2_back=M_d.gf2(a)
+    gf2_tf=gf2(a)
+    
+    assert_allclose(gf2_back, gf2_tf, rtol=1e-2)
+    
