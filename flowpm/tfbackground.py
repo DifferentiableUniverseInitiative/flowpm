@@ -339,61 +339,172 @@ if __name__ == "__main__":
   plt.legend()
   plt.show()
 
-#################################################################    
 
-def D1_norm(atab):
+################################################################
+def D1_norm(a):
     """
 
     Parameters
     ----------
-    atab : tf.TensorArray
+    a : tf.TensorArray
         Scale factor.
 
     Returns
     -------
     Scalar float Tensor
         normalised D1.
+                    
+    Notes
+    -----
 
-    """
-    y0=tf.constant([[atab[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
-    results_func=odesolve_func(atab,y0)
-    return results_func.states[:,0,0]/results_func.states[-1,0,0]
+    The expression for :math:`D_{1norm}(a)` is:
+
+    .. math::
+
+        D_{1norm}(a)=\frac{D_1(a)}{D_1(a=1)}
+            
+        """        
+    y0=tf.constant([[a[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
+    results_func=odesolve_func(a,y0)
+    return (results_func.states[:,0,0]/results_func.states[-1,0,0])
 
 
-def D2_norm(atab):
+def D2_norm(a):
     """
 
     Parameters
     ----------
-    atab : tf.TensorArray
+    a : tf.TensorArray
         Scale factor.
 
     Returns
     -------
     Scalar float Tensor
         normalised D2.
+               
+    Notes
+    -----
+
+    The expression for :math:`D_{2norm}(a)` is:
+
+    .. math::
+
+        D_{2norm}(a)=\frac{D_2(a)}{D_2(a=1)}
 
     """
-    y0=tf.constant([[atab[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
-    results_func=odesolve_func(atab,y0)
+    y0=tf.constant([[a[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
+    results_func=odesolve_func(a,y0)
     return results_func.states[:,0,1]/results_func.states[-1,0,1]
+
+
+#################################################################    
+
+def D1f_norm(a):
+    """
+
+    Parameters
+    ----------
+    a : tf.TensorArray
+        Scale factor.
+
+    Returns
+    -------
+    Scalar float Tensor
+        normalised derivative D1.
+                    
+    Notes
+    -----
+
+    The expression for :math:`D'_{1norm}(a)` is:
+
+    .. math::
+
+        D'_{1norm}(a)=\frac{D'_1(a)}{D_1(a=1)}
+            
+        """        
+    y0=tf.constant([[a[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
+    results_func=odesolve_func(a,y0)
+    return (results_func.states[:,1,0]/results_func.states[-1,0,0])
+
+
+def D2f_norm(a):
+    """
+
+    Parameters
+    ----------
+    a : tf.TensorArray
+        Scale factor.
+
+    Returns
+    -------
+    Scalar float Tensor
+        normalised derivative D2.
+               
+    Notes
+    -----
+
+    The expression for :math:`D'_{2norm}(a)` is:
+
+    .. math::
+
+        D'_{2norm}(a)=\frac{D'_2(a)}{D_2(a=1)}
+
+    """
+    y0=tf.constant([[a[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
+    results_func=odesolve_func(a,y0)
+    return results_func.states[:,1,1]/results_func.states[-1,0,1]
 
 ################################################################
 
-#for first derivative of D1 and D2 against log a
 def F1(a):
-    """
-    First derivative of D1 against log a
-    """
+    """ Linear order growth rate
+
+            Parameters
+            ----------
+            a : tf.TensorArray
+               Scale factor.
+
+            Returns
+            -------
+            Scalar float Tensor : linear order growth rate.
+            
+            Notes
+            -----
+
+         The expression for :math:`F_1(a)` is:
+
+    .. math::
+
+        F_1(a)=\frac{dD_1(a)}{da}*a/D_1
+            
+        """
     y0=tf.constant([[a[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
     results_func=odesolve_func(a,y0)
     return results_func.states[:,1,0]*a/results_func.states[:,0,0]
 
 
 def F2(a):
-    """
-    First derivative of D2 against log a
-    """
+    """ Linear order growth rate
+
+            Parameters
+            ----------
+            a : tf.TensorArray
+               Scale factor.
+
+            Returns
+            -------
+            Scalar float Tensor : linear order growth rate.
+            
+            Notes
+            -----
+
+         The expression for :math:`F_2(a)` is:
+
+    .. math::
+
+        F_2(a)=\frac{dD_2(a)}{da}*a/D_2
+            
+        """
     y0=tf.constant([[a[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
     results_func=odesolve_func(a,y0)
     return results_func.states[:,1,1]*a/results_func.states[:,0,1]
@@ -402,15 +513,51 @@ def F2(a):
 def Gf(a):
     """
     FastPM growth factor function
+
+            Parameters
+            ----------
+            a : tf.TensorArray
+               Scale factor.
+
+            Returns
+            -------
+            Scalar float Tensor : FastPM growth factor function.
+            
+            Notes
+            -----
+
+         The expression for :math:`Gf(a)` is:
+
+    .. math::  
+        Gf(a)=D'_{1norm}*a**3*E(a)
     """
     y0=tf.constant([[a[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
     results_func=odesolve_func(a,y0)
     d1_f=results_func.states[:,1,0]
     d1_f_norm=d1_f/results_func.states[-1,0,0]
+    a=results_func.times
     return (d1_f_norm)*a**3*E(cosmo,a)
 
 def Gf2(a):
-    """ Gf but for second order LPT
+    """
+    FastPM second order growth factor function 
+
+            Parameters
+            ----------
+            a : tf.TensorArray
+               Scale factor.
+
+            Returns
+            -------
+            Scalar float Tensor : FastPM second order growth factor function.
+            
+            Notes
+            -----
+
+         The expression for :math:`Gf_2(a)` is:
+
+    .. math::  
+        Gf_2(a)=D'_{2norm}*a**3*E(a)
     """
     y0=tf.constant([[a[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
     results_func=odesolve_func(a,y0)
@@ -421,11 +568,34 @@ def Gf2(a):
 ################################################################
 
 def gf(a):
+    """
+    Derivative of Gf against a
+
+            Parameters
+            ----------
+            a : tf.TensorArray
+               Scale factor.
+
+            Returns
+            -------
+            Scalar float Tensor : the derivative of Gf against a.
+             
+            Notes
+            -----
+
+         The expression for :math:`gf(a)` is:
+
+    .. math::  
+        gf(a)=\frac{dGF}{da}= D^{''}_1 * a ** 3 *E(a) +D'_{1norm}*a ** 3 * E'(a)
+                +   3 * a ** 2 * E(a)*D'_{1norm}
+        
+    """
     y0=tf.constant([[a[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
     results_func=odesolve_func(a,y0)
     D1=results_func.states[:,0,0]
     d1_f=results_func.states[:,1,0]
     d1_fn=results_func.states[:,1,0]/results_func.states[-1,0,0]
+    a=results_func.times
     D1_order2=1.5*Omega_m_a(cosmo,a)*D1/tf.pow(a,2)-(d1_f/a)*(Omega_de_a(cosmo,a)-0.5*Omega_m_a(cosmo,a)+2)
     D1_order2=D1_order2/results_func.states[-1,0,0]
     return  (D1_order2 * a ** 3 *E(cosmo,a) +  d1_fn*a ** 3 * dEa(cosmo,a)
@@ -434,13 +604,60 @@ def gf(a):
 
 
 def gf2(a):
+    """
+    Derivative of Gf2 against a
+        
+            Parameters
+            ----------
+            a : tf.TensorArray
+               Scale factor.
+
+            Returns
+            -------
+            Scalar float Tensor : the derivative of Gf2 against a.
+             
+            Notes
+            -----
+
+         The expression for :math:`gf2(a)` is:
+
+    .. math::  
+        gf_2(a)=\frac{dGF_2}{da}= D^{''}_2 * a ** 3 *E(a) +D'_{2norm}*a ** 3 * E'(a)
+                +   3 * a ** 2 * E(a)*D'_{2norm}
+        
+    """
     y0=tf.constant([[a[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
     results_func=odesolve_func(a,y0)
     D1=results_func.states[:,0,0]
     d2_f=results_func.states[:,1,1]
     D2=results_func.states[:,0,1]
     d2_fn=results_func.states[:,1,1]/results_func.states[-1,0,1]
+    a=results_func.times
     D2_order2=1.5*Omega_m_a(cosmo,a)*D2/tf.pow(a,2)-(d2_f/a)*(Omega_de_a(cosmo,a)-0.5*Omega_m_a(cosmo,a)+2)- 1.5*(Omega_m_a(cosmo,a)*D1**2)/tf.pow(a,2) 
     D2_order2=D2_order2/results_func.states[-1,0,1]
     return  (D2_order2 * a ** 3 *E(cosmo,a) +  d2_fn*a ** 3 * dEa(cosmo,a)
                 +   3 * a ** 2 * E(cosmo,a)*d2_fn)
+
+# from flowpm.background import MatterDominated 
+# M_D=MatterDominated(Omega0_m=0.3075)
+
+
+# a=np.logspace(-2, 0.0, steps)
+# plt.plot(a,D1_norm(a),label='D1_norm')
+# plt.plot(a,D2_norm(a),label='D2_norm')
+# plt.plot(a,F1(a),label='F1')
+# plt.plot(a,F2(a),label='F2')
+# plt.plot(a,Gf(a),label='Gf')
+# plt.plot(a,Gf2(a),label='Gf2')
+# plt.plot(a,gf(a),label='gf')
+# plt.plot(a,gf2(a),label='gf2')
+# plt.plot(a,M_D.D1(a),label='D1_norm')
+# plt.plot(a,M_D.D2(a),label='D2_norm')
+# plt.plot(a,M_D.f1(a),label='F1')
+# plt.plot(a,M_D.f2(a),label='F2')
+# plt.plot(a,M_D.Gf(a),label='Gf')
+# plt.plot(a,M_D.Gf2(a),label='Gf2')
+# plt.plot(a,M_D.gf(a),label='gf')
+# plt.plot(a,M_D.gf2(a),label='gf2')
+# plt.legend()
+# plt.show()
