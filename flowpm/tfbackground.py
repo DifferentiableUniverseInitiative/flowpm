@@ -17,6 +17,7 @@ cosmo={"w0":-1.0,
        "n_s":0.9667,
        "sigma8":0.8159}
 
+
 def fde(cosmo,a,epsilon=1e-5):
    r"""Evolution parameter for the Dark Energy density.
 
@@ -54,8 +55,6 @@ def fde(cosmo,a,epsilon=1e-5):
    w0=tf.convert_to_tensor(cosmo["w0"],dtype=tf.float32)
    wa=tf.convert_to_tensor(cosmo["wa"],dtype=tf.float32)
    return (-3.0*(1.0+w0)+ 3.0*wa*((a-1.0)/tf.math.log(a-epsilon)-1.0))
-
-
 
 
 def w(cosmo,a):
@@ -264,9 +263,9 @@ def Omega_de_a(cosmo,a):
 
 
 #Equation 1.96 from Florent Leclercq thesis
-@tf.function
-def growth_func(a,y):
-    """Compute linear growth factor D_1(a) and second-order growth factor D_2(a) at a given scale factor
+def growth_ode(a, y, **cosmo):
+    """Compute linear growth factor D_1(a) and second-order growth factor D_2(a)
+    at a given scale factor
     Parameters
     ----------
     a: array_like or tf.TensorArray
@@ -289,16 +288,11 @@ def growth_func(a,y):
     \right) a \frac{dD_1}{da}=\frac{3}{2}  \Omega_{m}(a)D_1
      (see :cite:`Florent Leclercq thesis` Eq. (1.96))
     """
-    y=tf.convert_to_tensor(y,dtype=tf.float32)
+    #y=tf.convert_to_tensor(y,dtype=tf.float32)
     a=tf.convert_to_tensor(a,dtype=tf.float32)
-    d = y[0]
-    d_f = y[1]
-    # EXtracting d1 and derivative
-    d1 = d[0]
-    d1_f = d_f[0]
-    # Extractinct d2 and derivative
-    d2 = d[1]
-    d2_f = d_f[1]
+    # Extracting entries
+    print(y)
+    (d1, d2), (d1_f, d2_f) = y
     # ODE for d1
     dy1dt= d1_f,1.5*Omega_m_a(cosmo,a)*d1/tf.pow(a,2)-(d1_f/a)*(Omega_de_a(cosmo,a)-0.5*Omega_m_a(cosmo,a)+2)
     # ODE for d2
@@ -310,42 +304,78 @@ def growth_func(a,y):
     return dydt
 
 @tf.function
-def odesolve_func(atab,y0):
-    solver=tfp.math.ode.BDF(rtol=1e-4)
-    results = solver.solve(growth_func,atab[0], y0, solution_times=atab)
-    return results
-
-if __name__ == "__main__":
-  """ Tests implementation and draws first and second order growth.
-  """
-  import matplotlib.pyplot as plt
-  log10_amin=-2
-  steps=128
-  atab =np.logspace(log10_amin, 0.0, steps)
-  y0=tf.constant([[atab[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
-
-  results_func=odesolve_func(atab,y0)
-
-  #normalise D1 and D2 such that D1(a=1) = 1 and D2(a=1) = 1
-  D1_norm=results_func.states[:,0,0]/results_func.states[-1,0,0]
-  D2_norm=results_func.states[:,0,1]/results_func.states[-1,0,1]
-  d1_fn=results_func.states[:,1,0]/results_func.states[-1,0,0]
-  d2_fn=results_func.states[:,1,1]/results_func.states[-1,0,1]
-
-  plt.plot(results_func.times,D1_norm,label='$D_1$')
-  plt.plot(results_func.times,D2_norm,label='$D_2$')
-  plt.xlabel('Scale factor')
-  plt.ylabel('Growth function')
-  plt.legend()
-  plt.show()
-
-
-################################################################
-def D1_norm(a):
-    """
+def odesolve_func(cosmo, a, rtol=1e-4):
+    """ Solves the growth ODE system for a given cosmology at the requested
+    scale factors.
 
     Parameters
     ----------
+    cosmo: dict
+      Cosmology dictionary.
+    a: array_like
+      Output scale factors, note that the ODE is initialized at a[0]
+
+    Returns
+    -------
+    (D1, D1f), (D2, D2f): dictionary
+      First and second order growth factors, and their derivatives, computed at
+      the requested scale factors.
+    """
+    a=tf.convert_to_tensor(a, dtype=tf.float32)
+    # Initial conditions of the system
+    # TODO: Add a description of what this array is, what the different components
+    # are
+    y0 = [[a[0], -3./7 * a[0]**2],
+          [1.0, -6. / 7 *a[0]]]
+    # Instantiate the solver
+    solver=tfp.math.ode.BDF(rtol=rtol)
+
+    # Run the ODE
+    results = solver.solve(growth_ode,a[0],
+                            y0, solution_times=a,
+                            constants=cosmo)
+
+    # While we are at it, compute second order derivatives growth
+    second_order_results = growth_ode(results.times, results.states, **cosmo)
+
+    # Normalize the ODE to present time
+    # For first order growth and its derivative
+    D1 = results.states[0][0]/results.states[0][0][-1]
+    D1f = results.states[1][0]/results.states[0][0][-1]
+    F1p = second_order_results[1][0]/results.states[0][0][-1]
+
+    # For second order growth and its derivative
+    D2 = results.states[0][1]/results.states[0][1][-1]
+    D2f = results.states[1][1]/results.states[0][1][-1]
+    F2p = second_order_results[1][1]/results.states[0][1][-1]
+
+    return {'a':a, 'D1': D1, 'D1f':D1f, 'D2':D2, 'D2f':D2f, 'F1p':F1p, 'F2p':F2p}
+
+def maybe_compute_ODE(cosmo, log10_amin=-2, steps=1024):
+    """
+    Either computes or returns the cached ODE solution
+    """
+    if 'cache_ODE' in cosmo:
+        # If cache is found in the cosmo dictionary it means the ODE has already
+        # been computed
+        cache = cosmo['cache_ODE']
+        # Checking that the stored ODE results have the right lenght
+        assert len(cache['a']) == steps
+    else:
+        # Otherwise, we compute it now, and save the results for later
+        a = tf.convert_to_tensor(np.logspace(log10_amin,0.,steps),
+                                  dtype=tf.float32)
+        cache = odesolve_func(cosmo, a)
+        cosmo['cache_ODE'] = cache
+    return cache
+
+################################################################
+def D1(cosmo, a):
+    """
+    Parameters
+    ----------
+    cosmo: dict
+      Cosmology dictionary.
     a : tf.TensorArray
         Scale factor.
 
@@ -353,7 +383,7 @@ def D1_norm(a):
     -------
     Scalar float Tensor
         normalised D1.
-                    
+
     Notes
     -----
 
@@ -362,18 +392,22 @@ def D1_norm(a):
     .. math::
 
         D_{1norm}(a)=\frac{D_1(a)}{D_1(a=1)}
-            
-        """        
-    y0=tf.constant([[a[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
-    results_func=odesolve_func(a,y0)
-    return (results_func.states[:,0,0]/results_func.states[-1,0,0])
 
-
-def D2_norm(a):
     """
+    a=tf.convert_to_tensor(a,dtype=tf.float32)
+    # Maybe compute ODE or use stored result
+    cache = maybe_compute_ODE(cosmo)
+    lna = tf.math.log(a)
+    return tfp.math.interp_regular_1d_grid(lna,
+                      tf.math.log(cache['a'][0]), tf.math.log(cache['a'][-1]), cache['D1'])
 
+
+def D2(cosmo, a):
+    """
     Parameters
     ----------
+    cosmo: dict
+      Cosmology dictionary.
     a : tf.TensorArray
         Scale factor.
 
@@ -381,7 +415,7 @@ def D2_norm(a):
     -------
     Scalar float Tensor
         normalised D2.
-               
+
     Notes
     -----
 
@@ -392,14 +426,16 @@ def D2_norm(a):
         D_{2norm}(a)=\frac{D_2(a)}{D_2(a=1)}
 
     """
-    y0=tf.constant([[a[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
-    results_func=odesolve_func(a,y0)
-    return results_func.states[:,0,1]/results_func.states[-1,0,1]
+    a=tf.convert_to_tensor(a,dtype=tf.float32)
+    # Maybe compute ODE or use stored result
+    cache = maybe_compute_ODE(cosmo)
+    lna = tf.math.log(a)
+    return tfp.math.interp_regular_1d_grid(lna,
+                      tf.math.log(cache['a'][0]), tf.math.log(cache['a'][-1]), cache['D2'])
 
+#################################################################
 
-#################################################################    
-
-def D1f_norm(a):
+def D1f(cosmo, a):
     """
 
     Parameters
@@ -411,7 +447,7 @@ def D1f_norm(a):
     -------
     Scalar float Tensor
         normalised derivative D1.
-                    
+
     Notes
     -----
 
@@ -420,14 +456,16 @@ def D1f_norm(a):
     .. math::
 
         D'_{1norm}(a)=\frac{D'_1(a)}{D_1(a=1)}
-            
-        """        
-    y0=tf.constant([[a[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
-    results_func=odesolve_func(a,y0)
-    return (results_func.states[:,1,0]/results_func.states[-1,0,0])
 
+    """
+    a=tf.convert_to_tensor(a,dtype=tf.float32)
+    # Maybe compute ODE or use stored result
+    cache = maybe_compute_ODE(cosmo)
+    lna = tf.math.log(a)
+    return tfp.math.interp_regular_1d_grid(lna,
+                      tf.math.log(cache['a'][0]), tf.math.log(cache['a'][-1]), cache['D1f'])
 
-def D2f_norm(a):
+def D2f(cosmo, a):
     """
 
     Parameters
@@ -439,7 +477,7 @@ def D2f_norm(a):
     -------
     Scalar float Tensor
         normalised derivative D2.
-               
+
     Notes
     -----
 
@@ -450,124 +488,73 @@ def D2f_norm(a):
         D'_{2norm}(a)=\frac{D'_2(a)}{D_2(a=1)}
 
     """
-    y0=tf.constant([[a[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
-    results_func=odesolve_func(a,y0)
-    return results_func.states[:,1,1]/results_func.states[-1,0,1]
+    a=tf.convert_to_tensor(a,dtype=tf.float32)
+    # Maybe compute ODE or use stored result
+    cache = maybe_compute_ODE(cosmo)
+    lna = tf.math.log(a)
+    return tfp.math.interp_regular_1d_grid(lna,
+                      tf.math.log(cache['a'][0]), tf.math.log(cache['a'][-1]), cache['D2f'])
 
-################################################################
+def f1(cosmo, a):
+    a=tf.convert_to_tensor(a,dtype=tf.float32)
+    return D1f(cosmo, a) * a / D1(cosmo, a)
 
-def F1(a):
-    """ Linear order growth rate
-
-            Parameters
-            ----------
-            a : tf.TensorArray
-               Scale factor.
-
-            Returns
-            -------
-            Scalar float Tensor : linear order growth rate.
-            
-            Notes
-            -----
-
-         The expression for :math:`F_1(a)` is:
-
-    .. math::
-
-        F_1(a)=\frac{dD_1(a)}{da}*a/D_1
-            
-        """
-    y0=tf.constant([[a[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
-    results_func=odesolve_func(a,y0)
-    return results_func.states[:,1,0]*a/results_func.states[:,0,0]
-
-
-def F2(a):
-    """ Linear order growth rate
-
-            Parameters
-            ----------
-            a : tf.TensorArray
-               Scale factor.
-
-            Returns
-            -------
-            Scalar float Tensor : linear order growth rate.
-            
-            Notes
-            -----
-
-         The expression for :math:`F_2(a)` is:
-
-    .. math::
-
-        F_2(a)=\frac{dD_2(a)}{da}*a/D_2
-            
-        """
-    y0=tf.constant([[a[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
-    results_func=odesolve_func(a,y0)
-    return results_func.states[:,1,1]*a/results_func.states[:,0,1]
+def f2(cosmo, a):
+    a=tf.convert_to_tensor(a,dtype=tf.float32)
+    return D2f(cosmo, a)  * a / D2(cosmo, a)
 
 ###############################################################
-def Gf(a):
+def Gf(cosmo, a):
     """
     FastPM growth factor function
 
-            Parameters
-            ----------
-            a : tf.TensorArray
-               Scale factor.
+    Parameters
+    ----------
+    a : tf.TensorArray
+       Scale factor.
 
-            Returns
-            -------
-            Scalar float Tensor : FastPM growth factor function.
-            
-            Notes
-            -----
+    Returns
+    -------
+    Scalar float Tensor : FastPM growth factor function.
 
-         The expression for :math:`Gf(a)` is:
+    Notes
+    -----
 
-    .. math::  
+    The expression for :math:`Gf(a)` is:
+
+    .. math::
         Gf(a)=D'_{1norm}*a**3*E(a)
     """
-    y0=tf.constant([[a[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
-    results_func=odesolve_func(a,y0)
-    d1_f=results_func.states[:,1,0]
-    d1_f_norm=d1_f/results_func.states[-1,0,0]
-    a=results_func.times
-    return (d1_f_norm)*a**3*E(cosmo,a)
+    a=tf.convert_to_tensor(a,dtype=tf.float32)
+    return D1f(cosmo,a)*a**3*E(cosmo,a)
 
-def Gf2(a):
+def Gf2(cosmo, a):
     """
-    FastPM second order growth factor function 
+    FastPM second order growth factor function
 
-            Parameters
-            ----------
-            a : tf.TensorArray
-               Scale factor.
+    Parameters
+    ----------
+    a : tf.TensorArray
+       Scale factor.
 
-            Returns
-            -------
-            Scalar float Tensor : FastPM second order growth factor function.
-            
-            Notes
-            -----
+    Returns
+    -------
+    Scalar float Tensor : FastPM second order growth factor function.
+
+    Notes
+    -----
 
          The expression for :math:`Gf_2(a)` is:
 
-    .. math::  
+    .. math::
         Gf_2(a)=D'_{2norm}*a**3*E(a)
     """
-    y0=tf.constant([[a[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
-    results_func=odesolve_func(a,y0)
-    d2_f=results_func.states[:,1,1]
-    d2_f_norm=d2_f/results_func.states[-1,0,1]
-    return (d2_f_norm)*a**3*E(cosmo,a) 
-  
+    a=tf.convert_to_tensor(a,dtype=tf.float32)
+    return D2f(cosmo,a)*a**3*E(cosmo,a)
+
 ################################################################
 
-def gf(a):
+def gf(cosmo, a):
     """
     Derivative of Gf against a
 
@@ -579,34 +566,31 @@ def gf(a):
             Returns
             -------
             Scalar float Tensor : the derivative of Gf against a.
-             
+
             Notes
             -----
 
          The expression for :math:`gf(a)` is:
 
-    .. math::  
+    .. math::
         gf(a)=\frac{dGF}{da}= D^{''}_1 * a ** 3 *E(a) +D'_{1norm}*a ** 3 * E'(a)
                 +   3 * a ** 2 * E(a)*D'_{1norm}
-        
+
     """
-    y0=tf.constant([[a[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
-    results_func=odesolve_func(a,y0)
-    D1=results_func.states[:,0,0]
-    d1_f=results_func.states[:,1,0]
-    d1_fn=results_func.states[:,1,0]/results_func.states[-1,0,0]
-    a=results_func.times
-    D1_order2=1.5*Omega_m_a(cosmo,a)*D1/tf.pow(a,2)-(d1_f/a)*(Omega_de_a(cosmo,a)-0.5*Omega_m_a(cosmo,a)+2)
-    D1_order2=D1_order2/results_func.states[-1,0,0]
-    return  (D1_order2 * a ** 3 *E(cosmo,a) +  d1_fn*a ** 3 * dEa(cosmo,a)
-                +   3 * a ** 2 * E(cosmo,a)*d1_fn)
+    a=tf.convert_to_tensor(a,dtype=tf.float32)
+    # Maybe compute ODE or use stored result
+    cache = maybe_compute_ODE(cosmo)
+    lna = tf.math.log(a)
+    d1f = tfp.math.interp_regular_1d_grid(lna,
+                      tf.math.log(cache['a'][0]), tf.math.log(cache['a'][-1]), cache['D1f'])
+    f1p = tfp.math.interp_regular_1d_grid(lna,
+                      tf.math.log(cache['a'][0]), tf.math.log(cache['a'][-1]), cache['F1p'])
+    return  (f1p * a ** 3 *E(cosmo,a) +  d1f*a ** 3 * dEa(cosmo,a)  +   3 * a ** 2 * E(cosmo,a)*d1f)
 
-
-
-def gf2(a):
+def gf2(cosmo, a):
     """
     Derivative of Gf2 against a
-        
+
             Parameters
             ----------
             a : tf.TensorArray
@@ -615,30 +599,54 @@ def gf2(a):
             Returns
             -------
             Scalar float Tensor : the derivative of Gf2 against a.
-             
+
             Notes
             -----
 
          The expression for :math:`gf2(a)` is:
 
-    .. math::  
+    .. math::
         gf_2(a)=\frac{dGF_2}{da}= D^{''}_2 * a ** 3 *E(a) +D'_{2norm}*a ** 3 * E'(a)
                 +   3 * a ** 2 * E(a)*D'_{2norm}
-        
-    """
-    y0=tf.constant([[a[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
-    results_func=odesolve_func(a,y0)
-    D1=results_func.states[:,0,0]
-    d2_f=results_func.states[:,1,1]
-    D2=results_func.states[:,0,1]
-    d2_fn=results_func.states[:,1,1]/results_func.states[-1,0,1]
-    a=results_func.times
-    D2_order2=1.5*Omega_m_a(cosmo,a)*D2/tf.pow(a,2)-(d2_f/a)*(Omega_de_a(cosmo,a)-0.5*Omega_m_a(cosmo,a)+2)- 1.5*(Omega_m_a(cosmo,a)*D1**2)/tf.pow(a,2) 
-    D2_order2=D2_order2/results_func.states[-1,0,1]
-    return  (D2_order2 * a ** 3 *E(cosmo,a) +  d2_fn*a ** 3 * dEa(cosmo,a)
-                +   3 * a ** 2 * E(cosmo,a)*d2_fn)
 
-# from flowpm.background import MatterDominated 
+    """
+    a=tf.convert_to_tensor(a,dtype=tf.float32)
+    # Maybe compute ODE or use stored result
+    cache = maybe_compute_ODE(cosmo)
+    lna = tf.math.log(a)
+    d2f = tfp.math.interp_regular_1d_grid(lna,
+                      tf.math.log(cache['a'][0]), tf.math.log(cache['a'][-1]), cache['D2f'])
+    f2p = tfp.math.interp_regular_1d_grid(lna,
+                      tf.math.log(cache['a'][0]), tf.math.log(cache['a'][-1]), cache['F2p'])
+    return  (f2p * a ** 3 *E(cosmo,a) +  d2f*a ** 3 * dEa(cosmo,a) + 3 * a ** 2 * E(cosmo,a)*d2f)
+
+# 
+# if __name__ == "__main__":
+#   """ Tests implementation and draws first and second order growth.
+#   """
+#   import matplotlib.pyplot as plt
+#   log10_amin=-2
+#   steps=128
+#   atab =np.logspace(log10_amin, 0.0, steps)
+#   y0=tf.constant([[atab[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
+#
+#   results_func=odesolve_func(atab,y0)
+#
+#   #normalise D1 and D2 such that D1(a=1) = 1 and D2(a=1) = 1
+#   D1_norm=results_func.states[:,0,0]/results_func.states[-1,0,0]
+#   D2_norm=results_func.states[:,0,1]/results_func.states[-1,0,1]
+#   d1_fn=results_func.states[:,1,0]/results_func.states[-1,0,0]
+#   d2_fn=results_func.states[:,1,1]/results_func.states[-1,0,1]
+#
+#   plt.plot(results_func.times,D1_norm,label='$D_1$')
+#   plt.plot(results_func.times,D2_norm,label='$D_2$')
+#   plt.xlabel('Scale factor')
+#   plt.ylabel('Growth function')
+#   plt.legend()
+#   plt.show()
+
+
+# from flowpm.background import MatterDominated
 # M_D=MatterDominated(Omega0_m=0.3075)
 
 
