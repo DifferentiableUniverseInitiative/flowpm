@@ -288,10 +288,8 @@ def growth_ode(a, y, **cosmo):
     \right) a \frac{dD_1}{da}=\frac{3}{2}  \Omega_{m}(a)D_1
      (see :cite:`Florent Leclercq thesis` Eq. (1.96))
     """
-    #y=tf.convert_to_tensor(y,dtype=tf.float32)
     a=tf.convert_to_tensor(a,dtype=tf.float32)
     # Extracting entries
-    print(y)
     (d1, d2), (d1_f, d2_f) = y
     # ODE for d1
     dy1dt= d1_f,1.5*Omega_m_a(cosmo,a)*d1/tf.pow(a,2)-(d1_f/a)*(Omega_de_a(cosmo,a)-0.5*Omega_m_a(cosmo,a)+2)
@@ -620,7 +618,7 @@ def gf2(cosmo, a):
                       tf.math.log(cache['a'][0]), tf.math.log(cache['a'][-1]), cache['F2p'])
     return  (f2p * a ** 3 *E(cosmo,a) +  d2f*a ** 3 * dEa(cosmo,a) + 3 * a ** 2 * E(cosmo,a)*d2f)
 
-# 
+#
 # if __name__ == "__main__":
 #   """ Tests implementation and draws first and second order growth.
 #   """
