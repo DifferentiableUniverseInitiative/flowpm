@@ -1,3 +1,4 @@
+from setuptools import find_packages
 from setuptools import setup
 from io import open
 
@@ -13,7 +14,7 @@ setup(name='flowpm',
       author='Chirag Modi',
       author_email='modichirag@berkeley.edu',
       license='MIT',
-      packages=['flowpm'],
+      packages=find_packages(),
       install_requires=['astropy', 'scipy', 'mesh-tensorflow', 'tensorflow_probability'],
       tests_require=['fastpm', 'pyccl'],
       extras_require={
