@@ -53,3 +53,17 @@ def test_r2c2r():
   rec = rfield.numpy()
 
   assert_allclose(base, rec, rtol=1e-09)
+
+
+
+def test_r2c2r_2D():
+  bs = 50
+  nc = 16
+  batch_size = 3
+  base = 100*np.random.randn(batch_size, nc, nc).astype(np.float64)
+
+  cfield = r2c2d(tf.constant(base, dtype=tf.float64), dtype=tf.complex128)
+  rfield = c2r2d(cfield, dtype=tf.float64)
+  rec = rfield.numpy()
+
+  assert_allclose(base, rec, rtol=1e-09)
