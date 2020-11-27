@@ -505,7 +505,7 @@ def f2(cosmo, a):
 def Gp(cosmo, a):
     """
     FastPM growth factor function
-    
+
 
     Parameters
     ----------
@@ -525,7 +525,7 @@ def Gp(cosmo, a):
         Gp(cosmo,a)=D'_{1norm}*a
     """
     a=tf.convert_to_tensor(a,dtype=tf.float32)
-    return D1f(cosmo, a)*a
+    return D1(cosmo, a)
 ################################################################
 def Gf(cosmo, a):
     """
