@@ -23,6 +23,9 @@ def fde(cosmo,a,epsilon=1e-5):
 
     Parameters
     ----------
+    cosmo: Cosmology
+      Cosmological parameters structure
+           
     a : array_like or tf.TensorArray
         Scale factor
 
@@ -96,6 +99,9 @@ def E(cosmo,a):
 
     Parameters
     ----------
+    cosmo: Cosmology
+      Cosmological parameters structure
+    
     a : array_like or tf.TensorArray
         Scale factor
 
@@ -130,6 +136,9 @@ def H(cosmo, a):
 
     Parameters
     ----------
+    cosmo: Cosmology
+      Cosmological parameters structure
+    
     a : array_like or tf.TensorArray
         Scale factor
 
@@ -148,8 +157,14 @@ def dfde(cosmo,a,epsilon=1e-5):
 
     Parameters
     ----------
+    cosmo: Cosmology
+      Cosmological parameters structure
+    
     a : array_like or tf.TensorArray
         Scale factor
+        
+    epsilon: float value
+            Small number to make sure we are not dividing by 0 and avoid a singularity 
 
     Returns
     -------
@@ -174,13 +189,16 @@ def dfde(cosmo,a,epsilon=1e-5):
             /tf.math.pow(tf.math.log(a-epsilon),2))
 
 
-def dEa(cosmo,a,epsilon=1e-5):
+def dEa(cosmo,a):
     r"""Derivative of the scale factor dependent factor E(a) in the Hubble
     parameter with respect to the
     scale factor.
 
     Parameters
     ----------
+    cosmo: Cosmology
+      Cosmological parameters structure
+    
     a : array_like or tf.TensorArray
         Scale factor
 
@@ -211,6 +229,9 @@ def Omega_m_a(cosmo,a):
 
     Parameters
     ----------
+    cosmo: Cosmology
+      Cosmological parameters structure
+    
     a : array_like or tf.TensorArray
         Scale factor
 
@@ -238,6 +259,9 @@ def Omega_de_a(cosmo,a):
 
     Parameters
     ----------
+    cosmo: Cosmology
+      Cosmological parameters structure
+    
     a : array_like or tf.TensorArray
         Scale factor
 
@@ -268,6 +292,9 @@ def growth_ode(a, y, **cosmo):
     at a given scale factor
     Parameters
     ----------
+    cosmo: Cosmology
+      Cosmological parameters structure
+    
     a: array_like or tf.TensorArray
       Scale factor
     amin: float
@@ -312,6 +339,9 @@ def odesolve_func(cosmo, a, rtol=1e-4):
       Cosmology dictionary.
     a: array_like
       Output scale factors, note that the ODE is initialized at a[0]
+      
+    rtol: float, optional
+          Parameters determing the error control performed by the solver   
 
     Returns
     -------
@@ -320,9 +350,9 @@ def odesolve_func(cosmo, a, rtol=1e-4):
       the requested scale factors.
     """
     a=tf.convert_to_tensor(a, dtype=tf.float32)
-    # Initial conditions of the system
-    # TODO: Add a description of what this array is, what the different components
-    # are
+    # Matter dominated initial condition.
+    # Row 1: Initial condition of first(column 1) and second order (column 2) growth factors
+    # Row 2: Initial condition of derivative of first (column 1) and second order (column 2) growth factors
     y0 = [[a[0], -3./7 * a[0]**2],
           [1.0, -6. / 7 *a[0]]]
     # Instantiate the solver
@@ -369,7 +399,8 @@ def maybe_compute_ODE(cosmo, log10_amin=-2, steps=1024):
 
 ################################################################
 def D1(cosmo, a):
-    """
+    """ Normalised first order growth factor.
+    
     Parameters
     ----------
     cosmo: dict
@@ -401,7 +432,8 @@ def D1(cosmo, a):
 
 
 def D2(cosmo, a):
-    """
+    """ Normalised second order growth factor
+    
     Parameters
     ----------
     cosmo: dict
@@ -434,10 +466,13 @@ def D2(cosmo, a):
 #################################################################
 
 def D1f(cosmo, a):
-    """
+    """ Derivative of the first order growth factor respect to scale factor a
 
     Parameters
     ----------
+    cosmo: dict
+      Cosmology dictionary.
+      
     a : tf.TensorArray
         Scale factor.
 
@@ -464,10 +499,13 @@ def D1f(cosmo, a):
                       tf.math.log(cache['a'][0]), tf.math.log(cache['a'][-1]), cache['D1f'])
 
 def D2f(cosmo, a):
-    """
+    """ Derivative of the second order growth factor respect to scale factor a
 
     Parameters
     ----------
+    cosmo: dict
+      Cosmology dictionary.
+    
     a : tf.TensorArray
         Scale factor.
 
@@ -494,10 +532,60 @@ def D2f(cosmo, a):
                       tf.math.log(cache['a'][0]), tf.math.log(cache['a'][-1]), cache['D2f'])
 
 def f1(cosmo, a):
+    """ Linear order growth rate
+
+    Parameters
+    ----------
+    cosmo: dict
+      Cosmology dictionary.
+    
+    a : tf.TensorArray
+        Scale factor.
+
+    Returns
+    -------
+    Scalar float Tensor
+        Linear order growth rate.
+
+    Notes
+    -----
+
+    The expression for :math:`f_{1}(a)` is:
+
+    .. math::
+
+        f{1}(a)=\frac{D'_1(a)}{D_1(a=1)}*a
+
+    """
     a=tf.convert_to_tensor(a,dtype=tf.float32)
     return D1f(cosmo, a) * a / D1(cosmo, a)
 
 def f2(cosmo, a):
+        """ Second order growth rate.
+
+    Parameters
+    ----------
+    cosmo: dict
+      Cosmology dictionary.
+    
+    a : tf.TensorArray
+        Scale factor.
+
+    Returns
+    -------
+    Scalar float Tensor
+        Linear order growth rate.
+
+    Notes
+    -----
+
+    The expression for :math:`f_{2}(a)` is:
+
+    .. math::
+
+        f{2}(a)=\frac{D'_2(a)}{D_2(a=1)}*a
+
+    """
     a=tf.convert_to_tensor(a,dtype=tf.float32)
     return D2f(cosmo, a)  * a / D2(cosmo, a)
 
@@ -509,6 +597,9 @@ def Gp(cosmo, a):
 
     Parameters
     ----------
+    cosmo: dict
+      Cosmology dictionary.
+    
     a : tf.TensorArray
        Scale factor.
 
@@ -533,6 +624,9 @@ def Gf(cosmo, a):
 
     Parameters
     ----------
+    cosmo: dict
+      Cosmology dictionary.
+    
     a : tf.TensorArray
        Scale factor.
 
@@ -557,6 +651,9 @@ def Gf2(cosmo, a):
 
     Parameters
     ----------
+    cosmo: dict
+      Cosmology dictionary.
+    
     a : tf.TensorArray
        Scale factor.
 
@@ -583,6 +680,9 @@ def gf(cosmo, a):
 
             Parameters
             ----------
+            cosmo: dict
+               Cosmology dictionary.
+            
             a : tf.TensorArray
                Scale factor.
 
@@ -616,6 +716,9 @@ def gf2(cosmo, a):
 
             Parameters
             ----------
+            cosmo: dict
+              Cosmology dictionary.
+            
             a : tf.TensorArray
                Scale factor.
 
@@ -667,28 +770,3 @@ def gf2(cosmo, a):
 #   plt.ylabel('Growth function')
 #   plt.legend()
 #   plt.show()
-
-
-# from flowpm.background import MatterDominated
-# M_D=MatterDominated(Omega0_m=0.3075)
-
-
-# a=np.logspace(-2, 0.0, steps)
-# plt.plot(a,D1_norm(a),label='D1_norm')
-# plt.plot(a,D2_norm(a),label='D2_norm')
-# plt.plot(a,F1(a),label='F1')
-# plt.plot(a,F2(a),label='F2')
-# plt.plot(a,Gf(a),label='Gf')
-# plt.plot(a,Gf2(a),label='Gf2')
-# plt.plot(a,gf(a),label='gf')
-# plt.plot(a,gf2(a),label='gf2')
-# plt.plot(a,M_D.D1(a),label='D1_norm')
-# plt.plot(a,M_D.D2(a),label='D2_norm')
-# plt.plot(a,M_D.f1(a),label='F1')
-# plt.plot(a,M_D.f2(a),label='F2')
-# plt.plot(a,M_D.Gf(a),label='Gf')
-# plt.plot(a,M_D.Gf2(a),label='Gf2')
-# plt.plot(a,M_D.gf(a),label='gf')
-# plt.plot(a,M_D.gf2(a),label='gf2')
-# plt.legend()
-# plt.show()
