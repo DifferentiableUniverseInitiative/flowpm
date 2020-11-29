@@ -127,3 +127,28 @@ def test_nody():
   tfread = pmutils.cic_paint(tf.zeros_like(tlinear), state[0]).numpy()
 
   assert_allclose(final_cube, tfread[0], atol=1.2)
+
+def test_rectangular_nody():
+  """ Checking end to end nbody on a rectangular grid case
+  """
+  a0 = 0.1
+
+  pm = ParticleMesh(BoxSize=[bs, bs, 3*bs], Nmesh = [nc, nc, 3*nc], dtype='f4')
+  grid = pm.generate_uniform_particle_grid(shift=0).astype(np.float32)
+  solver = Solver(pm, Planck15, B=1)
+  stages = np.linspace(0.1, 1.0, 10, endpoint=True)
+
+  # Generate initial state with fastpm
+  whitec = pm.generate_whitenoise(100, mode='complex', unitary=False)
+  lineark = whitec.apply(lambda k, v:Planck15.get_pklin(sum(ki ** 2 for ki in k)**0.5, 0) ** 0.5 * v / v.BoxSize.prod() ** 0.5)
+  statelpt = solver.lpt(lineark, grid, a0, order=1)
+  finalstate = solver.nbody(statelpt, leapfrog(stages))
+  final_cube = pm.paint(finalstate.X)
+
+  # Same thing with flowpm
+  tlinear = tf.expand_dims(np.array(lineark.c2r()), 0)
+  state = tfpm.lpt_init(tlinear, a0, order=1)
+  state = tfpm.nbody(state, stages, [nc, nc, 3*nc])
+  tfread = pmutils.cic_paint(tf.zeros_like(tlinear), state[0]).numpy()
+
+  assert_allclose(final_cube, tfread[0], atol=1.2)
