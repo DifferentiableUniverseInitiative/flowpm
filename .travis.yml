@@ -23,7 +23,6 @@ before_install:
 - source activate test
 - conda install --yes numpy=$NUMPY_VERSION
 - conda install --yes -c bccp nbodykit runtests
-- conda install --yes -c conda-forge pyccl
 - conda list
 install:
 - pip install gast==0.2.2
