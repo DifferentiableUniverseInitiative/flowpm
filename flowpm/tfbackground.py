@@ -25,7 +25,7 @@ def fde(cosmo,a,epsilon=1e-5):
     ----------
     cosmo: Cosmology
       Cosmological parameters structure
-           
+
     a : array_like or tf.TensorArray
         Scale factor
 
@@ -101,7 +101,7 @@ def E(cosmo,a):
     ----------
     cosmo: Cosmology
       Cosmological parameters structure
-    
+
     a : array_like or tf.TensorArray
         Scale factor
 
@@ -138,7 +138,7 @@ def H(cosmo, a):
     ----------
     cosmo: Cosmology
       Cosmological parameters structure
-    
+
     a : array_like or tf.TensorArray
         Scale factor
 
@@ -159,12 +159,12 @@ def dfde(cosmo,a,epsilon=1e-5):
     ----------
     cosmo: Cosmology
       Cosmological parameters structure
-    
+
     a : array_like or tf.TensorArray
         Scale factor
-        
+
     epsilon: float value
-            Small number to make sure we are not dividing by 0 and avoid a singularity 
+            Small number to make sure we are not dividing by 0 and avoid a singularity
 
     Returns
     -------
@@ -198,7 +198,7 @@ def dEa(cosmo,a):
     ----------
     cosmo: Cosmology
       Cosmological parameters structure
-    
+
     a : array_like or tf.TensorArray
         Scale factor
 
@@ -231,7 +231,7 @@ def Omega_m_a(cosmo,a):
     ----------
     cosmo: Cosmology
       Cosmological parameters structure
-    
+
     a : array_like or tf.TensorArray
         Scale factor
 
@@ -261,7 +261,7 @@ def Omega_de_a(cosmo,a):
     ----------
     cosmo: Cosmology
       Cosmological parameters structure
-    
+
     a : array_like or tf.TensorArray
         Scale factor
 
@@ -294,7 +294,7 @@ def growth_ode(a, y, **cosmo):
     ----------
     cosmo: Cosmology
       Cosmological parameters structure
-    
+
     a: array_like or tf.TensorArray
       Scale factor
     amin: float
@@ -339,9 +339,9 @@ def odesolve_func(cosmo, a, rtol=1e-4):
       Cosmology dictionary.
     a: array_like
       Output scale factors, note that the ODE is initialized at a[0]
-      
+
     rtol: float, optional
-          Parameters determing the error control performed by the solver   
+          Parameters determing the error control performed by the solver
 
     Returns
     -------
@@ -400,7 +400,7 @@ def maybe_compute_ODE(cosmo, log10_amin=-2, steps=1024):
 ################################################################
 def D1(cosmo, a):
     """ Normalised first order growth factor.
-    
+
     Parameters
     ----------
     cosmo: dict
@@ -433,7 +433,7 @@ def D1(cosmo, a):
 
 def D2(cosmo, a):
     """ Normalised second order growth factor
-    
+
     Parameters
     ----------
     cosmo: dict
@@ -472,7 +472,7 @@ def D1f(cosmo, a):
     ----------
     cosmo: dict
       Cosmology dictionary.
-      
+
     a : tf.TensorArray
         Scale factor.
 
@@ -505,7 +505,7 @@ def D2f(cosmo, a):
     ----------
     cosmo: dict
       Cosmology dictionary.
-    
+
     a : tf.TensorArray
         Scale factor.
 
@@ -538,7 +538,7 @@ def f1(cosmo, a):
     ----------
     cosmo: dict
       Cosmology dictionary.
-    
+
     a : tf.TensorArray
         Scale factor.
 
@@ -561,13 +561,13 @@ def f1(cosmo, a):
     return D1f(cosmo, a) * a / D1(cosmo, a)
 
 def f2(cosmo, a):
-        """ Second order growth rate.
+    """ Second order growth rate.
 
     Parameters
     ----------
     cosmo: dict
       Cosmology dictionary.
-    
+
     a : tf.TensorArray
         Scale factor.
 
@@ -599,7 +599,7 @@ def Gp(cosmo, a):
     ----------
     cosmo: dict
       Cosmology dictionary.
-    
+
     a : tf.TensorArray
        Scale factor.
 
@@ -626,7 +626,7 @@ def Gf(cosmo, a):
     ----------
     cosmo: dict
       Cosmology dictionary.
-    
+
     a : tf.TensorArray
        Scale factor.
 
@@ -653,7 +653,7 @@ def Gf2(cosmo, a):
     ----------
     cosmo: dict
       Cosmology dictionary.
-    
+
     a : tf.TensorArray
        Scale factor.
 
@@ -682,7 +682,7 @@ def gf(cosmo, a):
             ----------
             cosmo: dict
                Cosmology dictionary.
-            
+
             a : tf.TensorArray
                Scale factor.
 
@@ -718,7 +718,7 @@ def gf2(cosmo, a):
             ----------
             cosmo: dict
               Cosmology dictionary.
-            
+
             a : tf.TensorArray
                Scale factor.
 
