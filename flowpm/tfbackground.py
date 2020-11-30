@@ -589,34 +589,6 @@ def f2(cosmo, a):
     a=tf.convert_to_tensor(a,dtype=tf.float32)
     return D2f(cosmo, a)  * a / D2(cosmo, a)
 
-###############################################################
-def Gp(cosmo, a):
-    """
-    FastPM growth factor function
-
-
-    Parameters
-    ----------
-    cosmo: dict
-      Cosmology dictionary.
-
-    a : tf.TensorArray
-       Scale factor.
-
-    Returns
-    -------
-    Scalar float Tensor : FastPM growth factor function.
-
-    Notes
-    -----
-
-    The expression for :math:`Gf(a)` is:
-
-    .. math::
-        Gp(cosmo,a)=D'_{1norm}*a
-    """
-    a=tf.convert_to_tensor(a,dtype=tf.float32)
-    return D1(cosmo, a)
 ################################################################
 def Gf(cosmo, a):
     """
