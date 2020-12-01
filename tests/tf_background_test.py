@@ -123,14 +123,6 @@ def testf2():
     f2_tf=f2(cosmo, a)
 
     assert_allclose(f2_back, f2_tf, rtol=1e-2)
-    
-def testGp():
-    M_d=MatterDominated(Omega0_m=0.3075)
-    a = np.logspace(-2, 0,128)
-    Gp_back=M_d.Gp(a)
-    Gp_tf=Gp(cosmo, a)
-
-    assert_allclose(Gp_back, Gp_tf, rtol=1e-2)
 
 def testGf():
     M_d=MatterDominated(Omega0_m=0.3075)
