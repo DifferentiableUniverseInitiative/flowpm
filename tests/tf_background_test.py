@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from flowpm.tfbackground import dEa,Omega_m_a, E, Gf,Gf2, gf,gf2,D1,D2,D1f,D2f, f1,f2,Gp
+from flowpm.tfbackground import dEa,Omega_m_a, E, Gf,Gf2, gf,gf2,D1,D2,D1f,D2f, f1,f2
 from numpy.testing import assert_allclose
 from flowpm.background import MatterDominated
 
