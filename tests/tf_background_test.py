@@ -1,8 +1,8 @@
 import tensorflow as tf
 import numpy as np
-from flowpm.tfbackground import dEa,Omega_m_a, E, Gf,Gf2, gf,gf2,D1,D2,D1f,D2f, f1,f2,Gp
+from flowpm.tfbackground import dEa,Omega_m_a, E, Gf,Gf2, gf,gf2,D1,D2,D1f,D2f, f1,f2
 from numpy.testing import assert_allclose
-from flowpm.background import MatterDominated
+from flowpm.legacy_background import MatterDominated
 
 
 
@@ -123,14 +123,6 @@ def testf2():
     f2_tf=f2(cosmo, a)
 
     assert_allclose(f2_back, f2_tf, rtol=1e-2)
-    
-def testGp():
-    M_d=MatterDominated(Omega0_m=0.3075)
-    a = np.logspace(-2, 0,128)
-    Gp_back=M_d.Gp(a)
-    Gp_tf=Gp(cosmo, a)
-
-    assert_allclose(Gp_back, Gp_tf, rtol=1e-2)
 
 def testGf():
     M_d=MatterDominated(Omega0_m=0.3075)
