@@ -29,6 +29,9 @@ def fde(cosmo,a,epsilon=1e-5):
 
     a : array_like or tf.TensorArray
         Scale factor
+        
+    epsilon: float value
+            Small number to make sure we are not dividing by 0 and avoid a singularity
 
     Returns
     -------
