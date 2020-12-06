@@ -33,8 +33,6 @@ def test_lpt_init():
   Checking lpt init
   """
   a0 = 0.1
-  af = 1.0
-  n_steps=10
 
   pm = ParticleMesh(BoxSize=bs, Nmesh = [nc, nc, nc], dtype='f4')
   grid = pm.generate_uniform_particle_grid(shift=0).astype(np.float32)
@@ -47,7 +45,7 @@ def test_lpt_init():
 
   # Same thing with flowpm
   tlinear = tf.expand_dims(np.array(lineark.c2r()), 0)
-  tfread = tfpm.lpt_init(tlinear, a0, af,n_steps, order=1).numpy()
+  tfread = tfpm.lpt_init(tlinear, a0, order=1).numpy()
 
   assert_allclose(statelpt.X, tfread[0,0]*bs/nc, rtol=1e-2)
 
@@ -109,8 +107,6 @@ def test_nody():
   """ Checking end to end nbody
   """
   a0 = 0.1
-  af = 1.0
-  n_steps=10
 
   pm = ParticleMesh(BoxSize=bs, Nmesh = [nc, nc, nc], dtype='f4')
   grid = pm.generate_uniform_particle_grid(shift=0).astype(np.float32)
@@ -126,7 +122,7 @@ def test_nody():
 
   # Same thing with flowpm
   tlinear = tf.expand_dims(np.array(lineark.c2r()), 0)
-  state = tfpm.lpt_init(tlinear, a0, af,n_steps, order=1)
+  state = tfpm.lpt_init(tlinear, a0, order=1)
   state = tfpm.nbody(state, stages, nc)
   tfread = pmutils.cic_paint(tf.zeros_like(tlinear), state[0]).numpy()
 
