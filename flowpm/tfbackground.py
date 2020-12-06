@@ -285,6 +285,201 @@ def Omega_de_a(cosmo,a):
     a=tf.convert_to_tensor(a,dtype=tf.float32)
     return cosmo["Omega0_de"]*tf.math.pow(a,fde(cosmo,a))/E(cosmo,a)**2
 
+def dchioverda(cosmo, a):
+    r"""Derivative of the radial comoving distance with respect to the
+    scale factor.
+
+    Parameters
+    ----------
+    cosmo: Cosmology
+      Cosmological parameters structure
+    
+    a : array_like or tf.TensorArray
+        Scale factor
+
+    Returns
+    -------
+    dchi/da : tf.TensorArray
+        Derivative of the radial comoving distance with respect to the
+        scale factor at the specified scale factor.
+
+    Notes
+    -----
+
+    The expression for :math:`\frac{d \chi}{da}` is:
+
+    .. math::
+
+        \frac{d \chi}{da}(a) = \frac{R_H}{a^2 E(a)}
+    """
+    a=tf.convert_to_tensor(a,dtype=tf.float32)
+    return constants["rh"] / (a ** 2 * E(cosmo, a))
+
+def cosmof():
+    cosmo={"w0":-1.0,
+       "wa":0.0,
+       "H0":100,
+       "h":0.6774,
+       "Omega0_b":0.04860,
+       "Omega0_c":0.2589,
+       "Omega0_m":0.3075,
+       "Omega0_k":0.0,
+       "Omega0_de":0.6925,
+       "n_s":0.9667,
+       "sigma8":0.8159}
+    return cosmo
+
+@tf.function
+def rad_comoving_distance(cosmo,a, log10_amin=-2, steps=256, rtol=1e-3):
+    r"""Radial comoving distance in [Mpc/h] for a given scale factor.
+
+    Parameters
+    ----------
+    cosmo: Cosmology
+      Cosmological parameters structure
+    
+    a : array_like or tf.TensorArray
+        Scale factor
+        
+    log10_amin: integer
+                 Starting value of the log-scale spaced sequence.    
+        
+    steps:integer, optional
+        Number of samples to generate.
+        
+    rtol: float, optional
+          Parameters determing the error control performed by the solver
+
+    Returns
+    -------
+    chi : tf.TensorArray,
+        Radial comoving distance corresponding to the specified scale
+        factor.
+
+    Notes
+    -----
+    The radial comoving distance is computed by performing the following
+    integration:
+
+    .. math::
+
+        \chi(a) =  R_H \int_a^1 \frac{da^\prime}{{a^\prime}^2 E(a^\prime)}
+    """
+
+    atab = np.logspace(log10_amin, 0.0, steps)
+
+    def dchioverdlna(x, y):
+        xa = tf.cast(tf.math.exp(x), dtype=tf.float32)
+        return dchioverda(cosmo, xa)*xa 
+    solver=tfp.math.ode.BDF(rtol=rtol)
+    #  # Run the ODE
+    chitab= solver.solve(dchioverdlna, np.log(atab)[0], 0.0, np.log(atab))
+    chitab = chitab.states[-1] - chitab.states
+    chitab=tf.convert_to_tensor(chitab,dtype=tf.float32)
+    atab=tf.convert_to_tensor(atab,dtype=tf.float32)
+    cache = {"a": atab, "chi": chitab}
+    cosmof={}
+    cosmof["tfbackground.radial_comoving_distance"] = cache    
+    # Return the results as an interpolation of the table)
+    lna=tf.math.log(a)
+    inter=tfp.math.interp_regular_1d_grid(tf.cast(lna,dtype=tf.float32), tf.math.log(cache["a"])[0],tf.math.log(cache["a"])[-1], cache["chi"]) 
+    return cosmof,tf.clip_by_value(inter,0.0,1000000)
+
+cosmo.update(rad_comoving_distance(cosmo,np.logspace(-3,0.0))[0])
+
+def a_of_chi(cosmo, chi):
+    r"""Computes the scale factor for corresponding (array) of radial comoving
+    distance by reverse linear interpolation.
+
+    Parameters:
+    -----------
+    cosmo: Cosmology
+      Cosmological parameters
+
+    chi: array_like or tf.TensorArray
+      radial comoving distance to query.
+
+    Returns:
+    --------
+    a : tf.TensorArray
+      Scale factors corresponding to requested distances
+    """
+    # Check if distances have already been computed, force computation otherwise
+    #if not "background.radial_comoving_distance" in cosmo._workspace.keys():
+    rad_comoving_distance(cosmo, 1.0)
+    cache = cosmo["tfbackground.radial_comoving_distance"]
+    chi = tf.cast(chi,dtype=tf.float32)
+    return tfp.math.interp_regular_1d_grid(chi, cache["chi"][0],cache["chi"][-1] ,cache["a"])
+
+def transverse_comoving_distance(cosmo, a):
+    r"""Transverse comoving distance in [Mpc/h] for a given scale factor.
+
+    Parameters
+    ----------
+    cosmo: Cosmology
+      Cosmological parameters
+    
+    a : tf.TensorArray
+        Scale factor
+
+    Returns
+    -------
+    f_k : tf.TensorArray
+        Transverse comoving distance corresponding to the specified
+        scale factor.
+
+    Notes
+    -----
+    The transverse comoving distance depends on the curvature of the
+    universe and is related to the radial comoving distance through:
+
+    .. math::
+
+        f_k(a) = \left\lbrace
+        \begin{matrix}
+        R_H \frac{1}{\sqrt{\Omega_k}}\sinh(\sqrt{|\Omega_k|}\chi(a)R_H)&
+            \mbox{for }\Omega_k > 0 \\
+        \chi(a)&
+            \mbox{for } \Omega_k = 0 \\
+        R_H \frac{1}{\sqrt{\Omega_k}} \sin(\sqrt{|\Omega_k|}\chi(a)R_H)&
+            \mbox{for } \Omega_k < 0
+        \end{matrix}
+        \right.
+    """
+    chi = rad_comoving_distance(cosmo, a)[1]
+    if cosmo['Omega0_k'] < 0:  # Open universe
+        return constants['rh'] / tf.math.sqrt(cosmo['Omega0_k']) * tf.math.sinh(cosmo.sqrtk * chi / constants['rh'])
+    elif cosmo['Omega0_k'] > 0:  # Closed Universe
+        return constants['rh'] / tf.math.sqrt(cosmo['Omega0_k']) * tf.math.sin(cosmo.sqrtk * chi / constants['rh'])
+    else:
+        return chi
+
+def angular_diameter_distance(cosmo, a):
+    r"""Angular diameter distance in [Mpc/h] for a given scale factor.
+
+    Parameters
+    ----------
+    cosmo: Cosmology
+      Cosmological parameters structure
+    
+    a : tf.TensorArray
+        Scale factor
+
+    Returns
+    -------
+    d_A : tf.TensorArray
+
+    Notes
+    -----
+    Angular diameter distance is expressed in terms of the transverse
+    comoving distance as:
+
+    .. math::
+
+        d_A(a) = a f_k(a)
+    """
+    return a * transverse_comoving_distance(cosmo, a)
+
 
 #Equation 1.96 from Florent Leclercq thesis
 def growth_ode(a, y, **cosmo):
