@@ -16,7 +16,8 @@ cosmo={"w0":-1.0,
        "Omega0_de":0.6925,
        "n_s":0.9667,
        "sigma8":0.8159}
-
+constants={"rh": 2997.92458 } # h^{-1} Mpc}
+# rh : Hubble radius in h^{-1} Mpc
 
 def fde(cosmo,a,epsilon=1e-5):
    r"""Evolution parameter for the Dark Energy density.
