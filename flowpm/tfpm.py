@@ -138,7 +138,7 @@ def lpt2_source(dlin_k, kvec=None, name="LPT2Source"):
     source = tf.multiply(source, 3.0/7.)
     return r2c3d(source, norm=nc**3)
 
-def lpt_init(linear, a, af,n_steps,order=2, cosmology=cosmo, kvec=None, name="LPTInit"):
+def lpt_init(linear, a, order=2, cosmology=cosmo, kvec=None, name="LPTInit"):
   """ Estimate the initial LPT displacement given an input linear (real) field
 
   Parameters:
@@ -156,12 +156,9 @@ def lpt_init(linear, a, af,n_steps,order=2, cosmology=cosmo, kvec=None, name="LP
     Q = np.indices((nc, nc, nc)).reshape(3, -1).T.astype(dtype)
     Q = np.repeat(Q.reshape((1, -1, 3)), batch_size, axis=0)
     pos = Q
-
-    a = a
     
     lineark = r2c3d(linear, norm=nc**3)
 
-    #pt = PerturbationGrowth(cosmology, a=[a], a_normalize=1.0)
     DX = tf.multiply(D1(cosmo,a) , lpt1(lineark, pos))
     P = tf.multiply(a ** 2 * f1(cosmo,a) * E(cosmo,a) , DX)
     F = tf.multiply(a ** 2 * E(cosmo,a) * gf(cosmo,a) / D1(cosmo,a) , DX)
@@ -172,9 +169,6 @@ def lpt_init(linear, a, af,n_steps,order=2, cosmology=cosmo, kvec=None, name="LP
       DX = tf.add(DX, DX2)
       P = tf.add(P, P2)
       F = tf.add(F, F2)
-
-    X = tf.add(DX, Q)
-    return tf.stack((X, P, F), axis=0)
 
     X = tf.add(DX, Q)
     return tf.stack((X, P, F), axis=0)
