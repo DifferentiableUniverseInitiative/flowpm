@@ -3,6 +3,32 @@ import numpy as np
 import tensorflow as tf
 import flowpm
 import tensorflow_probability as tfp
+import  flowpm.constants as constants
+
+def interp_tf(x, xp, fp):
+    """
+    Simple equivalent of np.interp that compute a linear interpolation.
+    We are not doing any checks, so make sure your query points are lying
+    inside the array.
+    TODO: Implement proper interpolation!
+    x, xp, fp need to be 1d arrays
+    """
+    # First we find the nearest neighbour
+    ind = tf.math.argmin((x - xp) ** 2)
+
+    # Perform linear interpolation
+    ind = tf.clip_by_value(ind, 1, len(xp) - 2)
+
+    xi = xp[ind]
+    # Figure out if we are on the right or the left of nearest
+    s = tf.math.sign(tf.clip_by_value(x, xp[1], xp[-2]) - xi)
+    fp0=fp[ind]
+    fp1=fp[ind + tf.cast(np.copysign(1, s),dtype=tf.int64)]-fp0
+    xp0=xp[ind]
+    xp1=xp[ind + tf.cast(np.copysign(1, s),dtype=tf.int64)]
+    a = (fp1 -fp0 ) / (xp1 - xp0)
+    b = fp0 - a * xp0
+    return a * x + b
 
 #Planck 2015 results
 cosmo={"w0":-1.0,
@@ -16,8 +42,6 @@ cosmo={"w0":-1.0,
        "Omega0_de":0.6925,
        "n_s":0.9667,
        "sigma8":0.8159}
-constants={"rh": 2997.92458 } # h^{-1} Mpc}
-# rh : Hubble radius in h^{-1} Mpc
 
 def fde(cosmo,a,epsilon=1e-5):
    r"""Evolution parameter for the Dark Energy density.
@@ -152,7 +176,7 @@ def H(cosmo, a):
         Hubble parameter at the requested scale factor.
     """
     a=tf.convert_to_tensor(a,dtype=tf.float32)
-    return cosmo["H0"]*cosmo["h"] *(E(cosmo, a))
+    return constants.H0*cosmo["h"] *(E(cosmo, a))
 
 
 def dfde(cosmo,a,epsilon=1e-5):
@@ -317,23 +341,9 @@ def dchioverda(cosmo, a):
         \frac{d \chi}{da}(a) = \frac{R_H}{a^2 E(a)}
     """
     a=tf.convert_to_tensor(a,dtype=tf.float32)
-    return constants["rh"] / (a ** 2 * E(cosmo, a))
+    return constants.rh / (a ** 2 * E(cosmo, a))
 
-def cosmof():
-    cosmo={"w0":-1.0,
-       "wa":0.0,
-       "H0":100,
-       "h":0.6774,
-       "Omega0_b":0.04860,
-       "Omega0_c":0.2589,
-       "Omega0_m":0.3075,
-       "Omega0_k":0.0,
-       "Omega0_de":0.6925,
-       "n_s":0.9667,
-       "sigma8":0.8159}
-    return cosmo
 
-@tf.function
 def rad_comoving_distance(cosmo,a, log10_amin=-2, steps=256, rtol=1e-3):
     r"""Radial comoving distance in [Mpc/h] for a given scale factor.
 
@@ -369,27 +379,26 @@ def rad_comoving_distance(cosmo,a, log10_amin=-2, steps=256, rtol=1e-3):
 
         \chi(a) =  R_H \int_a^1 \frac{da^\prime}{{a^\prime}^2 E(a^\prime)}
     """
-
-    atab = np.logspace(log10_amin, 0.0, steps)
-
-    def dchioverdlna(x, y):
-        xa = tf.cast(tf.math.exp(x), dtype=tf.float32)
-        return dchioverda(cosmo, xa)*xa 
-    solver=tfp.math.ode.BDF(rtol=rtol)
-    #  # Run the ODE
-    chitab= solver.solve(dchioverdlna, np.log(atab)[0], 0.0, np.log(atab))
-    chitab = chitab.states[-1] - chitab.states
-    chitab=tf.convert_to_tensor(chitab,dtype=tf.float32)
-    atab=tf.convert_to_tensor(atab,dtype=tf.float32)
-    cache = {"a": atab, "chi": chitab}
-    cosmof={}
-    cosmof["tfbackground.radial_comoving_distance"] = cache    
+    if not "background.radial_comoving_distance" in cosmo.keys():
+        atab = np.logspace(log10_amin, 0.0, steps)
+    
+        def dchioverdlna(x, y):
+            xa = tf.cast(tf.math.exp(x), dtype=tf.float32)
+            return dchioverda(cosmo, xa)*xa 
+        solver=tfp.math.ode.BDF(rtol=rtol)
+        #  # Run the ODE
+        chitab= solver.solve(dchioverdlna, np.log(atab)[0], 0.0, np.log(atab))
+        chitab = chitab.states[-1] - chitab.states
+        chitab=tf.convert_to_tensor(chitab,dtype=tf.float32)
+        atab=tf.convert_to_tensor(atab,dtype=tf.float32)
+        cache = {"a": atab, "chi": chitab}
+        cosmo["tfbackground.radial_comoving_distance"] = cache  
+    else:
+        cache = cosmo["background.radial_comoving_distance"]
     # Return the results as an interpolation of the table)
     lna=tf.math.log(a)
     inter=tfp.math.interp_regular_1d_grid(tf.cast(lna,dtype=tf.float32), tf.math.log(cache["a"])[0],tf.math.log(cache["a"])[-1], cache["chi"]) 
-    return cosmof,tf.clip_by_value(inter,0.0,1000000)
-
-cosmo.update(rad_comoving_distance(cosmo,np.logspace(-3,0.0))[0])
+    return tf.clip_by_value(inter,0.0,1000000)
 
 def a_of_chi(cosmo, chi):
     r"""Computes the scale factor for corresponding (array) of radial comoving
@@ -409,11 +418,12 @@ def a_of_chi(cosmo, chi):
       Scale factors corresponding to requested distances
     """
     # Check if distances have already been computed, force computation otherwise
-    #if not "background.radial_comoving_distance" in cosmo._workspace.keys():
-    rad_comoving_distance(cosmo, 1.0)
+    if not "background.radial_comoving_distance" in cosmo.keys():
+        rad_comoving_distance(cosmo, 1.0)
     cache = cosmo["tfbackground.radial_comoving_distance"]
     chi = tf.cast(chi,dtype=tf.float32)
-    return tfp.math.interp_regular_1d_grid(chi, cache["chi"][0],cache["chi"][-1] ,cache["a"])
+    return interp_tf(chi, cache["chi"],cache["a"])
+    #return tfp.math.interp_regular_1d_grid(chi, cache["chi"][0],cache["chi"][-1] ,cache["a"])
 
 def transverse_comoving_distance(cosmo, a):
     r"""Transverse comoving distance in [Mpc/h] for a given scale factor.
@@ -452,9 +462,9 @@ def transverse_comoving_distance(cosmo, a):
     """
     chi = rad_comoving_distance(cosmo, a)[1]
     if cosmo['Omega0_k'] < 0:  # Open universe
-        return constants['rh'] / tf.math.sqrt(cosmo['Omega0_k']) * tf.math.sinh(cosmo.sqrtk * chi / constants['rh'])
+        return constants.rh / tf.math.sqrt(cosmo['Omega0_k']) * tf.math.sinh(cosmo.sqrtk * chi / constants.rh)
     elif cosmo['Omega0_k'] > 0:  # Closed Universe
-        return constants['rh'] / tf.math.sqrt(cosmo['Omega0_k']) * tf.math.sin(cosmo.sqrtk * chi / constants['rh'])
+        return constants.rh / tf.math.sqrt(cosmo['Omega0_k']) * tf.math.sin(cosmo.sqrtk * chi / constants.rh)
     else:
         return chi
 
@@ -487,23 +497,19 @@ def angular_diameter_distance(cosmo, a):
 
 #Equation 1.96 from Florent Leclercq thesis
 def growth_ode(a, y, **cosmo):
-    """Compute linear growth factor D_1(a) and second-order growth factor D_2(a)
-    at a given scale factor
+    """Define the ode functions that will be used to compute the linear growth factor D_1(a) and 
+    second-order growth factor D_2(a) at a given scale factor
     Parameters
     ----------
-    cosmo: Cosmology
-      Cosmological parameters structure
-
     a: array_like or tf.TensorArray
       Scale factor
-    amin: float
-      Mininum scale factor, default 1e-3
-    Returns
-    -------
-    D1:  Scalar float Tensor
-        First order growth factor computed at requested scale factor
-    D2: Scalar float Tensor
-        Second orderd growth factor computed at requested scale factor
+      
+    y: tf.TensorArray 
+    Contain the value of y for each desired scale factors in a, with the initial value y0 in the first row
+    
+    cosmo: Cosmology
+      Cosmological parameters structure
+      
     Notes
     -----
     Linear growth factor D_1(a) is given by
