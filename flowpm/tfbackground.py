@@ -10,25 +10,26 @@ def interp_tf(x, xp, fp):
     Simple equivalent of np.interp that compute a linear interpolation.
     We are not doing any checks, so make sure your query points are lying
     inside the array.
-    TODO: Implement proper interpolation!
     x, xp, fp need to be 1d arrays
     """
+    x = tf.convert_to_tensor(x, dtype=tf.float32)
+    xp = tf.convert_to_tensor(xp, dtype=tf.float32)
+    fp = tf.convert_to_tensor(fp, dtype=tf.float32)
     # First we find the nearest neighbour
-    ind = tf.math.argmin((x - xp) ** 2)
-
+    ind = tf.math.argmin((tf.expand_dims(x,1) - 
+                          tf.expand_dims(xp,0)) ** 2, axis=-1)
     # Perform linear interpolation
     ind = tf.clip_by_value(ind, 1, len(xp) - 2)
-
-    xi = xp[ind]
+    xi = tf.gather(xp, ind)
     # Figure out if we are on the right or the left of nearest
-    s = tf.math.sign(tf.clip_by_value(x, xp[1], xp[-2]) - xi)
-    fp0=fp[ind]
-    fp1=fp[ind + tf.cast(np.copysign(1, s),dtype=tf.int64)]-fp0
-    xp0=xp[ind]
-    xp1=xp[ind + tf.cast(np.copysign(1, s),dtype=tf.int64)]
-    a = (fp1 -fp0 ) / (xp1 - xp0)
-    b = fp0 - a * xp0
-    return a * x + b
+    s = tf.cast(tf.math.sign(tf.clip_by_value(x, xp[-2], xp[1]) - xi),dtype=tf.int64)
+    fp0= tf.gather(fp,ind)
+    fp1= tf.gather(fp, ind + tf.cast(tf.sign(s),dtype=tf.int64)) - fp0
+    xp0= tf.gather(xp, ind)
+    xp1= tf.gather(xp, ind + tf.cast(tf.sign(s),dtype=tf.int64)) - xp0
+    a = (fp1)/(xp1)
+    b = fp0-a*xp0
+    return a*x+b
 
 #Planck 2015 results
 cosmo={"w0":-1.0,
@@ -344,7 +345,7 @@ def dchioverda(cosmo, a):
     return constants.rh / (a ** 2 * E(cosmo, a))
 
 
-def rad_comoving_distance(cosmo,a, log10_amin=-2, steps=256, rtol=1e-3):
+def rad_comoving_distance(cosmo,a, log10_amin=-3, steps=256, rtol=1e-3):
     r"""Radial comoving distance in [Mpc/h] for a given scale factor.
 
     Parameters
