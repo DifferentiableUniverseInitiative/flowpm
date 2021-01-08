@@ -17,11 +17,12 @@ def linear_field(nc, boxsize, pk, kvec=None, batch_size=1,
 
   Parameters:
   -----------
-  nc: int
-    Number of cells in the field
+  nc: int, or list of ints
+    Number of cells in the field. If a list is provided, number of cells per
+    dimension.
 
-  boxsize: float
-    Physical size of the cube, in Mpc/h TODO: confirm units
+  boxsize: float, or list of floats
+    Physical size of the cube, in Mpc/h.
 
   pk: interpolator
     Power spectrum to use for the field
@@ -44,14 +45,20 @@ def linear_field(nc, boxsize, pk, kvec=None, batch_size=1,
     Realization of the linear field with requested power spectrum
   """
   with tf.name_scope(name):
+    # Transform nc to a list of necessary
+    if isinstance(nc, int):
+      nc = [nc,nc,nc]
+    if isinstance(boxsize, int) or isinstance(boxsize, float):
+       boxsize = [boxsize, boxsize, boxsize]
+
     if kvec is None:
-      kvec = fftk((nc, nc, nc), symmetric=False)
-    kmesh = sum((kk / boxsize * nc)**2 for kk in kvec)**0.5
+      kvec = fftk(nc, symmetric=False)
+    kmesh = sum((kk / boxsize[i] * nc[i])**2 for i,kk in enumerate(kvec))**0.5
     pkmesh = pk(kmesh)
 
     whitec = white_noise(nc, batch_size=batch_size, seed=seed, type='complex')
-    lineark = tf.multiply(whitec, (pkmesh/boxsize**3)**0.5)
-    linear = c2r3d(lineark, norm=nc**3, name=name, dtype=dtype)
+    lineark = tf.multiply(whitec, (pkmesh/(boxsize[0]*boxsize[1]*boxsize[2]))**0.5)
+    linear = c2r3d(lineark, norm=nc[0]*nc[1]*nc[2], name=name, dtype=dtype)
     return linear
 
 def lpt1(dlin_k, pos, kvec=None, name="LTP1"):
@@ -72,9 +79,9 @@ def lpt1(dlin_k, pos, kvec=None, name="LTP1"):
     pos = tf.convert_to_tensor(pos, name="pos")
 
     shape = dlin_k.get_shape()
-    batch_size, nc = shape[0], shape[1]
+    batch_size, nc = shape[0], shape[1:]
     if kvec is None:
-      kvec = fftk((nc, nc, nc), symmetric=False)
+      kvec = fftk(nc, symmetric=False)
 
     lap = tf.cast(laplace_kernel(kvec), tf.complex64)
 
@@ -82,7 +89,7 @@ def lpt1(dlin_k, pos, kvec=None, name="LTP1"):
     for d in range(3):
       kweight = gradient_kernel(kvec, d) * lap
       dispc = tf.multiply(dlin_k, kweight)
-      disp = c2r3d(dispc, norm=nc**3)
+      disp = c2r3d(dispc, norm=nc[0]*nc[1]*nc[2])
       displacement.append(cic_readout(disp, pos))
     displacement = tf.stack(displacement, axis=2)
     return displacement
@@ -103,9 +110,9 @@ def lpt2_source(dlin_k, kvec=None, name="LPT2Source"):
     dlin_k = tf.convert_to_tensor(dlin_k, name="lineark")
 
     shape = dlin_k.get_shape()
-    batch_size, nc = shape[0], shape[1]
+    batch_size, nc = shape[0], shape[1:]
     if kvec is None:
-      kvec = fftk((nc, nc, nc), symmetric=False)
+      kvec = fftk(nc, symmetric=False)
     source = tf.zeros(tf.shape(dlin_k))
     D1 = [1, 2, 0]
     D2 = [2, 0, 1]
@@ -118,7 +125,7 @@ def lpt2_source(dlin_k, kvec=None, name="LPT2Source"):
         grad = gradient_kernel(kvec, d)
         kweight = lap * grad * grad
         phic = tf.multiply(dlin_k, kweight)
-        phi_ii.append(c2r3d(phic, norm=nc**3))
+        phi_ii.append(c2r3d(phic, norm=nc[0]*nc[1]*nc[2]))
 
     for d in range(3):
         source = tf.add(source, tf.multiply(phi_ii[D1[d]], phi_ii[D2[d]]))
@@ -132,11 +139,11 @@ def lpt2_source(dlin_k, kvec=None, name="LPT2Source"):
         gradj = gradient_kernel(kvec, D2[d])
         kweight = lap * gradi * gradj
         phic = tf.multiply(dlin_k, kweight)
-        phi = c2r3d(phic, norm=nc**3)
+        phi = c2r3d(phic, norm=nc[0]*nc[1]*nc[2])
         source = tf.subtract(source, tf.multiply(phi, phi))
 
     source = tf.multiply(source, 3.0/7.)
-    return r2c3d(source, norm=nc**3)
+    return r2c3d(source, norm=nc[0]*nc[1]*nc[2])
 
 def lpt_init(linear, a, order=2, cosmology=cosmo, kvec=None, name="LPTInit"):
   """ Estimate the initial LPT displacement given an input linear (real) field
@@ -150,14 +157,14 @@ def lpt_init(linear, a, order=2, cosmology=cosmo, kvec=None, name="LPTInit"):
 
     assert order in (1, 2)
     shape = linear.get_shape()
-    batch_size, nc = shape[0], shape[1]
+    batch_size, nc = shape[0], shape[1:]
 
     dtype = np.float32
-    Q = np.indices((nc, nc, nc)).reshape(3, -1).T.astype(dtype)
+    Q = np.indices(nc).reshape(3, -1).T.astype(dtype)
     Q = np.repeat(Q.reshape((1, -1, 3)), batch_size, axis=0)
     pos = Q
-    
-    lineark = r2c3d(linear, norm=nc**3)
+
+    lineark = r2c3d(linear, norm=nc[0]*nc[1]*nc[2])
 
     DX = tf.multiply(D1(cosmo,a) , lpt1(lineark, pos))
     P = tf.multiply(a ** 2 * f1(cosmo,a) * E(cosmo,a) , DX)
@@ -183,13 +190,13 @@ def apply_longrange(x, delta_k, split=0, factor=1, kvec=None, name="ApplyLongran
     delta_k = tf.convert_to_tensor(delta_k, name="delta_k")
 
     shape = delta_k.get_shape()
-    batch_size, nc = shape[1], shape[2]
+    nc = shape[1:]
 
     if kvec is None:
-      kvec = fftk((nc, nc, nc), symmetric=False)
+      kvec = fftk(nc, symmetric=False)
 
     ndim = 3
-    norm = nc**3
+    norm = nc[0]*nc[1]*nc[2]
     lap = tf.cast(laplace_kernel(kvec), tf.complex64)
     fknlrange = longrange_kernel(kvec, split)
     kweight = lap * fknlrange
@@ -220,7 +227,7 @@ def kick(state, ai, ac, af, cosmology=cosmo, dtype=np.float32, name="Kick",
   with tf.name_scope(name):
     state = tf.convert_to_tensor(state, name="state")
 
-   
+
     fac = 1 / (ac ** 2 * E(cosmo,ac)) * (Gf(cosmo,af) - Gf(cosmo,ai)) / gf(cosmo,ac)
     indices = tf.constant([[1]])
     update = tf.expand_dims(tf.multiply(dtype(fac), state[2]), axis=0)
@@ -275,15 +282,15 @@ def force(state, nc, cosmology=cosmo, pm_nc_factor=1, kvec=None,
 
     shape = state.get_shape()
     batch_size = shape[1]
-    ncf = nc * pm_nc_factor
+    ncf = [n * pm_nc_factor for n in nc]
 
-    rho = tf.zeros((batch_size, ncf, ncf, ncf))
-    wts = tf.ones((batch_size, nc**3))
-    nbar = nc**3/ncf**3
+    rho = tf.zeros([batch_size] + ncf)
+    wts = tf.ones((batch_size, nc[0]*nc[1]*nc[2]))
+    nbar = nc[0]*nc[1]*nc[2]/(ncf[0]*ncf[1]*ncf[2])
 
     rho = cic_paint(rho, tf.multiply(state[0], pm_nc_factor), wts)
     rho = tf.multiply(rho, 1./nbar)  ###I am not sure why this is not needed here
-    delta_k = r2c3d(rho, norm=ncf**3)
+    delta_k = r2c3d(rho, norm=ncf[0]*ncf[1]*ncf[2])
     fac = dtype(1.5 * cosmology['Omega0_m'])
     update = apply_longrange(tf.multiply(state[0], pm_nc_factor), delta_k, split=0, factor=fac)
 
@@ -309,7 +316,7 @@ def nbody(state, stages, nc, cosmology=cosmo, pm_nc_factor=1, name="NBody"):
   stages: array
     Array of scale factors
 
-  nc: int
+  nc: int, or list of ints
     Number of cells
 
   pm_nc_factor: int
@@ -324,6 +331,8 @@ def nbody(state, stages, nc, cosmology=cosmo, pm_nc_factor=1, name="NBody"):
     state = tf.convert_to_tensor(state, name="state")
 
     shape = state.get_shape()
+    if isinstance(nc, int):
+      nc = [nc,nc,nc]
 
     # Unrolling leapfrog integration to make tf Autograph happy
     if len(stages) == 0:

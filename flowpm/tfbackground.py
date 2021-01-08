@@ -469,7 +469,6 @@ def angular_diameter_distance(cosmo, a):
     """
     return a * transverse_comoving_distance(cosmo, a)
 
-
 #Equation 1.96 from Florent Leclercq thesis
 def growth_ode(a, y, **cosmo):
     """Define the ode functions that will be used to compute the linear growth factor D_1(a) and 

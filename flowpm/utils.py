@@ -30,7 +30,7 @@ def cic_paint(mesh, part, weight=None, name="CiCPaint"):
 
     shape = tf.shape(mesh)
     batch_size, nx, ny, nz = shape[0], shape[1], shape[2], shape[3]
-    nc = nz
+    nc = [nx,ny,nz]
 
     # Flatten part if it's not already done
     if len(part.shape) > 3:
@@ -90,7 +90,7 @@ def cic_readout(mesh, part, name="CiCReadout"):
 
     shape = tf.shape(mesh)
     batch_size, nx, ny, nz = shape[0], shape[1], shape[2], shape[3]
-    nc = nz
+    nc = [nx,ny,nz]
 
     # Flatten part if it's not already done
     if len(part.shape) > 3:
@@ -174,10 +174,13 @@ def white_noise(nc, batch_size=1, seed=None, type='complex', name="WhiteNoise"):
   Samples a 3D cube of white noise of desired size
   """
   with tf.name_scope(name):
-    assert batch_size >= 1
-    white = tf.random.normal(shape=(batch_size, nc, nc, nc),
-                             mean=0, stddev=nc**1.5, seed=seed)
+    # Transform nc to a list of necessary
+    if isinstance(nc, int):
+      nc = [nc,nc,nc]
+
+    white = tf.random.normal(shape=[batch_size]+nc,
+                             mean=0., stddev=(nc[0]*nc[1]*nc[2])**0.5, seed=seed)
     if type == 'real': return white
     elif type == 'complex':
-        whitec = r2c3d(white, norm=nc**3)
+        whitec = r2c3d(white, norm=nc[0]*nc[1]*nc[2])
         return whitec
