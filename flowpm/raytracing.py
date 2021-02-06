@@ -165,7 +165,7 @@ def nbar_(nc,Boxsize):
     """
     return np.prod(nc)/np.prod(Boxsize)
 
-def A(nc_xy):
+def A(nc_xy,field):
     """
     2D mesh area in rad^2 per pixel
     
@@ -174,17 +174,20 @@ def A(nc_xy):
     nc_xy : int
        Number of cell for x and  y 
         
+    field: int or float
+        transveres degres of the field
+        
     Returns
     -------
     A:  float
      2D mesh area in rad^2 per pixel
      
     """
-    return ((5*np.pi/180/nc_xy)**2)
+    return ((field*np.pi/180/nc_xy)**2)
 
 
 @tf.function
-def wlen(ds,a,nc,Boxsize,nc_xy):
+def wlen(ds,a,nc,Boxsize,nc_xy,field):
     """
     Returns the correctly weighted lensing efficiency kernel
     
@@ -203,12 +206,12 @@ def wlen(ds,a,nc,Boxsize,nc_xy):
      
     """
     d=rad_comoving_distance(cosmo,a)
-    columndens =(A(nc_xy)*nbar_(nc,Boxsize))*(d**2)#particles/Volume*angular pixel area* distance^2 -> 1/L units
+    columndens =(A(nc_xy,field)*nbar_(nc,Boxsize))*(d**2)#particles/Volume*angular pixel area* distance^2 -> 1/L units
     w  = ((ds-d)*(d/ds))/(columndens)
     w=w/a
     return w
 
-def Born(lps_a,lps,ds,nc,Boxsize,nc_xy):
+def Born(lps_a,lps,ds,nc,Boxsize,nc_xy,field):
     """
     Compute the Born–approximated convergence
     
@@ -231,6 +234,6 @@ def Born(lps_a,lps,ds,nc,Boxsize,nc_xy):
     """
     k_map=0
     for i in range(len(lps_a)):
-        k_map += cons(cosmo)*lps[i][0]*  wlen(ds,lps_a[i],nc,Boxsize,nc_xy)
+        k_map += cons(cosmo)*lps[i][0]*  wlen(ds,lps_a[i],nc,Boxsize,nc_xy,field)
     return k_map
 
