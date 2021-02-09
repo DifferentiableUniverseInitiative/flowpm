@@ -375,6 +375,13 @@ def rad_comoving_distance(cosmo,a, log10_amin=-3, steps=256, rtol=1e-3):
     inter=tfp.math.interp_regular_1d_grid(tf.cast(lna,dtype=tf.float32), tf.math.log(cache["a"])[0],tf.math.log(cache["a"])[-1], cache["chi"]) 
     return tf.clip_by_value(inter,0.0,1000000)
 
+
+@tf.function
+def chifactor(a):
+    return rad_comoving_distance(cosmo,a)
+
+
+
 def a_of_chi(cosmo, chi):
     r"""Computes the scale factor for corresponding (array) of radial comoving
     distance by reverse linear interpolation.
@@ -398,7 +405,11 @@ def a_of_chi(cosmo, chi):
     cache = cosmo["tfbackground.radial_comoving_distance"]
     chi = tf.cast(chi,dtype=tf.float32)
     return interp_tf(chi, cache["chi"],cache["a"])
-    #return tfp.math.interp_regular_1d_grid(chi, cache["chi"][0],cache["chi"][-1] ,cache["a"])
+
+@tf.function
+def afactor(chi):
+    return a_of_chi(cosmo, chi)
+
 
 def transverse_comoving_distance(cosmo, a):
     r"""Transverse comoving distance in [Mpc/h] for a given scale factor.
