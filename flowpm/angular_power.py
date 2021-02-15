@@ -55,7 +55,7 @@ def resolution(field,nc_xy):
         transveres degres of the field
     
     nc_xy : int
-       Number of cell for x and  y 
+       Number of pixel for x and  y 
         
     Returns
     -------
@@ -77,7 +77,7 @@ def pixel_size(field,nc_xy):
         transveres degres of the field
     
     nc_xy : int
-       Number of cell for x and  y 
+       Number of pixel for x and  y 
         
     Returns
     -------

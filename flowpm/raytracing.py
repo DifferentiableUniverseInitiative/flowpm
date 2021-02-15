@@ -172,7 +172,7 @@ def A(nc_xy,field):
     Parameters:
     -----------
     nc_xy : int
-       Number of cell for x and  y 
+       Number of pixels for x and  y 
         
     field: int or float
         transveres degres of the field
