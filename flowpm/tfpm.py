@@ -213,7 +213,7 @@ def apply_longrange(x, delta_k, split=0, factor=1, kvec=None, name="ApplyLongran
     f = tf.multiply(f, factor)
     return f
 
-def kick(state, ai, ac, af, cosmology=cosmo, dtype=np.float32, name="Kick",
+def kick(state, ai, ac, af, cosmology=cosmo, dtype=tf.float32, name="Kick",
          **kwargs):
   """Kick the particles given the state
 
@@ -229,14 +229,15 @@ def kick(state, ai, ac, af, cosmology=cosmo, dtype=np.float32, name="Kick",
 
 
     fac = 1 / (ac ** 2 * E(cosmo,ac)) * (Gf(cosmo,af) - Gf(cosmo,ai)) / gf(cosmo,ac)
+    fac = tf.cast(fac, dtype=dtype)
     indices = tf.constant([[1]])
-    update = tf.expand_dims(tf.multiply(dtype(fac), state[2]), axis=0)
+    update = tf.expand_dims(tf.multiply(fac, state[2]), axis=0)
     shape = state.shape
     update = tf.scatter_nd(indices, update, shape)
     state = tf.add(state, update)
     return state
 
-def drift(state, ai, ac, af, cosmology=cosmo, dtype=np.float32,
+def drift(state, ai, ac, af, cosmology=cosmo, dtype=tf.float32,
           name="Drift", **kwargs):
   """Drift the particles given the state
 
@@ -251,15 +252,16 @@ def drift(state, ai, ac, af, cosmology=cosmo, dtype=np.float32,
     state = tf.convert_to_tensor(state, name="state")
 
     fac = 1. / (ac ** 3 * E(cosmo,ac)) * (D1(cosmo,af) - D1(cosmo,ai)) / D1f(cosmo,ac)
+    fac = tf.cast(fac, dtype=dtype)
     indices = tf.constant([[0]])
-    update = tf.expand_dims(tf.multiply(dtype(fac), state[1]), axis=0)
+    update = tf.expand_dims(tf.multiply(fac, state[1]), axis=0)
     shape = state.shape
     update = tf.scatter_nd(indices, update, shape)
     state = tf.add(state, update)
     return state
 
 def force(state, nc, cosmology=cosmo, pm_nc_factor=1, kvec=None,
-          dtype=np.float32, name="Force", **kwargs):
+          dtype=tf.float32, name="Force", **kwargs):
   """
   Estimate force on the particles given a state.
 
@@ -291,7 +293,7 @@ def force(state, nc, cosmology=cosmo, pm_nc_factor=1, kvec=None,
     rho = cic_paint(rho, tf.multiply(state[0], pm_nc_factor), wts)
     rho = tf.multiply(rho, 1./nbar)  ###I am not sure why this is not needed here
     delta_k = r2c3d(rho, norm=ncf[0]*ncf[1]*ncf[2])
-    fac = dtype(1.5 * cosmology['Omega0_m'])
+    fac = tf.cast(1.5 * cosmology['Omega0_m'], dtype=dtype)
     update = apply_longrange(tf.multiply(state[0], pm_nc_factor), delta_k, split=0, factor=fac)
 
     update = tf.expand_dims(update, axis=0)
