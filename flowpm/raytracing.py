@@ -8,7 +8,7 @@ Created on Wed Feb  3 12:29:19 2021
 import numpy as np
 import tensorflow as tf
 import flowpm
-from flowpm.tfbackground import cosmo, rad_comoving_distance
+from flowpm.tfbackground import rad_comoving_distance
 from flowpm.tfpm import kick, drift, force
 import flowpm.constants as constants
 
@@ -16,7 +16,7 @@ import flowpm.constants as constants
 def lightcone(state, stages, nc,
               plane_resolution, # in arcmin
               plane_size, # in pixels
-              cosmology=cosmo, pm_nc_factor=1, 
+              cosmology, pm_nc_factor=1, 
               name="NBody"):
   """
   Integrate the evolution of the state across the givent stages
@@ -186,8 +186,8 @@ def A(nc_xy,field):
     return ((field*np.pi/180/nc_xy)**2)
 
 
-@tf.function
-def wlen(ds,a,nc,Boxsize,nc_xy,field):
+
+def wlen(ds,a,nc,Boxsize,nc_xy,field,cosmo):
     """
     Returns the correctly weighted lensing efficiency kernel
     
@@ -211,7 +211,7 @@ def wlen(ds,a,nc,Boxsize,nc_xy,field):
     w=w/a
     return w
 
-def Born(lps_a,lps,ds,nc,Boxsize,nc_xy,field):
+def Born(lps_a,lps,ds,nc,Boxsize,nc_xy,field,cosmo):
     """
     Compute the Born–approximated convergence
     
@@ -234,6 +234,6 @@ def Born(lps_a,lps,ds,nc,Boxsize,nc_xy,field):
     """
     k_map=0
     for i in range(len(lps_a)):
-        k_map += cons(cosmo)*lps[i][0]*  wlen(ds,lps_a[i],nc,Boxsize,nc_xy,field)
+        k_map += cons(cosmo)*lps[i][0]*  wlen(ds,lps_a[i],nc,Boxsize,nc_xy,field,cosmo)
     return k_map
 
