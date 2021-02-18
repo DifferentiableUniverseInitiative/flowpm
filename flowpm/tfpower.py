@@ -84,7 +84,7 @@ def Eisenstein_Hu(cosmo, k, type="eisenhu_osc"):
         2.0
         / (3.0 * k_eq)
         * tf.math.sqrt(6.0 / R_eq)
-        * tf.math.log((np.sqrt(1.0 + R_d) + tf.math.sqrt(R_eq + R_d)) / (1.0 + tf.math.sqrt(R_eq)))
+        * tf.math.log((tf.math.sqrt(1.0 + R_d) + tf.math.sqrt(R_eq + R_d)) / (1.0 + tf.math.sqrt(R_eq)))
     )
     # Eq. (7) but in [hMpc^{-1}]
     k_silk = (
@@ -206,11 +206,11 @@ def sigmasqr(cosmo, R, transfer_fn, kmin=0.0001, kmax=1000.0, ksteps=5, **kwargs
        W(kR) = \\frac{3j_1(kR)}{kR}
     """
     def int_sigma(logk):
-        k = np.exp(logk)
+        k = tf.math.exp(logk)
         x = k * R
-        w = 3.0 * (np.sin(x) - x * np.cos(x)) / (x * x * x)
+        w = 3.0 * (tf.math.sin(x) - x * tf.math.cos(x)) / (x * x * x)
         pk = transfer_fn(cosmo, k, **kwargs) ** 2 * primordial_matter_power(cosmo, k)
         return k * (k * w) ** 2 * pk
 
-    y = simps(int_sigma, np.log10(kmin), np.log10(kmax), 256)
+    y = simps(int_sigma, tf.math.log(kmin)/np.log(10), tf.math.log(kmax)/np.log(10), 256)
     return 1.0 / (2.0 * np.pi ** 2.0) * y
