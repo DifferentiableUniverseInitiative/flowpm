@@ -8,7 +8,7 @@ from flowpm.scipy.interpolate import interp_tf
 #Planck 2015 results
 cosmo={"w0":-1.0,
        "wa":0.0,
-       "H0":100,
+       "H0":100.,
        "h":0.6774,
        "Omega0_b":0.04860,
        "Omega0_c":0.2589,
@@ -28,7 +28,7 @@ def fde(cosmo,a,epsilon=1e-5):
 
     a : array_like or tf.TensorArray
         Scale factor
-        
+
     epsilon: float value
             Small number to make sure we are not dividing by 0 and avoid a singularity
 
@@ -296,7 +296,7 @@ def dchioverda(cosmo, a):
     ----------
     cosmo: Cosmology
       Cosmological parameters structure
-    
+
     a : array_like or tf.TensorArray
         Scale factor
 
@@ -326,16 +326,16 @@ def rad_comoving_distance(cosmo,a, log10_amin=-3, steps=256, rtol=1e-3):
     ----------
     cosmo: Cosmology
       Cosmological parameters structure
-    
+
     a : array_like or tf.TensorArray
         Scale factor
-        
+
     log10_amin: integer
-                 Starting value of the log-scale spaced sequence.    
-        
+                 Starting value of the log-scale spaced sequence.
+
     steps:integer, optional
         Number of samples to generate.
-        
+
     rtol: float, optional
           Parameters determing the error control performed by the solver
 
@@ -356,10 +356,10 @@ def rad_comoving_distance(cosmo,a, log10_amin=-3, steps=256, rtol=1e-3):
     """
     if not "background.radial_comoving_distance" in cosmo.keys():
         atab = np.logspace(log10_amin, 0.0, steps)
-    
+
         def dchioverdlna(x, y):
             xa = tf.cast(tf.math.exp(x), dtype=tf.float32)
-            return dchioverda(cosmo, xa)*xa 
+            return dchioverda(cosmo, xa)*xa
         solver=tfp.math.ode.BDF(rtol=rtol)
         #  # Run the ODE
         chitab= solver.solve(dchioverdlna, np.log(atab)[0], 0.0, np.log(atab))
@@ -367,12 +367,12 @@ def rad_comoving_distance(cosmo,a, log10_amin=-3, steps=256, rtol=1e-3):
         chitab=tf.convert_to_tensor(chitab,dtype=tf.float32)
         atab=tf.convert_to_tensor(atab,dtype=tf.float32)
         cache = {"a": atab, "chi": chitab}
-        cosmo["tfbackground.radial_comoving_distance"] = cache  
+        cosmo["tfbackground.radial_comoving_distance"] = cache
     else:
         cache = cosmo["background.radial_comoving_distance"]
     # Return the results as an interpolation of the table)
     lna=tf.math.log(a)
-    inter=tfp.math.interp_regular_1d_grid(tf.cast(lna,dtype=tf.float32), tf.math.log(cache["a"])[0],tf.math.log(cache["a"])[-1], cache["chi"]) 
+    inter=tfp.math.interp_regular_1d_grid(tf.cast(lna,dtype=tf.float32), tf.math.log(cache["a"])[0],tf.math.log(cache["a"])[-1], cache["chi"])
     return tf.clip_by_value(inter,0.0,1000000)
 
 @tf.function
@@ -425,7 +425,7 @@ def transverse_comoving_distance(cosmo, a):
     ----------
     cosmo: Cosmology
       Cosmological parameters
-    
+
     a : tf.TensorArray
         Scale factor
 
@@ -468,7 +468,7 @@ def angular_diameter_distance(cosmo, a):
     ----------
     cosmo: Cosmology
       Cosmological parameters structure
-    
+
     a : tf.TensorArray
         Scale factor
 
@@ -489,19 +489,19 @@ def angular_diameter_distance(cosmo, a):
 
 #Equation 1.96 from Florent Leclercq thesis
 def growth_ode(a, y, **cosmo):
-    """Define the ode functions that will be used to compute the linear growth factor D_1(a) and 
+    """Define the ode functions that will be used to compute the linear growth factor D_1(a) and
     second-order growth factor D_2(a) at a given scale factor
     Parameters
     ----------
     a: array_like or tf.TensorArray
       Scale factor
-      
-    y: tf.TensorArray 
+
+    y: tf.TensorArray
     Contain the value of y for each desired scale factors in a, with the initial value y0 in the first row
-    
+
     cosmo: Cosmology
       Cosmological parameters structure
-      
+
     Notes
     -----
     Linear growth factor D_1(a) is given by
