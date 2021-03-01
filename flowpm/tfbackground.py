@@ -5,134 +5,122 @@ import tensorflow_probability as tfp
 import  flowpm.constants as constants
 from flowpm.scipy.interpolate import interp_tf
 
-#Planck 2015 results
-cosmo={"w0":-1.0,
-       "wa":0.0,
-       "H0":100,
-       "h":0.6774,
-       "Omega0_b":0.04860,
-       "Omega0_c":0.2589,
-       "Omega0_m":0.3075,
-       "Omega0_k":0.0,
-       "Omega0_de":0.6925,
-       "n_s":0.9667,
-       "sigma8":0.8159}
 
 def fde(cosmo,a,epsilon=1e-5):
-   r"""Evolution parameter for the Dark Energy density.
-
-    Parameters
-    ----------
-    cosmo: Cosmology
-      Cosmological parameters structure
-
-    a : array_like or tf.TensorArray
-        Scale factor
-        
-    epsilon: float value
-            Small number to make sure we are not dividing by 0 and avoid a singularity
-
-    Returns
-    -------
-    f : Scalar float Tensor.
-        The evolution parameter of the Dark Energy density as a function
-        of scale factor
-
-    Notes
-    -----
-
-    For a given parametrisation of the Dark Energy equation of state,
-    the scaling of the Dark Energy density with time can be written as:
-
-    .. math::
-
-        \rho_{de}(a) \propto a^{f(a)}
-
-    (see :cite:`2005:Percival`) where :math:`f(a)` is computed as
-    :math:`f(a) = \frac{-3}{\ln(a)} \int_0^{\ln(a)} [1 + w(a^\prime)]
-    d \ln(a^\prime)`. In the case of Linder's parametrisation for the
-    dark energy in Eq. :eq:`linderParam` :math:`f(a)` becomes:
-
-    .. math::
-
-        f(a) = -3(1 + w_0) + 3 w \left[ \frac{a - 1}{ \ln(a) } - 1 \right]
-    """
-   a=tf.convert_to_tensor(a,dtype=tf.float32)
-   w0=tf.convert_to_tensor(cosmo["w0"],dtype=tf.float32)
-   wa=tf.convert_to_tensor(cosmo["wa"],dtype=tf.float32)
-   return (-3.0*(1.0+w0)+ 3.0*wa*((a-1.0)/tf.math.log(a-epsilon)-1.0))
+    r"""Evolution parameter for the Dark Energy density.
+    
+     Parameters
+     ----------
+     cosmo: Cosmology
+       Cosmological parameters structure
+    
+     a : array_like or tf.TensorArray
+         Scale factor
+         
+     epsilon: float value
+             Small number to make sure we are not dividing by 0 and avoid a singularity
+    
+     Returns
+     -------
+     f : Scalar float Tensor.
+         The evolution parameter of the Dark Energy density as a function
+         of scale factor
+    
+     Notes
+     -----
+    
+     For a given parametrisation of the Dark Energy equation of state,
+     the scaling of the Dark Energy density with time can be written as:
+    
+     .. math::
+    
+         \rho_{de}(a) \propto a^{f(a)}
+    
+     (see :cite:`2005:Percival`) where :math:`f(a)` is computed as
+     :math:`f(a) = \frac{-3}{\ln(a)} \int_0^{\ln(a)} [1 + w(a^\prime)]
+     d \ln(a^\prime)`. In the case of Linder's parametrisation for the
+     dark energy in Eq. :eq:`linderParam` :math:`f(a)` becomes:
+    
+     .. math::
+    
+         f(a) = -3(1 + w_0) + 3 w \left[ \frac{a - 1}{ \ln(a) } - 1 \right]
+     """
+    a=tf.convert_to_tensor(a,dtype=tf.float32)
+    w0=tf.convert_to_tensor(cosmo["w0"],dtype=tf.float32)
+    wa=tf.convert_to_tensor(cosmo["wa"],dtype=tf.float32)
+    return (-3.0*(1.0+w0)+ 3.0*wa*((a-1.0)/tf.math.log(a-epsilon)-1.0))
 
 
 def w(cosmo,a):
-  """Dark Energy equation of state parameter using the Linder
-    parametrisation.
-
-    Parameters
-    ----------
-    cosmo: Cosmology
-      Cosmological parameters structure
-
-    a : array_like or tf.TensorArray
-        Scale factor
-
-    Returns
-    -------
-    w : Scalar float Tensor
-        The Dark Energy equation of state parameter at the specified
-        scale factor
-
-    Notes
-    -----
-
-    The Linder parametrization :cite:`2003:Linder` for the Dark Energy
-    equation of state :math:`p = w \rho` is given by:
-
-    .. math::
-
-        w(a) = w_0 + w (1 -a)
-  """
-  a=tf.convert_to_tensor(a,dtype=tf.float32)
-  w0=tf.convert_to_tensor(cosmo["w0"],dtype=tf.float32)
-  wa=tf.convert_to_tensor(cosmo["wa"],dtype=tf.float32)
-  return w0+wa*(1.0-a)
+    """Dark Energy equation of state parameter using the Linder
+      parametrisation.
+      
+      Parameters
+      ----------
+      cosmo: Cosmology
+        Cosmological parameters structure
+      
+      a : array_like or tf.TensorArray
+          Scale factor
+      
+      Returns
+      -------
+      w : Scalar float Tensor
+          The Dark Energy equation of state parameter at the specified
+          scale factor
+      
+      Notes
+      -----
+      
+      The Linder parametrization :cite:`2003:Linder` for the Dark Energy
+      equation of state :math:`p = w \rho` is given by:
+      
+      .. math::
+      
+          w(a) = w_0 + w (1 -a)
+    """
+    a=tf.convert_to_tensor(a,dtype=tf.float32)
+    w0=tf.convert_to_tensor(cosmo["w0"],dtype=tf.float32)
+    wa=tf.convert_to_tensor(cosmo["wa"],dtype=tf.float32)
+    return w0+wa*(1.0-a)
 
 def E(cosmo,a):
-  r"""The scale factor dependent factor E(a) in the Hubble
-    parameter.
-
-    Parameters
-    ----------
-    cosmo: Cosmology
-      Cosmological parameters structure
-
-    a : array_like or tf.TensorArray
-        Scale factor
-
-    Returns
-    -------
-    E^2 : Scalar float Tensor
-        Square of the scaling of the Hubble constant as a function of
-        scale factor
-
-    Notes
-    -----
-
-    The Hubble parameter at scale factor `a` is given by
-    :math:`H^2(a) = E^2(a) H_o^2` where :math:`E^2` is obtained through
-    Friedman's Equation (see :cite:`2005:Percival`) :
-
-    .. math::
-
-        E(a) = sqrt(\Omega_m a^{-3} + \Omega_k a^{-2} + \Omega_{de} a^{f(a)})
-
-    where :math:`f(a)` is the Dark Energy evolution parameter computed
-    by :py:meth:`.f_de`.
-    """
-  a=tf.convert_to_tensor(a,dtype=tf.float32)
-  return(tf.math.sqrt(
-        cosmo["Omega0_m"]/tf.math.pow(a, 3)
-        +cosmo["Omega0_k"]/tf.math.pow(a, 2)
-        +cosmo["Omega0_de"]*tf.math.pow(a, fde(cosmo,a))))
+    r"""The scale factor dependent factor E(a) in the Hubble
+      parameter.
+    
+      Parameters
+      ----------
+      cosmo: Cosmology
+        Cosmological parameters structure
+    
+      a : array_like or tf.TensorArray
+          Scale factor
+    
+      Returns
+      -------
+      E^2 : Scalar float Tensor
+          Square of the scaling of the Hubble constant as a function of
+          scale factor
+    
+      Notes
+      -----
+    
+      The Hubble parameter at scale factor `a` is given by
+      :math:`H^2(a) = E^2(a) H_o^2` where :math:`E^2` is obtained through
+      Friedman's Equation (see :cite:`2005:Percival`) :
+    
+      .. math::
+    
+          E(a) = sqrt(\Omega_m a^{-3} + \Omega_k a^{-2} + \Omega_{de} a^{f(a)})
+    
+      where :math:`f(a)` is the Dark Energy evolution parameter computed
+      by :py:meth:`.f_de`.
+      """
+    a=tf.convert_to_tensor(a,dtype=tf.float32)
+    return(tf.math.sqrt(
+          cosmo["Omega0_m"]/tf.math.pow(a, 3)
+          +cosmo["Omega0_k"]/tf.math.pow(a, 2)
+          +cosmo["Omega0_de"]*tf.math.pow(a, fde(cosmo,a))))
 
 def H(cosmo, a):
     r"""Hubble parameter [km/s/(Mpc/h)] at scale factor `a`
@@ -376,7 +364,7 @@ def rad_comoving_distance(cosmo,a, log10_amin=-3, steps=256, rtol=1e-3):
     return tf.clip_by_value(inter,0.0,1000000)
 
 @tf.function
-def chifactor(a):
+def chifactor(cosmo,a):
     chi = rad_comoving_distance(cosmo, a)
     return chi
 
@@ -405,7 +393,7 @@ def a_of_chi(cosmo, chi):
     return interp_tf(chi, cache["chi"],cache["a"])
 
 @tf.function
-def afactor(r):
+def afactor(cosmo,r):
     a = a_of_chi(cosmo, r)
     return a
 
