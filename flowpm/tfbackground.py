@@ -5,19 +5,6 @@ import tensorflow_probability as tfp
 import  flowpm.constants as constants
 from flowpm.scipy.interpolate import interp_tf
 
-#Planck 2015 results
-cosmo={"w0":-1.0,
-       "wa":0.0,
-       "H0":100.,
-       "h":0.6774,
-       "Omega0_b":0.04860,
-       "Omega0_c":0.2589,
-       "Omega0_m":0.3075,
-       "Omega0_k":0.0,
-       "Omega0_de":0.6925,
-       "n_s":0.9667,
-       "sigma8":0.8159}
-
 def fde(cosmo,a,epsilon=1e-5):
    r"""Evolution parameter for the Dark Energy density.
 
