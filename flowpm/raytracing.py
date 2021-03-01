@@ -53,7 +53,7 @@ def lightcone(state, stages, nc,
     ai = stages[0]
 
     # first force calculation for jump starting
-    state = force(state, nc, pm_nc_factor=pm_nc_factor, cosmology=cosmology)
+    state = force(state, nc,cosmology, pm_nc_factor=pm_nc_factor)
 
     # Compute the width of the lens planes based on number of time steps
     w = nc[2]//(len(stages)-1)
@@ -70,11 +70,11 @@ def lightcone(state, stages, nc,
         ah = (a0 * a1) ** 0.5
 
         # Kick step
-        state = kick(state, p, f, ah, cosmology=cosmology)
+        state = kick(state, p, f, ah,cosmology)
         p = ah
 
         # Drift step
-        state = drift(state, x, p, a1, cosmology=cosmology)
+        state = drift(state, x, p, a1, cosmology)
         x = a1
 
         # Access the positions of the particles
@@ -118,11 +118,11 @@ def lightcone(state, stages, nc,
         
         
         # Force
-        state = force(state, nc, pm_nc_factor=pm_nc_factor, cosmology=cosmology)
+        state = force(state, nc, cosmology, pm_nc_factor=pm_nc_factor)
         f = a1
 
         # Kick again
-        state = kick(state, p, f, a1, cosmology=cosmology)
+        state = kick(state, p, f, a1, cosmology)
         p = a1
 
     return state, lps_a, lps
@@ -143,7 +143,7 @@ def cons(cosmo):
       prefactor from Poisson equation
      
     """ 
-    return 3/2*cosmo['Omega0_m']*(cosmo['H0']/constants.c)**2
+    return 3/2*cosmo['Omega0_m']*(constants.H0/constants.c)**2
 
 def nbar_(nc,Boxsize):
     """
@@ -165,13 +165,13 @@ def nbar_(nc,Boxsize):
     """
     return np.prod(nc)/np.prod(Boxsize)
 
-def A(nc_xy,field):
+def A(plane_size,field):
     """
     2D mesh area in rad^2 per pixel
     
     Parameters:
     -----------
-    nc_xy : int
+    plane_size : int
        Number of pixels for x and  y 
         
     field: int or float
@@ -183,11 +183,11 @@ def A(nc_xy,field):
      2D mesh area in rad^2 per pixel
      
     """
-    return ((field*np.pi/180/nc_xy)**2)
+    return ((field*np.pi/180/plane_size)**2)
 
 
 
-def wlen(ds,a,nc,Boxsize,nc_xy,field,cosmo):
+def wlen(ds,a,nc,Boxsize,plane_size,field,cosmo):
     """
     Returns the correctly weighted lensing efficiency kernel
     
@@ -206,12 +206,12 @@ def wlen(ds,a,nc,Boxsize,nc_xy,field,cosmo):
      
     """
     d=rad_comoving_distance(cosmo,a)
-    columndens =(A(nc_xy,field)*nbar_(nc,Boxsize))*(d**2)#particles/Volume*angular pixel area* distance^2 -> 1/L units
+    columndens =(A(plane_size,field)*nbar_(nc,Boxsize))*(d**2)#particles/Volume*angular pixel area* distance^2 -> 1/L units
     w  = ((ds-d)*(d/ds))/(columndens)
     w=w/a
     return w
 
-def Born(lps_a,lps,ds,nc,Boxsize,nc_xy,field,cosmo):
+def Born(lps_a,lps,ds,nc,Boxsize,plane_size,field,cosmo):
     """
     Compute the Born–approximated convergence
     
@@ -234,6 +234,6 @@ def Born(lps_a,lps,ds,nc,Boxsize,nc_xy,field,cosmo):
     """
     k_map=0
     for i in range(len(lps_a)):
-        k_map += cons(cosmo)*lps[i][0]*  wlen(ds,lps_a[i],nc,Boxsize,nc_xy,field,cosmo)
+        k_map += cons(cosmo)*lps[i][0]*  wlen(ds,lps_a[i],nc,Boxsize,plane_size,field,cosmo)
     return k_map
 
