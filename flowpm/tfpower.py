@@ -59,10 +59,10 @@ def Eisenstein_Hu(cosmo, k, type="eisenhu_osc"):
   #            - k_silk : Silk damping scale
   T_2_7_sqr = (const.tcmb / 2.7)**2
   h2 = cosmo.h**2
-  w_m = cosmo.Omega0_m * h2
-  w_b = cosmo.Omega0_b * h2
-  fb = cosmo.Omega0_b / cosmo.Omega0_m
-  fc = (cosmo.Omega0_m - cosmo.Omega0_b) / cosmo.Omega0_m
+  w_m = cosmo.Omega_m * h2
+  w_b = cosmo.Omega_b * h2
+  fb = cosmo.Omega_b / cosmo.Omega_m
+  fc = (cosmo.Omega_m - cosmo.Omega_b) / cosmo.Omega_m
 
   k_eq = 7.46e-2 * w_m / T_2_7_sqr / cosmo.h  # Eq. (3) [h/Mpc]
   z_eq = 2.50e4 * w_m / (T_2_7_sqr)**2  # Eq. (2)
@@ -90,8 +90,8 @@ def Eisenstein_Hu(cosmo, k, type="eisenhu_osc"):
 
   alpha_gamma = (1.0 - 0.328 * tf.math.log(431.0 * w_m) * w_b / w_m +
                  0.38 * tf.math.log(22.3 * w_m) *
-                 (cosmo.Omega0_b / cosmo.Omega0_m)**2)
-  gamma_eff = (cosmo.Omega0_m * cosmo.h *
+                 (cosmo.Omega_b / cosmo.Omega_m)**2)
+  gamma_eff = (cosmo.Omega_m * cosmo.h *
                (alpha_gamma + (1.0 - alpha_gamma) / (1.0 +
                                                      (0.43 * k * sh_d)**4)))
 

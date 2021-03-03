@@ -12,7 +12,7 @@ from numpy.testing import assert_allclose
 def test_eisenstein_hu():
   cosmo = flowpm.cosmology.Cosmology(Omega_c=Planck15.Omega0_cdm,
                                      Omega_b=Planck15.Omega0_b,
-                                     Omega0_k=0.0,
+                                     Omega_k=0.0,
                                      h=Planck15.h,
                                      n_s=Planck15.n_s,
                                      sigma8=Planck15.sigma8,

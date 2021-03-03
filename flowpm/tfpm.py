@@ -326,7 +326,7 @@ def force(cosmo, state,
     rho = tf.multiply(rho,
                       1. / nbar)  # I am not sure why this is not needed here
     delta_k = r2c3d(rho, norm=ncf[0] * ncf[1] * ncf[2])
-    fac = tf.cast(1.5 * cosmo.Omega0_m, dtype=dtype)
+    fac = tf.cast(1.5 * cosmo.Omega_m, dtype=dtype)
     update = apply_longrange(tf.multiply(state[0], pm_nc_factor),
                              delta_k,
                              split=0,
