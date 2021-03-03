@@ -2,24 +2,27 @@
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
-import  flowpm.constants as constants
+import flowpm.constants as constants
 from flowpm.scipy.interpolate import interp_tf
 
-#Planck 2015 results
-cosmo={"w0":-1.0,
-       "wa":0.0,
-       "H0":100,
-       "h":0.6774,
-       "Omega0_b":0.04860,
-       "Omega0_c":0.2589,
-       "Omega0_m":0.3075,
-       "Omega0_k":0.0,
-       "Omega0_de":0.6925,
-       "n_s":0.9667,
-       "sigma8":0.8159}
+# Planck 2015 results
+cosmo = {
+    "w0": -1.0,
+    "wa": 0.0,
+    "H0": 100,
+    "h": 0.6774,
+    "Omega0_b": 0.04860,
+    "Omega0_c": 0.2589,
+    "Omega0_m": 0.3075,
+    "Omega0_k": 0.0,
+    "Omega0_de": 0.6925,
+    "n_s": 0.9667,
+    "sigma8": 0.8159
+}
 
-def fde(cosmo,a,epsilon=1e-5):
-   r"""Evolution parameter for the Dark Energy density.
+
+def fde(cosmo, a, epsilon=1e-5):
+  r"""Evolution parameter for the Dark Energy density.
 
     Parameters
     ----------
@@ -28,7 +31,7 @@ def fde(cosmo,a,epsilon=1e-5):
 
     a : array_like or tf.TensorArray
         Scale factor
-        
+
     epsilon: float value
             Small number to make sure we are not dividing by 0 and avoid a singularity
 
@@ -57,13 +60,14 @@ def fde(cosmo,a,epsilon=1e-5):
 
         f(a) = -3(1 + w_0) + 3 w \left[ \frac{a - 1}{ \ln(a) } - 1 \right]
     """
-   a=tf.convert_to_tensor(a,dtype=tf.float32)
-   w0=tf.convert_to_tensor(cosmo["w0"],dtype=tf.float32)
-   wa=tf.convert_to_tensor(cosmo["wa"],dtype=tf.float32)
-   return (-3.0*(1.0+w0)+ 3.0*wa*((a-1.0)/tf.math.log(a-epsilon)-1.0))
+  a = tf.convert_to_tensor(a, dtype=tf.float32)
+  w0 = tf.convert_to_tensor(cosmo["w0"], dtype=tf.float32)
+  wa = tf.convert_to_tensor(cosmo["wa"], dtype=tf.float32)
+  return (-3.0 * (1.0 + w0) + 3.0 * wa *
+          ((a - 1.0) / tf.math.log(a - epsilon) - 1.0))
 
 
-def w(cosmo,a):
+def w(cosmo, a):
   """Dark Energy equation of state parameter using the Linder
     parametrisation.
 
@@ -91,12 +95,13 @@ def w(cosmo,a):
 
         w(a) = w_0 + w (1 -a)
   """
-  a=tf.convert_to_tensor(a,dtype=tf.float32)
-  w0=tf.convert_to_tensor(cosmo["w0"],dtype=tf.float32)
-  wa=tf.convert_to_tensor(cosmo["wa"],dtype=tf.float32)
-  return w0+wa*(1.0-a)
+  a = tf.convert_to_tensor(a, dtype=tf.float32)
+  w0 = tf.convert_to_tensor(cosmo["w0"], dtype=tf.float32)
+  wa = tf.convert_to_tensor(cosmo["wa"], dtype=tf.float32)
+  return w0 + wa * (1.0 - a)
 
-def E(cosmo,a):
+
+def E(cosmo, a):
   r"""The scale factor dependent factor E(a) in the Hubble
     parameter.
 
@@ -128,14 +133,14 @@ def E(cosmo,a):
     where :math:`f(a)` is the Dark Energy evolution parameter computed
     by :py:meth:`.f_de`.
     """
-  a=tf.convert_to_tensor(a,dtype=tf.float32)
-  return(tf.math.sqrt(
-        cosmo["Omega0_m"]/tf.math.pow(a, 3)
-        +cosmo["Omega0_k"]/tf.math.pow(a, 2)
-        +cosmo["Omega0_de"]*tf.math.pow(a, fde(cosmo,a))))
+  a = tf.convert_to_tensor(a, dtype=tf.float32)
+  return (tf.math.sqrt(cosmo["Omega0_m"] / tf.math.pow(a, 3) +
+                       cosmo["Omega0_k"] / tf.math.pow(a, 2) +
+                       cosmo["Omega0_de"] * tf.math.pow(a, fde(cosmo, a))))
+
 
 def H(cosmo, a):
-    r"""Hubble parameter [km/s/(Mpc/h)] at scale factor `a`
+  r"""Hubble parameter [km/s/(Mpc/h)] at scale factor `a`
 
     Parameters
     ----------
@@ -150,12 +155,12 @@ def H(cosmo, a):
     H : Scalar float Tensor
         Hubble parameter at the requested scale factor.
     """
-    a=tf.convert_to_tensor(a,dtype=tf.float32)
-    return constants.H0*cosmo["h"] *(E(cosmo, a))
+  a = tf.convert_to_tensor(a, dtype=tf.float32)
+  return constants.H0 * cosmo["h"] * (E(cosmo, a))
 
 
-def dfde(cosmo,a,epsilon=1e-5):
-    r"""Derivative of the evolution parameter for the Dark Energy density
+def dfde(cosmo, a, epsilon=1e-5):
+  r"""Derivative of the evolution parameter for the Dark Energy density
     f(a) with respect to the scale factor.
 
     Parameters
@@ -185,15 +190,14 @@ def dfde(cosmo,a,epsilon=1e-5):
         \frac{df}{da}(a) = =\frac{3w_a \left( \ln(a-\epsilon)-
     \frac{a-1}{a-\epsilon}\right)}{\ln^2(a-\epsilon)}
     """
-    a=tf.convert_to_tensor(a,dtype=tf.float32)
-    wa=tf.convert_to_tensor(cosmo["wa"],dtype=tf.float32)
-    return (3*wa*
-            (tf.math.log(a-epsilon)-(a-1)/(a-epsilon))
-            /tf.math.pow(tf.math.log(a-epsilon),2))
+  a = tf.convert_to_tensor(a, dtype=tf.float32)
+  wa = tf.convert_to_tensor(cosmo["wa"], dtype=tf.float32)
+  return (3 * wa * (tf.math.log(a - epsilon) - (a - 1) / (a - epsilon)) /
+          tf.math.pow(tf.math.log(a - epsilon), 2))
 
 
-def dEa(cosmo,a):
-    r"""Derivative of the scale factor dependent factor E(a) in the Hubble
+def dEa(cosmo, a):
+  r"""Derivative of the scale factor dependent factor E(a) in the Hubble
     parameter with respect to the
     scale factor.
 
@@ -222,13 +226,15 @@ def dEa(cosmo,a):
         -2a^{-3}\Omega_{0k}
         +f'_{de}\Omega_{0de}a^{f_{de}(a)}}{2E(a)}
     """
-    a=tf.convert_to_tensor(a,dtype=tf.float32)
-    return 0.5*(-3*cosmo["Omega0_m"]/tf.math.pow(a, 4)-2*cosmo["Omega0_k"]/tf.math.pow(a, 3)
-    +dfde(cosmo,a)*cosmo["Omega0_de"]*tf.math.pow(a, fde(cosmo,a)))/E(cosmo,a)
+  a = tf.convert_to_tensor(a, dtype=tf.float32)
+  return 0.5 * (-3 * cosmo["Omega0_m"] / tf.math.pow(a, 4) -
+                2 * cosmo["Omega0_k"] / tf.math.pow(a, 3) + dfde(cosmo, a) *
+                cosmo["Omega0_de"] * tf.math.pow(a, fde(cosmo, a))) / E(
+                    cosmo, a)
 
 
-def Omega_m_a(cosmo,a):
-    r"""Matter density at scale factor `a`.
+def Omega_m_a(cosmo, a):
+  r"""Matter density at scale factor `a`.
 
     Parameters
     ----------
@@ -253,12 +259,12 @@ def Omega_m_a(cosmo,a):
 
     see :cite:`2005:Percival` Eq. (6)
     """
-    a=tf.convert_to_tensor(a,dtype=tf.float32)
-    return cosmo["Omega0_m"]*tf.math.pow(a,-3)/E(cosmo,a)**2
+  a = tf.convert_to_tensor(a, dtype=tf.float32)
+  return cosmo["Omega0_m"] * tf.math.pow(a, -3) / E(cosmo, a)**2
 
 
-def Omega_de_a(cosmo,a):
-    r"""Dark Energy density at scale factor `a`.
+def Omega_de_a(cosmo, a):
+  r"""Dark Energy density at scale factor `a`.
 
     Parameters
     ----------
@@ -285,18 +291,19 @@ def Omega_de_a(cosmo,a):
     where :math:`f(a)` is the Dark Energy evolution parameter computed by
     :py:meth:`.f_de` (see :cite:`2005:Percival` Eq. (6)).
     """
-    a=tf.convert_to_tensor(a,dtype=tf.float32)
-    return cosmo["Omega0_de"]*tf.math.pow(a,fde(cosmo,a))/E(cosmo,a)**2
+  a = tf.convert_to_tensor(a, dtype=tf.float32)
+  return cosmo["Omega0_de"] * tf.math.pow(a, fde(cosmo, a)) / E(cosmo, a)**2
+
 
 def dchioverda(cosmo, a):
-    r"""Derivative of the radial comoving distance with respect to the
+  r"""Derivative of the radial comoving distance with respect to the
     scale factor.
 
     Parameters
     ----------
     cosmo: Cosmology
       Cosmological parameters structure
-    
+
     a : array_like or tf.TensorArray
         Scale factor
 
@@ -315,27 +322,27 @@ def dchioverda(cosmo, a):
 
         \frac{d \chi}{da}(a) = \frac{R_H}{a^2 E(a)}
     """
-    a=tf.convert_to_tensor(a,dtype=tf.float32)
-    return constants.rh / (a ** 2 * E(cosmo, a))
+  a = tf.convert_to_tensor(a, dtype=tf.float32)
+  return constants.rh / (a**2 * E(cosmo, a))
 
 
-def rad_comoving_distance(cosmo,a, log10_amin=-3, steps=256, rtol=1e-3):
-    r"""Radial comoving distance in [Mpc/h] for a given scale factor.
+def rad_comoving_distance(cosmo, a, log10_amin=-3, steps=256, rtol=1e-3):
+  r"""Radial comoving distance in [Mpc/h] for a given scale factor.
 
     Parameters
     ----------
     cosmo: Cosmology
       Cosmological parameters structure
-    
+
     a : array_like or tf.TensorArray
         Scale factor
-        
+
     log10_amin: integer
-                 Starting value of the log-scale spaced sequence.    
-        
+                 Starting value of the log-scale spaced sequence.
+
     steps:integer, optional
         Number of samples to generate.
-        
+
     rtol: float, optional
           Parameters determing the error control performed by the solver
 
@@ -354,29 +361,34 @@ def rad_comoving_distance(cosmo,a, log10_amin=-3, steps=256, rtol=1e-3):
 
         \chi(a) =  R_H \int_a^1 \frac{da^\prime}{{a^\prime}^2 E(a^\prime)}
     """
-    if not "background.radial_comoving_distance" in cosmo.keys():
-        atab = np.logspace(log10_amin, 0.0, steps)
-    
-        def dchioverdlna(x, y):
-            xa = tf.cast(tf.math.exp(x), dtype=tf.float32)
-            return dchioverda(cosmo, xa)*xa 
-        solver=tfp.math.ode.BDF(rtol=rtol)
-        #  # Run the ODE
-        chitab= solver.solve(dchioverdlna, np.log(atab)[0], 0.0, np.log(atab))
-        chitab = chitab.states[-1] - chitab.states
-        chitab=tf.convert_to_tensor(chitab,dtype=tf.float32)
-        atab=tf.convert_to_tensor(atab,dtype=tf.float32)
-        cache = {"a": atab, "chi": chitab}
-        cosmo["tfbackground.radial_comoving_distance"] = cache  
-    else:
-        cache = cosmo["background.radial_comoving_distance"]
-    # Return the results as an interpolation of the table)
-    lna=tf.math.log(a)
-    inter=tfp.math.interp_regular_1d_grid(tf.cast(lna,dtype=tf.float32), tf.math.log(cache["a"])[0],tf.math.log(cache["a"])[-1], cache["chi"]) 
-    return tf.clip_by_value(inter,0.0,1000000)
+  if "background.radial_comoving_distance" not in cosmo.keys():
+    atab = np.logspace(log10_amin, 0.0, steps)
+
+    def dchioverdlna(x, y):
+      xa = tf.cast(tf.math.exp(x), dtype=tf.float32)
+      return dchioverda(cosmo, xa) * xa
+
+    solver = tfp.math.ode.BDF(rtol=rtol)
+    #  # Run the ODE
+    chitab = solver.solve(dchioverdlna, np.log(atab)[0], 0.0, np.log(atab))
+    chitab = chitab.states[-1] - chitab.states
+    chitab = tf.convert_to_tensor(chitab, dtype=tf.float32)
+    atab = tf.convert_to_tensor(atab, dtype=tf.float32)
+    cache = {"a": atab, "chi": chitab}
+    cosmo["tfbackground.radial_comoving_distance"] = cache
+  else:
+    cache = cosmo["background.radial_comoving_distance"]
+  # Return the results as an interpolation of the table)
+  lna = tf.math.log(a)
+  inter = tfp.math.interp_regular_1d_grid(tf.cast(lna, dtype=tf.float32),
+                                          tf.math.log(cache["a"])[0],
+                                          tf.math.log(cache["a"])[-1],
+                                          cache["chi"])
+  return tf.clip_by_value(inter, 0.0, 1000000)
+
 
 def a_of_chi(cosmo, chi):
-    r"""Computes the scale factor for corresponding (array) of radial comoving
+  r"""Computes the scale factor for corresponding (array) of radial comoving
     distance by reverse linear interpolation.
 
     Parameters:
@@ -392,22 +404,22 @@ def a_of_chi(cosmo, chi):
     a : tf.TensorArray
       Scale factors corresponding to requested distances
     """
-    # Check if distances have already been computed, force computation otherwise
-    if not "background.radial_comoving_distance" in cosmo.keys():
-        rad_comoving_distance(cosmo, 1.0)
-    cache = cosmo["tfbackground.radial_comoving_distance"]
-    chi = tf.cast(chi,dtype=tf.float32)
-    return interp_tf(chi, cache["chi"],cache["a"])
-    #return tfp.math.interp_regular_1d_grid(chi, cache["chi"][0],cache["chi"][-1] ,cache["a"])
+  # Check if distances have already been computed, force computation otherwise
+  if "background.radial_comoving_distance" not in cosmo.keys():
+    rad_comoving_distance(cosmo, 1.0)
+  cache = cosmo["tfbackground.radial_comoving_distance"]
+  chi = tf.cast(chi, dtype=tf.float32)
+  return interp_tf(chi, cache["chi"], cache["a"])
+
 
 def transverse_comoving_distance(cosmo, a):
-    r"""Transverse comoving distance in [Mpc/h] for a given scale factor.
+  r"""Transverse comoving distance in [Mpc/h] for a given scale factor.
 
     Parameters
     ----------
     cosmo: Cosmology
       Cosmological parameters
-    
+
     a : tf.TensorArray
         Scale factor
 
@@ -435,22 +447,25 @@ def transverse_comoving_distance(cosmo, a):
         \end{matrix}
         \right.
     """
-    chi = rad_comoving_distance(cosmo, a)
-    if cosmo['Omega0_k'] < 0:  # Open universe
-        return constants.rh / tf.math.sqrt(cosmo['Omega0_k']) * tf.math.sinh(cosmo.sqrtk * chi / constants.rh)
-    elif cosmo['Omega0_k'] > 0:  # Closed Universe
-        return constants.rh / tf.math.sqrt(cosmo['Omega0_k']) * tf.math.sin(cosmo.sqrtk * chi / constants.rh)
-    else:
-        return chi
+  chi = rad_comoving_distance(cosmo, a)
+  if cosmo['Omega0_k'] < 0:  # Open universe
+    return constants.rh / tf.math.sqrt(cosmo['Omega0_k']) * tf.math.sinh(
+        cosmo.sqrtk * chi / constants.rh)
+  elif cosmo['Omega0_k'] > 0:  # Closed Universe
+    return constants.rh / tf.math.sqrt(cosmo['Omega0_k']) * tf.math.sin(
+        cosmo.sqrtk * chi / constants.rh)
+  else:
+    return chi
+
 
 def angular_diameter_distance(cosmo, a):
-    r"""Angular diameter distance in [Mpc/h] for a given scale factor.
+  r"""Angular diameter distance in [Mpc/h] for a given scale factor.
 
     Parameters
     ----------
     cosmo: Cosmology
       Cosmological parameters structure
-    
+
     a : tf.TensorArray
         Scale factor
 
@@ -467,23 +482,24 @@ def angular_diameter_distance(cosmo, a):
 
         d_A(a) = a f_k(a)
     """
-    return a * transverse_comoving_distance(cosmo, a)
+  return a * transverse_comoving_distance(cosmo, a)
 
-#Equation 1.96 from Florent Leclercq thesis
+
+# Equation 1.96 from Florent Leclercq thesis
 def growth_ode(a, y, **cosmo):
-    """Define the ode functions that will be used to compute the linear growth factor D_1(a) and 
+  """Define the ode functions that will be used to compute the linear growth factor D_1(a) and
     second-order growth factor D_2(a) at a given scale factor
     Parameters
     ----------
     a: array_like or tf.TensorArray
       Scale factor
-      
-    y: tf.TensorArray 
+
+    y: tf.TensorArray
     Contain the value of y for each desired scale factors in a, with the initial value y0 in the first row
-    
+
     cosmo: Cosmology
       Cosmological parameters structure
-      
+
     Notes
     -----
     Linear growth factor D_1(a) is given by
@@ -494,22 +510,25 @@ def growth_ode(a, y, **cosmo):
     \right) a \frac{dD_1}{da}=\frac{3}{2}  \Omega_{m}(a)D_1
      (see :cite:`Florent Leclercq thesis` Eq. (1.96))
     """
-    a=tf.convert_to_tensor(a,dtype=tf.float32)
-    # Extracting entries
-    (d1, d2), (d1_f, d2_f) = y
-    # ODE for d1
-    dy1dt= d1_f,1.5*Omega_m_a(cosmo,a)*d1/tf.pow(a,2)-(d1_f/a)*(Omega_de_a(cosmo,a)-0.5*Omega_m_a(cosmo,a)+2)
-    # ODE for d2
-    dy2dt = d2_f,1.5*Omega_m_a(cosmo,a)*d2/tf.pow(a,2)-(d2_f/a)*(Omega_de_a(cosmo,a)-0.5*Omega_m_a(cosmo,a)+2)  - 1.5*(Omega_m_a(cosmo,a)*d1**2)/tf.pow(a,2)
+  a = tf.convert_to_tensor(a, dtype=tf.float32)
+  # Extracting entries
+  (d1, d2), (d1_f, d2_f) = y
+  # ODE for d1
+  dy1dt = d1_f, 1.5 * Omega_m_a(cosmo, a) * d1 / tf.pow(a, 2) - (d1_f / a) * (
+      Omega_de_a(cosmo, a) - 0.5 * Omega_m_a(cosmo, a) + 2)
+  # ODE for d2
+  dy2dt = d2_f, 1.5 * Omega_m_a(cosmo, a) * d2 / tf.pow(a, 2) - (
+      d2_f / a) * (Omega_de_a(cosmo, a) - 0.5 * Omega_m_a(cosmo, a) +
+                   2) - 1.5 * (Omega_m_a(cosmo, a) * d1**2) / tf.pow(a, 2)
 
-    # Concatenate output
-    dydt = [[dy1dt[0], dy2dt[0]],
-            [dy1dt[1], dy2dt[1]]]
-    return dydt
+  # Concatenate output
+  dydt = [[dy1dt[0], dy2dt[0]], [dy1dt[1], dy2dt[1]]]
+  return dydt
+
 
 @tf.function
 def odesolve_func(cosmo, a, rtol=1e-4):
-    """ Solves the growth ODE system for a given cosmology at the requested
+  """ Solves the growth ODE system for a given cosmology at the requested
     scale factors.
 
     Parameters
@@ -528,57 +547,68 @@ def odesolve_func(cosmo, a, rtol=1e-4):
       First and second order growth factors, and their derivatives, computed at
       the requested scale factors.
     """
-    a=tf.convert_to_tensor(a, dtype=tf.float32)
-    # Matter dominated initial condition.
-    # Row 1: Initial condition of first(column 1) and second order (column 2) growth factors
-    # Row 2: Initial condition of derivative of first (column 1) and second order (column 2) growth factors
-    y0 = [[a[0], -3./7 * a[0]**2],
-          [1.0, -6. / 7 *a[0]]]
-    # Instantiate the solver
-    solver=tfp.math.ode.BDF(rtol=rtol)
+  a = tf.convert_to_tensor(a, dtype=tf.float32)
+  # Matter dominated initial condition.
+  # Row 1: Initial condition of first(column 1) and second order (column 2) growth factors
+  # Row 2: Initial condition of derivative of first (column 1) and second order (column 2) growth factors
+  y0 = [[a[0], -3. / 7 * a[0]**2], [1.0, -6. / 7 * a[0]]]
+  # Instantiate the solver
+  solver = tfp.math.ode.BDF(rtol=rtol)
 
-    # Run the ODE
-    results = solver.solve(growth_ode,a[0],
-                            y0, solution_times=a,
-                            constants=cosmo)
+  # Run the ODE
+  results = solver.solve(growth_ode,
+                         a[0],
+                         y0,
+                         solution_times=a,
+                         constants=cosmo)
 
-    # While we are at it, compute second order derivatives growth
-    second_order_results = growth_ode(results.times, results.states, **cosmo)
+  # While we are at it, compute second order derivatives growth
+  second_order_results = growth_ode(results.times, results.states, **cosmo)
 
-    # Normalize the ODE to present time
-    # For first order growth and its derivative
-    D1 = results.states[0][0]/results.states[0][0][-1]
-    D1f = results.states[1][0]/results.states[0][0][-1]
-    F1p = second_order_results[1][0]/results.states[0][0][-1]
+  # Normalize the ODE to present time
+  # For first order growth and its derivative
+  D1 = results.states[0][0] / results.states[0][0][-1]
+  D1f = results.states[1][0] / results.states[0][0][-1]
+  F1p = second_order_results[1][0] / results.states[0][0][-1]
 
-    # For second order growth and its derivative
-    D2 = results.states[0][1]/results.states[0][1][-1]
-    D2f = results.states[1][1]/results.states[0][1][-1]
-    F2p = second_order_results[1][1]/results.states[0][1][-1]
+  # For second order growth and its derivative
+  D2 = results.states[0][1] / results.states[0][1][-1]
+  D2f = results.states[1][1] / results.states[0][1][-1]
+  F2p = second_order_results[1][1] / results.states[0][1][-1]
 
-    return {'a':a, 'D1': D1, 'D1f':D1f, 'D2':D2, 'D2f':D2f, 'F1p':F1p, 'F2p':F2p}
+  return {
+      'a': a,
+      'D1': D1,
+      'D1f': D1f,
+      'D2': D2,
+      'D2f': D2f,
+      'F1p': F1p,
+      'F2p': F2p
+  }
+
 
 def maybe_compute_ODE(cosmo, log10_amin=-2, steps=1024):
-    """
+  """
     Either computes or returns the cached ODE solution
     """
-    if 'cache_ODE' in cosmo:
-        # If cache is found in the cosmo dictionary it means the ODE has already
-        # been computed
-        cache = cosmo['cache_ODE']
-        # Checking that the stored ODE results have the right lenght
-        assert len(cache['a']) == steps
-    else:
-        # Otherwise, we compute it now, and save the results for later
-        a = tf.convert_to_tensor(np.logspace(log10_amin,0.,steps),
-                                  dtype=tf.float32)
-        cache = odesolve_func(cosmo, a)
-        cosmo['cache_ODE'] = cache
-    return cache
+  if 'cache_ODE' in cosmo:
+    # If cache is found in the cosmo dictionary it means the ODE has already
+    # been computed
+    cache = cosmo['cache_ODE']
+    # Checking that the stored ODE results have the right lenght
+    assert len(cache['a']) == steps
+  else:
+    # Otherwise, we compute it now, and save the results for later
+    a = tf.convert_to_tensor(np.logspace(log10_amin, 0., steps),
+                             dtype=tf.float32)
+    cache = odesolve_func(cosmo, a)
+    cosmo['cache_ODE'] = cache
+  return cache
+
 
 ################################################################
 def D1(cosmo, a):
-    """ Normalised first order growth factor.
+  """ Normalised first order growth factor.
 
     Parameters
     ----------
@@ -602,16 +632,17 @@ def D1(cosmo, a):
         D_{1norm}(a)=\frac{D_1(a)}{D_1(a=1)}
 
     """
-    a=tf.convert_to_tensor(a,dtype=tf.float32)
-    # Maybe compute ODE or use stored result
-    cache = maybe_compute_ODE(cosmo)
-    lna = tf.math.log(a)
-    return tfp.math.interp_regular_1d_grid(lna,
-                      tf.math.log(cache['a'][0]), tf.math.log(cache['a'][-1]), cache['D1'])
+  a = tf.convert_to_tensor(a, dtype=tf.float32)
+  # Maybe compute ODE or use stored result
+  cache = maybe_compute_ODE(cosmo)
+  lna = tf.math.log(a)
+  return tfp.math.interp_regular_1d_grid(lna, tf.math.log(cache['a'][0]),
+                                         tf.math.log(cache['a'][-1]),
+                                         cache['D1'])
 
 
 def D2(cosmo, a):
-    """ Normalised second order growth factor
+  """ Normalised second order growth factor
 
     Parameters
     ----------
@@ -635,17 +666,20 @@ def D2(cosmo, a):
         D_{2norm}(a)=\frac{D_2(a)}{D_2(a=1)}
 
     """
-    a=tf.convert_to_tensor(a,dtype=tf.float32)
-    # Maybe compute ODE or use stored result
-    cache = maybe_compute_ODE(cosmo)
-    lna = tf.math.log(a)
-    return tfp.math.interp_regular_1d_grid(lna,
-                      tf.math.log(cache['a'][0]), tf.math.log(cache['a'][-1]), cache['D2'])
+  a = tf.convert_to_tensor(a, dtype=tf.float32)
+  # Maybe compute ODE or use stored result
+  cache = maybe_compute_ODE(cosmo)
+  lna = tf.math.log(a)
+  return tfp.math.interp_regular_1d_grid(lna, tf.math.log(cache['a'][0]),
+                                         tf.math.log(cache['a'][-1]),
+                                         cache['D2'])
+
 
 #################################################################
 
+
 def D1f(cosmo, a):
-    """ Derivative of the first order growth factor respect to scale factor a
+  """ Derivative of the first order growth factor respect to scale factor a
 
     Parameters
     ----------
@@ -670,15 +704,17 @@ def D1f(cosmo, a):
         D'_{1norm}(a)=\frac{D'_1(a)}{D_1(a=1)}
 
     """
-    a=tf.convert_to_tensor(a,dtype=tf.float32)
-    # Maybe compute ODE or use stored result
-    cache = maybe_compute_ODE(cosmo)
-    lna = tf.math.log(a)
-    return tfp.math.interp_regular_1d_grid(lna,
-                      tf.math.log(cache['a'][0]), tf.math.log(cache['a'][-1]), cache['D1f'])
+  a = tf.convert_to_tensor(a, dtype=tf.float32)
+  # Maybe compute ODE or use stored result
+  cache = maybe_compute_ODE(cosmo)
+  lna = tf.math.log(a)
+  return tfp.math.interp_regular_1d_grid(lna, tf.math.log(cache['a'][0]),
+                                         tf.math.log(cache['a'][-1]),
+                                         cache['D1f'])
+
 
 def D2f(cosmo, a):
-    """ Derivative of the second order growth factor respect to scale factor a
+  """ Derivative of the second order growth factor respect to scale factor a
 
     Parameters
     ----------
@@ -703,15 +739,17 @@ def D2f(cosmo, a):
         D'_{2norm}(a)=\frac{D'_2(a)}{D_2(a=1)}
 
     """
-    a=tf.convert_to_tensor(a,dtype=tf.float32)
-    # Maybe compute ODE or use stored result
-    cache = maybe_compute_ODE(cosmo)
-    lna = tf.math.log(a)
-    return tfp.math.interp_regular_1d_grid(lna,
-                      tf.math.log(cache['a'][0]), tf.math.log(cache['a'][-1]), cache['D2f'])
+  a = tf.convert_to_tensor(a, dtype=tf.float32)
+  # Maybe compute ODE or use stored result
+  cache = maybe_compute_ODE(cosmo)
+  lna = tf.math.log(a)
+  return tfp.math.interp_regular_1d_grid(lna, tf.math.log(cache['a'][0]),
+                                         tf.math.log(cache['a'][-1]),
+                                         cache['D2f'])
+
 
 def f1(cosmo, a):
-    """ Linear order growth rate
+  """ Linear order growth rate
 
     Parameters
     ----------
@@ -736,11 +774,12 @@ def f1(cosmo, a):
         f{1}(a)=\frac{D'_1(a)}{D_1(a=1)}*a
 
     """
-    a=tf.convert_to_tensor(a,dtype=tf.float32)
-    return D1f(cosmo, a) * a / D1(cosmo, a)
+  a = tf.convert_to_tensor(a, dtype=tf.float32)
+  return D1f(cosmo, a) * a / D1(cosmo, a)
+
 
 def f2(cosmo, a):
-    """ Second order growth rate.
+  """ Second order growth rate.
 
     Parameters
     ----------
@@ -765,12 +804,13 @@ def f2(cosmo, a):
         f{2}(a)=\frac{D'_2(a)}{D_2(a=1)}*a
 
     """
-    a=tf.convert_to_tensor(a,dtype=tf.float32)
-    return D2f(cosmo, a)  * a / D2(cosmo, a)
+  a = tf.convert_to_tensor(a, dtype=tf.float32)
+  return D2f(cosmo, a) * a / D2(cosmo, a)
+
 
 ################################################################
 def Gf(cosmo, a):
-    """
+  """
     FastPM growth factor function
 
     Parameters
@@ -793,11 +833,12 @@ def Gf(cosmo, a):
     .. math::
         Gf(a)=D'_{1norm}*a**3*E(a)
     """
-    a=tf.convert_to_tensor(a,dtype=tf.float32)
-    return D1f(cosmo,a)*a**3*E(cosmo,a)
+  a = tf.convert_to_tensor(a, dtype=tf.float32)
+  return D1f(cosmo, a) * a**3 * E(cosmo, a)
+
 
 def Gf2(cosmo, a):
-    """
+  """
     FastPM second order growth factor function
 
     Parameters
@@ -820,13 +861,15 @@ def Gf2(cosmo, a):
     .. math::
         Gf_2(a)=D'_{2norm}*a**3*E(a)
     """
-    a=tf.convert_to_tensor(a,dtype=tf.float32)
-    return D2f(cosmo,a)*a**3*E(cosmo,a)
+  a = tf.convert_to_tensor(a, dtype=tf.float32)
+  return D2f(cosmo, a) * a**3 * E(cosmo, a)
+
 
 ################################################################
 
+
 def gf(cosmo, a):
-    """
+  """
     Derivative of Gf against a
 
             Parameters
@@ -851,18 +894,22 @@ def gf(cosmo, a):
                 +   3 * a ** 2 * E(a)*D'_{1norm}
 
     """
-    a=tf.convert_to_tensor(a,dtype=tf.float32)
-    # Maybe compute ODE or use stored result
-    cache = maybe_compute_ODE(cosmo)
-    lna = tf.math.log(a)
-    d1f = tfp.math.interp_regular_1d_grid(lna,
-                      tf.math.log(cache['a'][0]), tf.math.log(cache['a'][-1]), cache['D1f'])
-    f1p = tfp.math.interp_regular_1d_grid(lna,
-                      tf.math.log(cache['a'][0]), tf.math.log(cache['a'][-1]), cache['F1p'])
-    return  (f1p * a ** 3 *E(cosmo,a) +  d1f*a ** 3 * dEa(cosmo,a)  +   3 * a ** 2 * E(cosmo,a)*d1f)
+  a = tf.convert_to_tensor(a, dtype=tf.float32)
+  # Maybe compute ODE or use stored result
+  cache = maybe_compute_ODE(cosmo)
+  lna = tf.math.log(a)
+  d1f = tfp.math.interp_regular_1d_grid(lna, tf.math.log(cache['a'][0]),
+                                        tf.math.log(cache['a'][-1]),
+                                        cache['D1f'])
+  f1p = tfp.math.interp_regular_1d_grid(lna, tf.math.log(cache['a'][0]),
+                                        tf.math.log(cache['a'][-1]),
+                                        cache['F1p'])
+  return (f1p * a**3 * E(cosmo, a) + d1f * a**3 * dEa(cosmo, a) +
+          3 * a**2 * E(cosmo, a) * d1f)
+
 
 def gf2(cosmo, a):
-    """
+  """
     Derivative of Gf2 against a
 
             Parameters
@@ -887,15 +934,19 @@ def gf2(cosmo, a):
                 +   3 * a ** 2 * E(a)*D'_{2norm}
 
     """
-    a=tf.convert_to_tensor(a,dtype=tf.float32)
-    # Maybe compute ODE or use stored result
-    cache = maybe_compute_ODE(cosmo)
-    lna = tf.math.log(a)
-    d2f = tfp.math.interp_regular_1d_grid(lna,
-                      tf.math.log(cache['a'][0]), tf.math.log(cache['a'][-1]), cache['D2f'])
-    f2p = tfp.math.interp_regular_1d_grid(lna,
-                      tf.math.log(cache['a'][0]), tf.math.log(cache['a'][-1]), cache['F2p'])
-    return  (f2p * a ** 3 *E(cosmo,a) +  d2f*a ** 3 * dEa(cosmo,a) + 3 * a ** 2 * E(cosmo,a)*d2f)
+  a = tf.convert_to_tensor(a, dtype=tf.float32)
+  # Maybe compute ODE or use stored result
+  cache = maybe_compute_ODE(cosmo)
+  lna = tf.math.log(a)
+  d2f = tfp.math.interp_regular_1d_grid(lna, tf.math.log(cache['a'][0]),
+                                        tf.math.log(cache['a'][-1]),
+                                        cache['D2f'])
+  f2p = tfp.math.interp_regular_1d_grid(lna, tf.math.log(cache['a'][0]),
+                                        tf.math.log(cache['a'][-1]),
+                                        cache['F2p'])
+  return (f2p * a**3 * E(cosmo, a) + d2f * a**3 * dEa(cosmo, a) +
+          3 * a**2 * E(cosmo, a) * d2f)
+
 
 #
 # if __name__ == "__main__":

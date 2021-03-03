@@ -22,17 +22,20 @@ import flowpm.mesh_utils as mesh_utils
 
 # Cloud TPU Cluster Resolver flags
 tf.flags.DEFINE_string(
-    "tpu", default="flowpm",
+    "tpu",
+    default="flowpm",
     help="The Cloud TPU to use for training. This should be either the name "
     "used when creating the Cloud TPU, or a grpc://ip.address.of.tpu:8470 "
     "url.")
 tf.flags.DEFINE_string(
-    "tpu_zone", default="europe-west4-a",
+    "tpu_zone",
+    default="europe-west4-a",
     help="[Optional] GCE zone where the Cloud TPU is located in. If not "
     "specified, we will attempt to automatically detect the GCE project from "
     "metadata.")
 tf.flags.DEFINE_string(
-    "gcp_project", default="flowpm",
+    "gcp_project",
+    default="flowpm",
     help="[Optional] Project name for the Cloud TPU-enabled project. If not "
     "specified, we will attempt to automatically detect the GCE project from "
     "metadata.")
@@ -45,14 +48,18 @@ tf.flags.DEFINE_float("box_size", 200., "Physical size of the 3D volume.")
 tf.flags.DEFINE_float("a0", 0.1, "Scale factor of linear field.")
 tf.flags.DEFINE_integer("pm_steps", 10, "Number of PM steps.")
 
-tf.flags.DEFINE_integer("batch_size", 128,
-                        "Mini-batch size for the training. Note that this "
-                        "is the global batch size and not the per-shard batch.")
+tf.flags.DEFINE_integer(
+    "batch_size", 128, "Mini-batch size for the training. Note that this "
+    "is the global batch size and not the per-shard batch.")
 
 tf.flags.DEFINE_string("mesh_shape", "b1:8,b2:4", "mesh shape")
-tf.flags.DEFINE_string("layout", "nx:b1,ny:b2,nx_lr:b1,ny_lr:b2,y_lr_t:b1,z_lr_t:b2,nx_block:b1,ny_block:b2", "layout rules")
+tf.flags.DEFINE_string(
+    "layout",
+    "nx:b1,ny:b2,nx_lr:b1,ny_lr:b2,y_lr_t:b1,z_lr_t:b2,nx_block:b1,ny_block:b2",
+    "layout rules")
 
 FLAGS = tf.flags.FLAGS
+
 
 def nbody_model(mesh):
   """
@@ -76,10 +83,11 @@ def nbody_model(mesh):
   stages = np.linspace(FLAGS.a0, 1.0, FLAGS.pm_steps, endpoint=True)
 
   # Generate a batch of 3D initial conditions
-  initial_conditions = flowpm.linear_field(nc,          # size of the cube
-                                           bs,          # Physical size of the cube
-                                           ipklin,      # Initial power spectrum
-                                           batch_size=batch_size)
+  initial_conditions = flowpm.linear_field(
+      nc,  # size of the cube
+      bs,  # Physical size of the cube
+      ipklin,  # Initial power spectrum
+      batch_size=batch_size)
 
   # Compute necessary Fourier kernels
   kvec = flowpm.kernels.fftk((nc, nc, nc), symmetric=False)
@@ -117,9 +125,9 @@ def nbody_model(mesh):
   ny_dim = mtf.Dimension('ny_block', n_block_y)
   nz_dim = mtf.Dimension('nz_block', n_block_z)
 
-  sx_dim = mtf.Dimension('sx_block', nc//n_block_x)
-  sy_dim = mtf.Dimension('sy_block', nc//n_block_y)
-  sz_dim = mtf.Dimension('sz_block', nc//n_block_z)
+  sx_dim = mtf.Dimension('sx_block', nc // n_block_x)
+  sy_dim = mtf.Dimension('sy_block', nc // n_block_y)
+  sz_dim = mtf.Dimension('sz_block', nc // n_block_z)
 
   batch_dim = mtf.Dimension("batch", batch_size)
   pk_dim = mtf.Dimension("npk", len(plin))
@@ -127,39 +135,61 @@ def nbody_model(mesh):
 
   # kvec for low resolution grid
   kvec_lr = flowpm.kernels.fftk([lnc, lnc, lnc], symmetric=False)
-  kx_lr = mtf.import_tf_tensor(mesh, kvec_lr[0].squeeze().astype('float32')/ 2**downsampling_factor, shape=[x_dim_t])
-  ky_lr = mtf.import_tf_tensor(mesh, kvec_lr[1].squeeze().astype('float32')/ 2**downsampling_factor, shape=[y_dim_t])
-  kz_lr = mtf.import_tf_tensor(mesh, kvec_lr[2].squeeze().astype('float32')/ 2**downsampling_factor, shape=[z_dim_t])
+  kx_lr = mtf.import_tf_tensor(mesh,
+                               kvec_lr[0].squeeze().astype('float32') /
+                               2**downsampling_factor,
+                               shape=[x_dim_t])
+  ky_lr = mtf.import_tf_tensor(mesh,
+                               kvec_lr[1].squeeze().astype('float32') /
+                               2**downsampling_factor,
+                               shape=[y_dim_t])
+  kz_lr = mtf.import_tf_tensor(mesh,
+                               kvec_lr[2].squeeze().astype('float32') /
+                               2**downsampling_factor,
+                               shape=[z_dim_t])
   kv_lr = [ky_lr, kz_lr, kx_lr]
 
   # kvec for high resolution blocks
-  padded_sx_dim = mtf.Dimension('padded_sx_block', nc//n_block_x+2*halo_size)
-  padded_sy_dim = mtf.Dimension('padded_sy_block', nc//n_block_y+2*halo_size)
-  padded_sz_dim = mtf.Dimension('padded_sz_block', nc//n_block_z+2*halo_size)
-  kvec_hr = flowpm.kernels.fftk([nc//n_block_x+2*halo_size, nc//n_block_y+2*halo_size, nc//n_block_z+2*halo_size], symmetric=False)
-  kx_hr = mtf.import_tf_tensor(mesh, kvec_hr[0].squeeze().astype('float32'), shape=[padded_sx_dim])
-  ky_hr = mtf.import_tf_tensor(mesh, kvec_hr[1].squeeze().astype('float32'), shape=[padded_sy_dim])
-  kz_hr = mtf.import_tf_tensor(mesh, kvec_hr[2].squeeze().astype('float32'), shape=[padded_sz_dim])
+  padded_sx_dim = mtf.Dimension('padded_sx_block',
+                                nc // n_block_x + 2 * halo_size)
+  padded_sy_dim = mtf.Dimension('padded_sy_block',
+                                nc // n_block_y + 2 * halo_size)
+  padded_sz_dim = mtf.Dimension('padded_sz_block',
+                                nc // n_block_z + 2 * halo_size)
+  kvec_hr = flowpm.kernels.fftk([
+      nc // n_block_x + 2 * halo_size, nc // n_block_y + 2 * halo_size,
+      nc // n_block_z + 2 * halo_size
+  ],
+                                symmetric=False)
+  kx_hr = mtf.import_tf_tensor(mesh,
+                               kvec_hr[0].squeeze().astype('float32'),
+                               shape=[padded_sx_dim])
+  ky_hr = mtf.import_tf_tensor(mesh,
+                               kvec_hr[1].squeeze().astype('float32'),
+                               shape=[padded_sy_dim])
+  kz_hr = mtf.import_tf_tensor(mesh,
+                               kvec_hr[2].squeeze().astype('float32'),
+                               shape=[padded_sz_dim])
   kv_hr = [ky_hr, kz_hr, kx_hr]
 
   lr_shape = [batch_dim, x_dim, y_dim, z_dim]
   hr_shape = [batch_dim, nx_dim, ny_dim, nz_dim, sx_dim, sy_dim, sz_dim]
   part_shape = [batch_dim, fx_dim, fy_dim, fz_dim]
 
-  initc = tf.reshape(initial_conditions, [batch_size, n_block_x, nc//n_block_x,
-                                                      n_block_y, nc//n_block_y,
-                                          1, nc])
+  initc = tf.reshape(initial_conditions, [
+      batch_size, n_block_x, nc // n_block_x, n_block_y, nc // n_block_y, 1, nc
+  ])
   initc = tf.transpose(initc, [0, 1, 3, 5, 2, 4, 6])
 
   field = mtf.import_tf_tensor(mesh, initc, shape=hr_shape)
 
   for block_size_dim in hr_shape[-3:]:
-      field = mtf.pad(field, [halo_size, halo_size], block_size_dim.name)
+    field = mtf.pad(field, [halo_size, halo_size], block_size_dim.name)
 
   for blocks_dim, block_size_dim in zip(hr_shape[1:4], field.shape[-3:]):
-      field = mpm.halo_reduce(field, blocks_dim, block_size_dim, halo_size)
+    field = mpm.halo_reduce(field, blocks_dim, block_size_dim, halo_size)
 
-  field = mtf.reshape(field, field.shape+[mtf.Dimension('h_dim', 1)])
+  field = mtf.reshape(field, field.shape + [mtf.Dimension('h_dim', 1)])
   high = field
   low = mesh_utils.downsample(field, downsampling_factor, antialias=True)
 
@@ -167,43 +197,65 @@ def nbody_model(mesh):
   high = mtf.reshape(high, high.shape[:-1])
 
   for block_size_dim in hr_shape[-3:]:
-      low = mtf.slice(low, halo_size//2**downsampling_factor, block_size_dim.size//2**downsampling_factor, block_size_dim.name)
+    low = mtf.slice(low, halo_size // 2**downsampling_factor,
+                    block_size_dim.size // 2**downsampling_factor,
+                    block_size_dim.name)
   # Hack usisng  custom reshape because mesh is pretty dumb
-  low = mtf.slicewise(lambda x: x[:,0,0,0],
-                      [low],
+  low = mtf.slicewise(lambda x: x[:, 0, 0, 0], [low],
                       output_dtype=tf.float32,
                       output_shape=lr_shape,
                       name='my_dumb_reshape',
-                      splittable_dims=lr_shape[:-1]+hr_shape[:4])
+                      splittable_dims=lr_shape[:-1] + hr_shape[:4])
 
-  state = mtfpm.lpt_init(low, high, 0.1, kv_lr, kv_hr, halo_size, hr_shape, lr_shape,
-                         part_shape[1:], downsampling_factor=downsampling_factor, antialias=True,)
+  state = mtfpm.lpt_init(
+      low,
+      high,
+      0.1,
+      kv_lr,
+      kv_hr,
+      halo_size,
+      hr_shape,
+      lr_shape,
+      part_shape[1:],
+      downsampling_factor=downsampling_factor,
+      antialias=True,
+  )
 
   # Here we can run our nbody
-  final_state = mtfpm.nbody(state, stages, lr_shape, hr_shape, kv_lr, kv_hr, halo_size, downsampling_factor=downsampling_factor)
+  final_state = mtfpm.nbody(state,
+                            stages,
+                            lr_shape,
+                            hr_shape,
+                            kv_lr,
+                            kv_hr,
+                            halo_size,
+                            downsampling_factor=downsampling_factor)
 
   # paint the field
   final_field = mtf.zeros(mesh, shape=hr_shape)
   for block_size_dim in hr_shape[-3:]:
-      final_field = mtf.pad(final_field, [halo_size, halo_size], block_size_dim.name)
+    final_field = mtf.pad(final_field, [halo_size, halo_size],
+                          block_size_dim.name)
   final_field = mesh_utils.cic_paint(final_field, final_state[0], halo_size)
   # Halo exchange
   for blocks_dim, block_size_dim in zip(hr_shape[1:4], final_field.shape[-3:]):
-      final_field = mpm.halo_reduce(final_field, blocks_dim, block_size_dim, halo_size)
+    final_field = mpm.halo_reduce(final_field, blocks_dim, block_size_dim,
+                                  halo_size)
   # Remove borders
   for block_size_dim in hr_shape[-3:]:
-      final_field = mtf.slice(final_field, halo_size, block_size_dim.size, block_size_dim.name)
+    final_field = mtf.slice(final_field, halo_size, block_size_dim.size,
+                            block_size_dim.name)
 
   #final_field = mtf.reshape(final_field,  [batch_dim, fx_dim, fy_dim, fz_dim])
-   # Hack usisng  custom reshape because mesh is pretty dumb
-  final_field = mtf.slicewise(lambda x: x[:,0,0,0],
-                      [final_field],
-                      output_dtype=tf.float32,
-                      output_shape=[batch_dim, fx_dim, fy_dim, fz_dim],
-                      name='my_dumb_reshape',
-                      splittable_dims=part_shape[:-1]+hr_shape[:4])
+  # Hack usisng  custom reshape because mesh is pretty dumb
+  final_field = mtf.slicewise(lambda x: x[:, 0, 0, 0], [final_field],
+                              output_dtype=tf.float32,
+                              output_shape=[batch_dim, fx_dim, fy_dim, fz_dim],
+                              name='my_dumb_reshape',
+                              splittable_dims=part_shape[:-1] + hr_shape[:4])
 
   return final_field
+
 
 def model_fn(features, labels, mode, params):
   """A model is called by TpuEstimator."""
@@ -217,11 +269,12 @@ def model_fn(features, labels, mode, params):
   num_hosts = ctx.num_hosts
   host_placement_fn = ctx.tpu_host_placement_function
   device_list = [host_placement_fn(host_id=t) for t in range(num_hosts)]
-  tf.logging.info('device_list = %s' % device_list,)
+  tf.logging.info('device_list = %s' % device_list, )
 
   mesh_devices = [''] * mesh_shape.size
-  mesh_impl = mtf.simd_mesh_impl.SimdMeshImpl(
-      mesh_shape, layout_rules, mesh_devices, ctx.device_assignment)
+  mesh_impl = mtf.simd_mesh_impl.SimdMeshImpl(mesh_shape, layout_rules,
+                                              mesh_devices,
+                                              ctx.device_assignment)
 
   graph = mtf.Graph()
   mesh = mtf.Mesh(graph, "fft_mesh")
@@ -233,15 +286,19 @@ def model_fn(features, labels, mode, params):
     y_dim_nosplit = mtf.Dimension("ny_nosplit", FLAGS.cube_size)
 
     # Until we implement distributed outputs, we only return one example
-    field_slice, _ = mtf.split(field, batch_dim, [1, FLAGS.batch_size-1])
-    field_slice = mtf.reshape(field_slice, [mtf.Dimension("bs", 1), x_dim_nosplit, y_dim_nosplit, z_dim])
+    field_slice, _ = mtf.split(field, batch_dim, [1, FLAGS.batch_size - 1])
+    field_slice = mtf.reshape(
+        field_slice,
+        [mtf.Dimension("bs", 1), x_dim_nosplit, y_dim_nosplit, z_dim])
 
   lowering = mtf.Lowering(graph, {mesh: mesh_impl})
 
   tf_field = tf.to_float(lowering.export_to_tf_tensor(field_slice))
 
   with mtf.utils.outside_all_rewrites():
-    return tpu_estimator.TPUEstimatorSpec(mode, predictions={'field': tf_field})
+    return tpu_estimator.TPUEstimatorSpec(mode,
+                                          predictions={'field': tf_field})
+
 
 def main(_):
 
@@ -250,10 +307,7 @@ def main(_):
 
   # Resolve the TPU environment
   tpu_cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
-      FLAGS.tpu,
-      zone=FLAGS.tpu_zone,
-      project=FLAGS.gcp_project
-  )
+      FLAGS.tpu, zone=FLAGS.tpu_zone, project=FLAGS.gcp_project)
 
   run_config = tf.estimator.tpu.RunConfig(
       cluster=tpu_cluster_resolver,
@@ -262,29 +316,30 @@ def main(_):
       save_checkpoints_secs=None,  # Disable the default saver
       log_step_count_steps=100,
       save_summary_steps=100,
-      tpu_config=tpu_config.TPUConfig(
-          num_shards=mesh_shape.size,
-          iterations_per_loop=100,
-          num_cores_per_replica=1,
-          per_host_input_for_training=tpu_config.InputPipelineConfig.BROADCAST))
+      tpu_config=tpu_config.TPUConfig(num_shards=mesh_shape.size,
+                                      iterations_per_loop=100,
+                                      num_cores_per_replica=1,
+                                      per_host_input_for_training=tpu_config.
+                                      InputPipelineConfig.BROADCAST))
 
-  model = tpu_estimator.TPUEstimator(
-      use_tpu=True,
-      model_fn=model_fn,
-      config=run_config,
-      predict_batch_size=1,
-      train_batch_size=FLAGS.batch_size,
-      eval_batch_size=FLAGS.batch_size)
+  model = tpu_estimator.TPUEstimator(use_tpu=True,
+                                     model_fn=model_fn,
+                                     config=run_config,
+                                     predict_batch_size=1,
+                                     train_batch_size=FLAGS.batch_size,
+                                     eval_batch_size=FLAGS.batch_size)
 
   def dummy_input_fn(params):
-    dset = tf.data.Dataset.from_tensor_slices(tf.zeros(shape=[params['batch_size'],1],
-                                                       dtype=tf.float32))
+    dset = tf.data.Dataset.from_tensor_slices(
+        tf.zeros(shape=[params['batch_size'], 1], dtype=tf.float32))
     return dset
 
   # Run evaluate loop for ever, we will be connecting to this process using a profiler
   for i, f in enumerate(model.predict(input_fn=dummy_input_fn)):
     print(i)
-    np.save(file_io.FileIO(FLAGS.output_dir+'/field_%d.npy'%i, 'w'), f['field'])
+    np.save(file_io.FileIO(FLAGS.output_dir + '/field_%d.npy' % i, 'w'),
+            f['field'])
+
 
 if __name__ == "__main__":
   tf.disable_v2_behavior()

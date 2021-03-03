@@ -5,6 +5,7 @@ import os
 
 FLAGS = None
 
+
 def main(_):
 
   # Get MPI rank, we assume one process by node
@@ -14,18 +15,19 @@ def main(_):
   # Retrieve the list of nodes from SLURM
   # Parse them with ridiculous logic
 
-  mesh_hosts = ["localhost:%d"%(8222+j) for j in range(4)]
+  mesh_hosts = ["localhost:%d" % (8222 + j) for j in range(4)]
 
-  if rank ==0 :
-      print(mesh_hosts)
+  if rank == 0:
+    print(mesh_hosts)
 
   # Create a cluster from the mesh hosts.
-  cluster = tf.train.ClusterSpec({"mesh": mesh_hosts, "master":["localhost:8488"]})
+  cluster = tf.train.ClusterSpec({
+      "mesh": mesh_hosts,
+      "master": ["localhost:8488"]
+  })
 
   # Create a server for local mesh members
-  server = tf.train.Server(cluster,
-                           job_name="mesh",
-                           task_index=rank)
+  server = tf.train.Server(cluster, job_name="mesh", task_index=rank)
 
   # Only he master job takes care of the graph building
   server.join()
