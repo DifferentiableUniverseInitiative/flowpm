@@ -361,7 +361,7 @@ def rad_comoving_distance(cosmo, a, log10_amin=-3, steps=256, rtol=1e-3):
 
         \chi(a) =  R_H \int_a^1 \frac{da^\prime}{{a^\prime}^2 E(a^\prime)}
     """
-  if not "background.radial_comoving_distance" in cosmo.keys():
+  if "background.radial_comoving_distance" not in cosmo.keys():
     atab = np.logspace(log10_amin, 0.0, steps)
 
     def dchioverdlna(x, y):
