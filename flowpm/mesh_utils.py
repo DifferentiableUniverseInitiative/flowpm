@@ -159,10 +159,10 @@ def cic_paint(mesh, part, halo_size, weight=None, name=None):
 
   mesh = mtf.slicewise(lambda x, y, z: _cic_paint(
       x, y, z, shift=[0, halo_size, halo_size, halo_size]),
-                     [mesh, indices, values],
-                     output_dtype=tf.float32,
-                     output_shape=mesh.shape,
-                     splittable_dims=mesh.shape[:-3] + part.shape[1:-1])
+                       [mesh, indices, values],
+                       output_dtype=tf.float32,
+                       output_shape=mesh.shape,
+                       splittable_dims=mesh.shape[:-3] + part.shape[1:-1])
   return mesh
 
 
