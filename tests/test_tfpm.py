@@ -10,6 +10,7 @@ from fastpm.core import Solver as Solver
 import fastpm.force.lpt as fpmops
 from fastpm.core import leapfrog
 
+import flowpm
 import flowpm.tfpm as tfpm
 import flowpm.utils as pmutils
 
@@ -35,6 +36,7 @@ def test_lpt_init():
   Checking lpt init
   """
   a0 = 0.1
+  cosmo = flowpm.cosmology.Planck15()
 
   pm = ParticleMesh(BoxSize=bs, Nmesh=[nc, nc, nc], dtype='f4')
   grid = pm.generate_uniform_particle_grid(shift=0).astype(np.float32)
@@ -48,7 +50,7 @@ def test_lpt_init():
 
   # Same thing with flowpm
   tlinear = tf.expand_dims(np.array(lineark.c2r()), 0)
-  tfread = tfpm.lpt_init(tlinear, a0, order=1).numpy()
+  tfread = tfpm.lpt_init(cosmo, tlinear, a0, order=1).numpy()
 
   assert_allclose(statelpt.X, tfread[0, 0] * bs / nc, rtol=1e-2)
 
@@ -122,6 +124,7 @@ def test_nody():
   """ Checking end to end nbody
   """
   a0 = 0.1
+  cosmo = flowpm.cosmology.Planck15()
 
   pm = ParticleMesh(BoxSize=bs, Nmesh=[nc, nc, nc], dtype='f4')
   grid = pm.generate_uniform_particle_grid(shift=0).astype(np.float32)
@@ -138,8 +141,8 @@ def test_nody():
 
   # Same thing with flowpm
   tlinear = tf.expand_dims(np.array(lineark.c2r()), 0)
-  state = tfpm.lpt_init(tlinear, a0, order=1)
-  state = tfpm.nbody(state, stages, nc)
+  state = tfpm.lpt_init(cosmo, tlinear, a0, order=1)
+  state = tfpm.nbody(cosmo, state, stages, nc)
   tfread = pmutils.cic_paint(tf.zeros_like(tlinear), state[0]).numpy()
 
   assert_allclose(final_cube, tfread[0], atol=1.2)
@@ -149,6 +152,7 @@ def test_rectangular_nody():
   """ Checking end to end nbody on a rectangular grid case
   """
   a0 = 0.1
+  cosmo = flowpm.cosmology.Planck15()
 
   pm = ParticleMesh(BoxSize=[bs, bs, 3 * bs],
                     Nmesh=[nc, nc, 3 * nc],
@@ -167,8 +171,8 @@ def test_rectangular_nody():
 
   # Same thing with flowpm
   tlinear = tf.expand_dims(np.array(lineark.c2r()), 0)
-  state = tfpm.lpt_init(tlinear, a0, order=1)
-  state = tfpm.nbody(state, stages, [nc, nc, 3 * nc])
+  state = tfpm.lpt_init(cosmo, tlinear, a0, order=1)
+  state = tfpm.nbody(cosmo, state, stages, [nc, nc, 3 * nc])
   tfread = pmutils.cic_paint(tf.zeros_like(tlinear), state[0]).numpy()
 
   assert_allclose(final_cube, tfread[0], atol=1.2)
