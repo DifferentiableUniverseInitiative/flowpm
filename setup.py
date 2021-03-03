@@ -4,7 +4,7 @@ from io import open
 
 # read the contents of the README file
 with open('README.md', encoding="utf-8") as f:
-    long_description = f.read()
+  long_description = f.read()
 
 setup(name='flowpm',
       description='Particle Mesh Simulation in TensorFlow',
@@ -15,19 +15,20 @@ setup(name='flowpm',
       author_email='modichirag@berkeley.edu',
       license='MIT',
       packages=find_packages(),
-      install_requires=['astropy', 'scipy', 'mesh-tensorflow', 'tensorflow_probability'],
+      install_requires=[
+          'astropy', 'scipy', 'mesh-tensorflow', 'tensorflow_probability'
+      ],
       tests_require=['fastpm'],
       extras_require={
-        'testing':  ['fastpm'],
-        },
+          'testing': ['fastpm'],
+      },
       use_scm_version=True,
       setup_requires=['setuptools_scm'],
       classifiers=[
-        'Development Status :: 3 - Alpha',
-        'Intended Audience :: Developers',
-        'Intended Audience :: Science/Research',
-        'License :: OSI Approved :: MIT License',
-        'Topic :: Scientific/Engineering :: Artificial Intelligence',
-        'Topic :: Scientific/Engineering :: Physics'
-        ],
+          'Development Status :: 3 - Alpha', 'Intended Audience :: Developers',
+          'Intended Audience :: Science/Research',
+          'License :: OSI Approved :: MIT License',
+          'Topic :: Scientific/Engineering :: Artificial Intelligence',
+          'Topic :: Scientific/Engineering :: Physics'
+      ],
       keywords='cosmology machine learning')
