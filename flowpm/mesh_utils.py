@@ -77,7 +77,7 @@ def _cic_paint(mesh, neighboor_coords, kernel, shift, name=None):
     batch_size = shape[0]
     nx, ny, nz = shape[-3], shape[-2], shape[-1]
 
-    #TODO: Assert shift shape
+    # TODO: Assert shift shape
     neighboor_coords = tf.reshape(neighboor_coords, (-1, 8, 4))
     neighboor_coords = neighboor_coords + tf.reshape(tf.constant(shift),
                                                      [1, 1, 4])
@@ -107,7 +107,7 @@ def _cic_readout(mesh, neighboor_coords, kernel, shift, name=None):
     mesh = mesh[:, 0, 0, 0]
     shape_part = tf.shape(neighboor_coords)
 
-    #TODO: Assert shift shape
+    # TODO: Assert shift shape
     neighboor_coords = tf.reshape(neighboor_coords, (-1, 8, 4))
     neighboor_coords = neighboor_coords + tf.reshape(tf.constant(shift),
                                                      [1, 1, 4])
@@ -159,10 +159,10 @@ def cic_paint(mesh, part, halo_size, weight=None, name=None):
 
   mesh = mtf.slicewise(lambda x, y, z: _cic_paint(
       x, y, z, shift=[0, halo_size, halo_size, halo_size]),
-                       [mesh, indices, values],
-                       output_dtype=tf.float32,
-                       output_shape=mesh.shape,
-                       splittable_dims=mesh.shape[:-3] + part.shape[1:-1])
+                     [mesh, indices, values],
+                     output_dtype=tf.float32,
+                     output_shape=mesh.shape,
+                     splittable_dims=mesh.shape[:-3] + part.shape[1:-1])
   return mesh
 
 

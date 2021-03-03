@@ -5,7 +5,7 @@ import tensorflow_probability as tfp
 import flowpm.constants as constants
 from flowpm.scipy.interpolate import interp_tf
 
-#Planck 2015 results
+# Planck 2015 results
 cosmo = {
     "w0": -1.0,
     "wa": 0.0,
@@ -405,12 +405,11 @@ def a_of_chi(cosmo, chi):
       Scale factors corresponding to requested distances
     """
   # Check if distances have already been computed, force computation otherwise
-  if not "background.radial_comoving_distance" in cosmo.keys():
+  if "background.radial_comoving_distance" not in cosmo.keys():
     rad_comoving_distance(cosmo, 1.0)
   cache = cosmo["tfbackground.radial_comoving_distance"]
   chi = tf.cast(chi, dtype=tf.float32)
   return interp_tf(chi, cache["chi"], cache["a"])
-  #return tfp.math.interp_regular_1d_grid(chi, cache["chi"][0],cache["chi"][-1] ,cache["a"])
 
 
 def transverse_comoving_distance(cosmo, a):
@@ -486,7 +485,7 @@ def angular_diameter_distance(cosmo, a):
   return a * transverse_comoving_distance(cosmo, a)
 
 
-#Equation 1.96 from Florent Leclercq thesis
+# Equation 1.96 from Florent Leclercq thesis
 def growth_ode(a, y, **cosmo):
   """Define the ode functions that will be used to compute the linear growth factor D_1(a) and
     second-order growth factor D_2(a) at a given scale factor

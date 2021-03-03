@@ -3,7 +3,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from six.moves import xrange  # pylint: disable=redefined-builtin
 import mesh_tensorflow as mtf
 import tensorflow.compat.v1 as tf
 import numpy as np

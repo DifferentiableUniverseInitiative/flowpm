@@ -330,7 +330,7 @@ def force(state,
 
     rho = cic_paint(rho, tf.multiply(state[0], pm_nc_factor), wts)
     rho = tf.multiply(rho,
-                      1. / nbar)  ###I am not sure why this is not needed here
+                      1. / nbar)  # I am not sure why this is not needed here
     delta_k = r2c3d(rho, norm=ncf[0] * ncf[1] * ncf[2])
     fac = tf.cast(1.5 * cosmology['Omega0_m'], dtype=dtype)
     update = apply_longrange(tf.multiply(state[0], pm_nc_factor),
