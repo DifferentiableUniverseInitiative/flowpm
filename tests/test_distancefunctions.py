@@ -7,33 +7,22 @@ Created on Wed Dec  2 18:24:41 2020
 """
 
 import numpy as np
+import flowpm
 from flowpm.tfbackground import dchioverda, rad_comoving_distance, a_of_chi as a_of_chi_tf, transverse_comoving_distance as trans_comoving_distance, angular_diameter_distance as ang_diameter_distance
 from numpy.testing import assert_allclose
-
+from scipy import interpolate
 from nbodykit.cosmology import Planck15 as cosmo
-cosmo1 = {
-    "w0": -1.0,
-    "wa": 0.0,
-    "H0": 100,
-    "h": cosmo.h,
-    "Omega0_b": cosmo.Omega0_b,
-    "Omega0_c": cosmo.Omega0_cdm,
-    "Omega0_m": cosmo.Omega0_m,
-    "Omega0_k": 0.0,
-    "Omega0_de": cosmo.Omega0_lambda,
-    "n_s": cosmo.n_s,
-    "sigma8": cosmo.sigma8
-}
 
 
 def test_radial_comoving_distance():
   """ This function tests the function computing the radial comoving distance.
-    """
+  """
+  cosmo_tf = flowpm.cosmology.Planck15()
   a = np.logspace(-2, 0.0)
 
   z = 1 / a - 1
 
-  radial = rad_comoving_distance(cosmo1, a)
+  radial = rad_comoving_distance(cosmo_tf, a)
 
   radial_astr = cosmo.comoving_distance(z)
 
@@ -42,12 +31,13 @@ def test_radial_comoving_distance():
 
 def test_transverse_comoving_distance():
   """This function test the function computing the Transverse comoving distance in [Mpc/h] for a given scale factor
-      """
+  """
+  cosmo_tf = flowpm.cosmology.Planck15()
   a = np.logspace(-2, 0.0)
 
   z = 1 / a - 1
 
-  trans_tf = trans_comoving_distance(cosmo1, a)
+  trans_tf = trans_comoving_distance(cosmo_tf, a)
 
   trans_astr = cosmo.comoving_transverse_distance(z)
 
@@ -56,7 +46,8 @@ def test_transverse_comoving_distance():
 
 def test_angular_diameter_distance():
   """This function test the function computing the  Angular diameter distance in [Mpc/h] for a given scale factor
-      """
+  """
+  cosmo_tf = flowpm.cosmology.Planck15()
 
   a = np.logspace(-2, 0.0)
 
@@ -64,7 +55,7 @@ def test_angular_diameter_distance():
 
   angular_diameter_distance_astr = cosmo.angular_diameter_distance(z)
 
-  angular_diameter_distance_tf = ang_diameter_distance(cosmo1, a)
+  angular_diameter_distance_tf = ang_diameter_distance(cosmo_tf, a)
 
   assert_allclose(angular_diameter_distance_tf,
                   angular_diameter_distance_astr,
@@ -76,8 +67,6 @@ def test_angular_diameter_distance():
 # build a new a-of-chi function by interpolation using a scipy interpolation function.
 # Then we compare thiss function with our a-of-chi function.
 # =============================================================================
-from scipy import interpolate
-
 
 def a_of_chi(z):
   r"""Computes the scale factor for corresponding (array) of radial comoving
@@ -104,7 +93,8 @@ def a_of_chi(z):
 def test_a_of_chi():
   """This function test the function computing the scale factor for corresponding (array) of radial comoving
     distance by reverse linear interpolation
-      """
+  """
+  cosmo_tf = flowpm.cosmology.Planck15()
 
   a = np.logspace(-2, 0.0, 512)
 
@@ -112,7 +102,7 @@ def test_a_of_chi():
 
   chi = np.geomspace(500, 8000, 50)
 
-  aofchi_tf = a_of_chi_tf(cosmo1, chi)
+  aofchi_tf = a_of_chi_tf(cosmo_tf, chi)
 
   f = a_of_chi(z)
 

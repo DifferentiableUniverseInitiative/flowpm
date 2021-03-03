@@ -1,7 +1,7 @@
 # Tests analytic power spectra computations
 import tensorflow as tf
 import numpy as np
-import flowpm.tfbackground as bkgrd
+import flowpm
 import flowpm.tfpower as power
 from nbodykit.cosmology import Planck15
 from nbodykit.cosmology.power.linear import LinearPower
@@ -10,20 +10,14 @@ from numpy.testing import assert_allclose
 
 
 def test_eisenstein_hu():
-  cosmo = {
-      "w0": -1.0,
-      "wa": 0.0,
-      "H0": 100,
-      "h": Planck15.h,
-      "Omega0_b": Planck15.Omega0_b,
-      "Omega0_c": Planck15.Omega0_cdm,
-      "Omega0_m": Planck15.Omega0_m,
-      "Omega0_k": 0.0,
-      "Omega0_de": Planck15.Omega0_lambda,
-      "n_s": Planck15.n_s,
-      "sigma8": Planck15.sigma8
-  }
-
+  cosmo = flowpm.cosmology.Cosmology(Omega_c=Planck15.Omega0_cdm,
+                                     Omega_b=Planck15.Omega0_b,
+                                     Omega0_k=0.0,
+                                     h=Planck15.h,
+                                     n_s=Planck15.n_s,
+                                     sigma8=Planck15.sigma8,
+                                     w0=-1.,
+                                     wa=0.0)
   # Test array of scales
   k = np.logspace(-3, 1, 512)
 
