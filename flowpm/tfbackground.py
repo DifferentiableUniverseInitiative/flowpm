@@ -115,9 +115,9 @@ def E(cosmo, a):
     by :py:meth:`.f_de`.
     """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
-  return (tf.math.sqrt(cosmo.Omega0_m / tf.math.pow(a, 3) +
-                       cosmo.Omega0_k / tf.math.pow(a, 2) +
-                       cosmo.Omega0_de * tf.math.pow(a, fde(cosmo, a))))
+  return (tf.math.sqrt(cosmo.Omega_m / tf.math.pow(a, 3) +
+                       cosmo.Omega_k / tf.math.pow(a, 2) +
+                       cosmo.Omega_de * tf.math.pow(a, fde(cosmo, a))))
 
 
 def H(cosmo, a):
@@ -207,9 +207,9 @@ def dEa(cosmo, a):
         +f'_{de}\Omega_{0de}a^{f_{de}(a)}}{2E(a)}
     """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
-  return 0.5 * (-3 * cosmo.Omega0_m / tf.math.pow(a, 4) -
-                2 * cosmo.Omega0_k / tf.math.pow(a, 3) + dfde(cosmo, a) *
-                cosmo.Omega0_de * tf.math.pow(a, fde(cosmo, a))) / E(
+  return 0.5 * (-3 * cosmo.Omega_m / tf.math.pow(a, 4) -
+                2 * cosmo.Omega_k / tf.math.pow(a, 3) + dfde(cosmo, a) *
+                cosmo.Omega_de * tf.math.pow(a, fde(cosmo, a))) / E(
                     cosmo, a)
 
 
@@ -240,7 +240,7 @@ def Omega_m_a(cosmo, a):
     see :cite:`2005:Percival` Eq. (6)
     """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
-  return cosmo.Omega0_m * tf.math.pow(a, -3) / E(cosmo, a)**2
+  return cosmo.Omega_m * tf.math.pow(a, -3) / E(cosmo, a)**2
 
 
 def Omega_de_a(cosmo, a):
@@ -272,7 +272,7 @@ def Omega_de_a(cosmo, a):
     :py:meth:`.f_de` (see :cite:`2005:Percival` Eq. (6)).
     """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
-  return cosmo.Omega0_de * tf.math.pow(a, fde(cosmo, a)) / E(cosmo, a)**2
+  return cosmo.Omega_de * tf.math.pow(a, fde(cosmo, a)) / E(cosmo, a)**2
 
 
 def dchioverda(cosmo, a):
@@ -428,11 +428,11 @@ def transverse_comoving_distance(cosmo, a):
         \right.
     """
   chi = rad_comoving_distance(cosmo, a)
-  if cosmo.Omega0_k < 0:  # Open universe
-    return constants.rh / tf.math.sqrt(cosmo.Omega0_k) * tf.math.sinh(
+  if cosmo.Omega_k < 0:  # Open universe
+    return constants.rh / tf.math.sqrt(cosmo.Omega_k) * tf.math.sinh(
         cosmo.sqrtk * chi / constants.rh)
-  elif cosmo.Omega0_k > 0:  # Closed Universe
-    return constants.rh / tf.math.sqrt(cosmo.Omega0_k) * tf.math.sin(
+  elif cosmo.Omega_k > 0:  # Closed Universe
+    return constants.rh / tf.math.sqrt(cosmo.Omega_k) * tf.math.sin(
         cosmo.sqrtk * chi / constants.rh)
   else:
     return chi
