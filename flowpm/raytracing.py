@@ -14,6 +14,7 @@ import flowpm.constants as constants
 
 
 def lightcone(
+    cosmo,
     state,
     stages,
     nc,
@@ -27,6 +28,9 @@ def lightcone(
 
   Parameters:
   -----------
+  cosmo: cosmology
+    Cosmological parameter object
+
   state: tensor (3, batch_size, npart, 3)
     Input state
 
@@ -57,7 +61,7 @@ def lightcone(
     ai = stages[0]
 
     # first force calculation for jump starting
-    state = force(state, nc, cosmology, pm_nc_factor=pm_nc_factor)
+    state = force(cosmo, state, nc, pm_nc_factor=pm_nc_factor)
 
     # Compute the width of the lens planes based on number of time steps
     w = nc[2] // (len(stages) - 1)
@@ -74,11 +78,11 @@ def lightcone(
       ah = (a0 * a1)**0.5
 
       # Kick step
-      state = kick(state, p, f, ah, cosmology)
+      state = kick(cosmo, state, p, f, ah)
       p = ah
 
       # Drift step
-      state = drift(state, x, p, a1, cosmology)
+      state = drift(cosmo, state, x, p, a1)
       x = a1
 
       # Access the positions of the particles
@@ -126,97 +130,56 @@ def lightcone(
       # direction at z=0.... probably not a big deal but still gotta check what that does.
 
       # Force
-      state = force(state, nc, cosmology, pm_nc_factor=pm_nc_factor)
+      state = force(cosmo, state, nc, pm_nc_factor=pm_nc_factor)
       f = a1
 
       # Kick again
-      state = kick(state, p, f, a1, cosmology)
+      state = kick(cosmo, state, p, f, a1)
       p = a1
 
     return state, lps_a, lps
 
 
-def cons(cosmo):
-  """
-    Redshift independent prefactor from Poisson equation
-    
-    Parameters:
-    -----------
-    cosmo: Cosmology
-       Cosmological parameters structure
-
-    Returns
-    -------
-    cons: float
-      prefactor from Poisson equation
-     
-    """
-  return 3 / 2 * cosmo['Omega0_m'] * (constants.H0 / constants.c)**2
-
-
-def nbar_(nc, Boxsize):
-  """
-    mean 3D particle density
-    
-    Parameters:
-    -----------
-    nc : list
-        Size of the cube, number of cells
-    
-    Boxsize: list
-        Physical size of the cube
-
-    Returns
-    -------
-    nbar: float
-     mean 3D particle density
-     
-    """
-  return np.prod(nc) / np.prod(Boxsize)
-
-
-def A(plane_size, field):
-  """
-    2D mesh area in rad^2 per pixel
-    
-    Parameters:
-    -----------
-    plane_size : int
-       Number of pixels for x and  y 
-        
-    field: int or float
-        transveres degres of the field
-        
-    Returns
-    -------
-    A:  float
-     2D mesh area in rad^2 per pixel
-     
-    """
-  return ((field * np.pi / 180 / plane_size)**2)
-
-
 def wlen(ds, a, nc, Boxsize, plane_size, field, cosmo):
   """
     Returns the correctly weighted lensing efficiency kernel
-    
+
     Parameters:
     -----------
-    a : array_like or tf.TensorArray
-        Scale factor
-    
     ds: float
         comoving source distance
+
+    a : array_like or tf.TensorArray
+        Scale factor
+
+    nc : list
+        Size of the cube, number of cells
+
+    Boxsize: list
+        Physical size of the cube
+
+    plane_size : int
+       Number of pixels for x and  y
+
+    field: int or float
+        transveres degres of the field
 
     Returns
     -------
     w : Scalar float Tensor
         Weighted lensing efficiency kernel
-     
+
     """
   d = rad_comoving_distance(cosmo, a)
-  columndens = (A(plane_size, field) * nbar_(nc, Boxsize)) * (
-      d**2)  #particles/Volume*angular pixel area* distance^2 -> 1/L units
+
+  # 2D mesh area in rad^2 per pixel
+  A = (field * np.pi / 180 / plane_size)**2
+
+  # mean 3D particle density
+  nbar = np.prod(nc) / np.prod(Boxsize)
+
+  # particles/Volume*angular pixel area* distance^2 -> 1/L units
+  columndens = (A * nbar) * (d**2)
   w = ((ds - d) * (d / ds)) / (columndens)
   w = w / a
   return w
@@ -225,15 +188,15 @@ def wlen(ds, a, nc, Boxsize, plane_size, field, cosmo):
 def Born(lps_a, lps, ds, nc, Boxsize, plane_size, field, cosmo):
   """
     Compute the Born–approximated convergence
-    
+
     Parameters:
     -----------
     lps_a : tf.TensorArray
         Scale factor of lens planes
-        
+
     lps : tf.TensorArray
         density field of each lens plane
-    
+
     ds: float
         comoving source distance
 
@@ -241,10 +204,14 @@ def Born(lps_a, lps, ds, nc, Boxsize, plane_size, field, cosmo):
     -------
     k_map : tf.TensorArray
         Born–approximated convergence
-     
+
     """
   k_map = 0
+
+  # Compute constant prefactor:
+  constant_factor = 3 / 2 * cosmo.Omega_m * (constants.H0 / constants.c)**2
+
   for i in range(len(lps_a)):
-    k_map += cons(cosmo) * lps[i][0] * wlen(ds, lps_a[i], nc, Boxsize,
-                                            plane_size, field, cosmo)
+    k_map += constant_factor * lps[i][0] * wlen(ds, lps_a[i], nc, Boxsize,
+                                                plane_size, field, cosmo)
   return k_map
