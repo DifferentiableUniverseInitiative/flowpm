@@ -210,8 +210,7 @@ def dEa(cosmo, a):
   a = tf.convert_to_tensor(a, dtype=tf.float32)
   return 0.5 * (-3 * cosmo.Omega_m / tf.math.pow(a, 4) -
                 2 * cosmo.Omega_k / tf.math.pow(a, 3) + dfde(cosmo, a) *
-                cosmo.Omega_de * tf.math.pow(a, fde(cosmo, a))) / E(
-                    cosmo, a)
+                cosmo.Omega_de * tf.math.pow(a, fde(cosmo, a))) / E(cosmo, a)
 
 
 def Omega_m_a(cosmo, a):

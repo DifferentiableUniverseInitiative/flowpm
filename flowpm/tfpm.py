@@ -230,10 +230,7 @@ def apply_longrange(x,
     return f
 
 
-def kick(cosmo, state, ai, ac, af,
-         dtype=tf.float32,
-         name="Kick",
-         **kwargs):
+def kick(cosmo, state, ai, ac, af, dtype=tf.float32, name="Kick", **kwargs):
   """Kick the particles given the state
 
   Parameters
@@ -257,13 +254,7 @@ def kick(cosmo, state, ai, ac, af,
     return state
 
 
-def drift(cosmo, state,
-          ai,
-          ac,
-          af,
-          dtype=tf.float32,
-          name="Drift",
-          **kwargs):
+def drift(cosmo, state, ai, ac, af, dtype=tf.float32, name="Drift", **kwargs):
   """Drift the particles given the state
 
   Parameters
@@ -287,7 +278,8 @@ def drift(cosmo, state,
     return state
 
 
-def force(cosmo, state,
+def force(cosmo,
+          state,
           nc,
           pm_nc_factor=1,
           kvec=None,

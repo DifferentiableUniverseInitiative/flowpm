@@ -3,8 +3,8 @@ from functools import partial
 
 
 class Cosmology:
-    def __init__(self, Omega_c, Omega_b, h, n_s, sigma8, Omega_k, w0, wa):
-        """
+  def __init__(self, Omega_c, Omega_b, h, n_s, sigma8, Omega_k, w0, wa):
+    """
         Cosmology object, stores primary and derived cosmological parameters.
         Parameters:
         -----------
@@ -25,121 +25,104 @@ class Cosmology:
         wa, float
           Second order term of dark energy equation of state
         """
-        # Store primary parameters
-        self._Omega_c = tf.convert_to_tensor(Omega_c, dtype=tf.float32)
-        self._Omega_b = tf.convert_to_tensor(Omega_b, dtype=tf.float32)
-        self._h = tf.convert_to_tensor(h, dtype=tf.float32)
-        self._n_s = tf.convert_to_tensor(n_s, dtype=tf.float32)
-        self._sigma8 = tf.convert_to_tensor(sigma8, dtype=tf.float32)
-        self._Omega_k = tf.convert_to_tensor(Omega_k, dtype=tf.float32)
-        self._w0 = tf.convert_to_tensor(w0, dtype=tf.float32)
-        self._wa = tf.convert_to_tensor(wa, dtype=tf.float32)
+    # Store primary parameters
+    self._Omega_c = tf.convert_to_tensor(Omega_c, dtype=tf.float32)
+    self._Omega_b = tf.convert_to_tensor(Omega_b, dtype=tf.float32)
+    self._h = tf.convert_to_tensor(h, dtype=tf.float32)
+    self._n_s = tf.convert_to_tensor(n_s, dtype=tf.float32)
+    self._sigma8 = tf.convert_to_tensor(sigma8, dtype=tf.float32)
+    self._Omega_k = tf.convert_to_tensor(Omega_k, dtype=tf.float32)
+    self._w0 = tf.convert_to_tensor(w0, dtype=tf.float32)
+    self._wa = tf.convert_to_tensor(wa, dtype=tf.float32)
 
-        self._flags = {}
+    self._flags = {}
 
-        # Create a workspace where functions can store some precomputed
-        # results
-        self._workspace = {}
+    # Create a workspace where functions can store some precomputed
+    # results
+    self._workspace = {}
 
-    def to_dict(self):
-        return {'Omega_c': self.Omega_c,
-                'Omega_b': self.Omega_b,
-                'h': self.h,
-                'n_s': self.n_s,
-                'sigma8': self.sigma8,
-                'Omega_k': self.Omega_k,
-                'w0': self.w0,
-                'wa': self.wa}
+  def to_dict(self):
+    return {
+        'Omega_c': self.Omega_c,
+        'Omega_b': self.Omega_b,
+        'h': self.h,
+        'n_s': self.n_s,
+        'sigma8': self.sigma8,
+        'Omega_k': self.Omega_k,
+        'w0': self.w0,
+        'wa': self.wa
+    }
 
-    def __str__(self):
-        return (
-            "Cosmological parameters: \n"
-            + "    h:        "
-            + str(self.h)
-            + " \n"
-            + "    Omega_b:  "
-            + str(self.Omega_b)
-            + " \n"
-            + "    Omega_c:  "
-            + str(self.Omega_c)
-            + " \n"
-            + "    Omega_k:  "
-            + str(self.Omega_k)
-            + " \n"
-            + "    w0:       "
-            + str(self.w0)
-            + " \n"
-            + "    wa:       "
-            + str(self.wa)
-            + " \n"
-            + "    n:        "
-            + str(self.n_s)
-            + " \n"
-            + "    sigma8:   "
-            + str(self.sigma8)
-        )
+  def __str__(self):
+    return ("Cosmological parameters: \n" + "    h:        " + str(self.h) +
+            " \n" + "    Omega_b:  " + str(self.Omega_b) + " \n" +
+            "    Omega_c:  " + str(self.Omega_c) + " \n" + "    Omega_k:  " +
+            str(self.Omega_k) + " \n" + "    w0:       " + str(self.w0) +
+            " \n" + "    wa:       " + str(self.wa) + " \n" +
+            "    n:        " + str(self.n_s) + " \n" + "    sigma8:   " +
+            str(self.sigma8))
 
-    def __repr__(self):
-        return self.__str__()
+  def __repr__(self):
+    return self.__str__()
 
-    # Cosmological parameters, base and derived
-    @property
-    def Omega(self):
-        return 1.0 - self._Omega_k
+  # Cosmological parameters, base and derived
+  @property
+  def Omega(self):
+    return 1.0 - self._Omega_k
 
-    @property
-    def Omega_b(self):
-        return self._Omega_b
+  @property
+  def Omega_b(self):
+    return self._Omega_b
 
-    @property
-    def Omega_c(self):
-        return self._Omega_c
+  @property
+  def Omega_c(self):
+    return self._Omega_c
 
-    @property
-    def Omega_m(self):
-        return self._Omega_b + self._Omega_c
+  @property
+  def Omega_m(self):
+    return self._Omega_b + self._Omega_c
 
-    @property
-    def Omega_de(self):
-        return self.Omega - self.Omega_m
+  @property
+  def Omega_de(self):
+    return self.Omega - self.Omega_m
 
-    @property
-    def Omega_k(self):
-        return self._Omega_k
+  @property
+  def Omega_k(self):
+    return self._Omega_k
 
-    @property
-    def k(self):
-        if self.Omega > 1.0:  # Closed universe
-            k = 1.0
-        elif self.Omega == 1.0:  # Flat universe
-            k = 0
-        elif self.Omega < 1.0:  # Open Universe
-            k = -1.0
-        return k
+  @property
+  def k(self):
+    if self.Omega > 1.0:  # Closed universe
+      k = 1.0
+    elif self.Omega == 1.0:  # Flat universe
+      k = 0
+    elif self.Omega < 1.0:  # Open Universe
+      k = -1.0
+    return k
 
-    @property
-    def sqrtk(self):
-        return tf.math.sqrt(tf.math.abs(self._Omega_k))
+  @property
+  def sqrtk(self):
+    return tf.math.sqrt(tf.math.abs(self._Omega_k))
 
-    @property
-    def h(self):
-        return self._h
+  @property
+  def h(self):
+    return self._h
 
-    @property
-    def w0(self):
-        return self._w0
+  @property
+  def w0(self):
+    return self._w0
 
-    @property
-    def wa(self):
-        return self._wa
+  @property
+  def wa(self):
+    return self._wa
 
-    @property
-    def n_s(self):
-        return self._n_s
+  @property
+  def n_s(self):
+    return self._n_s
 
-    @property
-    def sigma8(self):
-        return self._sigma8
+  @property
+  def sigma8(self):
+    return self._sigma8
 
 
 # To add new cosmologies, we just set the parameters to some default values
