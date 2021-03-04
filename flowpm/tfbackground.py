@@ -4,21 +4,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 import flowpm.constants as constants
 from flowpm.scipy.interpolate import interp_tf
-
-# Planck 2015 results
-cosmo = {
-    "w0": -1.0,
-    "wa": 0.0,
-    "H0": 100,
-    "h": 0.6774,
-    "Omega0_b": 0.04860,
-    "Omega0_c": 0.2589,
-    "Omega0_m": 0.3075,
-    "Omega0_k": 0.0,
-    "Omega0_de": 0.6925,
-    "n_s": 0.9667,
-    "sigma8": 0.8159
-}
+from flowpm.cosmology import Cosmology
 
 
 def fde(cosmo, a, epsilon=1e-5):
@@ -61,9 +47,7 @@ def fde(cosmo, a, epsilon=1e-5):
         f(a) = -3(1 + w_0) + 3 w \left[ \frac{a - 1}{ \ln(a) } - 1 \right]
     """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
-  w0 = tf.convert_to_tensor(cosmo["w0"], dtype=tf.float32)
-  wa = tf.convert_to_tensor(cosmo["wa"], dtype=tf.float32)
-  return (-3.0 * (1.0 + w0) + 3.0 * wa *
+  return (-3.0 * (1.0 + cosmo.w0) + 3.0 * cosmo.wa *
           ((a - 1.0) / tf.math.log(a - epsilon) - 1.0))
 
 
@@ -96,9 +80,7 @@ def w(cosmo, a):
         w(a) = w_0 + w (1 -a)
   """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
-  w0 = tf.convert_to_tensor(cosmo["w0"], dtype=tf.float32)
-  wa = tf.convert_to_tensor(cosmo["wa"], dtype=tf.float32)
-  return w0 + wa * (1.0 - a)
+  return cosmo.w0 + cosmo.wa * (1.0 - a)
 
 
 def E(cosmo, a):
@@ -134,9 +116,9 @@ def E(cosmo, a):
     by :py:meth:`.f_de`.
     """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
-  return (tf.math.sqrt(cosmo["Omega0_m"] / tf.math.pow(a, 3) +
-                       cosmo["Omega0_k"] / tf.math.pow(a, 2) +
-                       cosmo["Omega0_de"] * tf.math.pow(a, fde(cosmo, a))))
+  return (tf.math.sqrt(cosmo.Omega_m / tf.math.pow(a, 3) +
+                       cosmo.Omega_k / tf.math.pow(a, 2) +
+                       cosmo.Omega_de * tf.math.pow(a, fde(cosmo, a))))
 
 
 def H(cosmo, a):
@@ -156,7 +138,7 @@ def H(cosmo, a):
         Hubble parameter at the requested scale factor.
     """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
-  return constants.H0 * cosmo["h"] * (E(cosmo, a))
+  return constants.H0 * cosmo.h * (E(cosmo, a))
 
 
 def dfde(cosmo, a, epsilon=1e-5):
@@ -191,8 +173,7 @@ def dfde(cosmo, a, epsilon=1e-5):
     \frac{a-1}{a-\epsilon}\right)}{\ln^2(a-\epsilon)}
     """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
-  wa = tf.convert_to_tensor(cosmo["wa"], dtype=tf.float32)
-  return (3 * wa * (tf.math.log(a - epsilon) - (a - 1) / (a - epsilon)) /
+  return (3 * cosmo.wa * (tf.math.log(a - epsilon) - (a - 1) / (a - epsilon)) /
           tf.math.pow(tf.math.log(a - epsilon), 2))
 
 
@@ -227,10 +208,9 @@ def dEa(cosmo, a):
         +f'_{de}\Omega_{0de}a^{f_{de}(a)}}{2E(a)}
     """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
-  return 0.5 * (-3 * cosmo["Omega0_m"] / tf.math.pow(a, 4) -
-                2 * cosmo["Omega0_k"] / tf.math.pow(a, 3) + dfde(cosmo, a) *
-                cosmo["Omega0_de"] * tf.math.pow(a, fde(cosmo, a))) / E(
-                    cosmo, a)
+  return 0.5 * (-3 * cosmo.Omega_m / tf.math.pow(a, 4) -
+                2 * cosmo.Omega_k / tf.math.pow(a, 3) + dfde(cosmo, a) *
+                cosmo.Omega_de * tf.math.pow(a, fde(cosmo, a))) / E(cosmo, a)
 
 
 def Omega_m_a(cosmo, a):
@@ -260,7 +240,7 @@ def Omega_m_a(cosmo, a):
     see :cite:`2005:Percival` Eq. (6)
     """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
-  return cosmo["Omega0_m"] * tf.math.pow(a, -3) / E(cosmo, a)**2
+  return cosmo.Omega_m * tf.math.pow(a, -3) / E(cosmo, a)**2
 
 
 def Omega_de_a(cosmo, a):
@@ -292,7 +272,7 @@ def Omega_de_a(cosmo, a):
     :py:meth:`.f_de` (see :cite:`2005:Percival` Eq. (6)).
     """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
-  return cosmo["Omega0_de"] * tf.math.pow(a, fde(cosmo, a)) / E(cosmo, a)**2
+  return cosmo.Omega_de * tf.math.pow(a, fde(cosmo, a)) / E(cosmo, a)**2
 
 
 def dchioverda(cosmo, a):
@@ -361,7 +341,7 @@ def rad_comoving_distance(cosmo, a, log10_amin=-3, steps=256, rtol=1e-3):
 
         \chi(a) =  R_H \int_a^1 \frac{da^\prime}{{a^\prime}^2 E(a^\prime)}
     """
-  if "background.radial_comoving_distance" not in cosmo.keys():
+  if "background.radial_comoving_distance" not in cosmo._workspace.keys():
     atab = np.logspace(log10_amin, 0.0, steps)
 
     def dchioverdlna(x, y):
@@ -375,9 +355,9 @@ def rad_comoving_distance(cosmo, a, log10_amin=-3, steps=256, rtol=1e-3):
     chitab = tf.convert_to_tensor(chitab, dtype=tf.float32)
     atab = tf.convert_to_tensor(atab, dtype=tf.float32)
     cache = {"a": atab, "chi": chitab}
-    cosmo["tfbackground.radial_comoving_distance"] = cache
+    cosmo._workspace["tfbackground.radial_comoving_distance"] = cache
   else:
-    cache = cosmo["background.radial_comoving_distance"]
+    cache = cosmo._workspace["background.radial_comoving_distance"]
   # Return the results as an interpolation of the table)
   lna = tf.math.log(a)
   inter = tfp.math.interp_regular_1d_grid(tf.cast(lna, dtype=tf.float32),
@@ -405,9 +385,9 @@ def a_of_chi(cosmo, chi):
       Scale factors corresponding to requested distances
     """
   # Check if distances have already been computed, force computation otherwise
-  if "background.radial_comoving_distance" not in cosmo.keys():
+  if "background.radial_comoving_distance" not in cosmo._workspace.keys():
     rad_comoving_distance(cosmo, 1.0)
-  cache = cosmo["tfbackground.radial_comoving_distance"]
+  cache = cosmo._workspace["tfbackground.radial_comoving_distance"]
   chi = tf.cast(chi, dtype=tf.float32)
   return interp_tf(chi, cache["chi"], cache["a"])
 
@@ -448,11 +428,11 @@ def transverse_comoving_distance(cosmo, a):
         \right.
     """
   chi = rad_comoving_distance(cosmo, a)
-  if cosmo['Omega0_k'] < 0:  # Open universe
-    return constants.rh / tf.math.sqrt(cosmo['Omega0_k']) * tf.math.sinh(
+  if cosmo.Omega_k < 0:  # Open universe
+    return constants.rh / tf.math.sqrt(cosmo.Omega_k) * tf.math.sinh(
         cosmo.sqrtk * chi / constants.rh)
-  elif cosmo['Omega0_k'] > 0:  # Closed Universe
-    return constants.rh / tf.math.sqrt(cosmo['Omega0_k']) * tf.math.sin(
+  elif cosmo.Omega_k > 0:  # Closed Universe
+    return constants.rh / tf.math.sqrt(cosmo.Omega_k) * tf.math.sin(
         cosmo.sqrtk * chi / constants.rh)
   else:
     return chi
@@ -486,7 +466,7 @@ def angular_diameter_distance(cosmo, a):
 
 
 # Equation 1.96 from Florent Leclercq thesis
-def growth_ode(a, y, **cosmo):
+def growth_ode(a, y, **kwcosmo):
   """Define the ode functions that will be used to compute the linear growth factor D_1(a) and
     second-order growth factor D_2(a) at a given scale factor
     Parameters
@@ -511,6 +491,8 @@ def growth_ode(a, y, **cosmo):
      (see :cite:`Florent Leclercq thesis` Eq. (1.96))
     """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
+  # Instantiate a cosmology object
+  cosmo = Cosmology(**kwcosmo)
   # Extracting entries
   (d1, d2), (d1_f, d2_f) = y
   # ODE for d1
@@ -527,19 +509,19 @@ def growth_ode(a, y, **cosmo):
 
 
 @tf.function
-def odesolve_func(cosmo, a, rtol=1e-4):
+def odesolve_func(a, rtol=1e-4, **kwcosmo):
   """ Solves the growth ODE system for a given cosmology at the requested
     scale factors.
 
     Parameters
     ----------
-    cosmo: dict
-      Cosmology dictionary.
     a: array_like
       Output scale factors, note that the ODE is initialized at a[0]
 
     rtol: float, optional
           Parameters determing the error control performed by the solver
+    kwcosmo: keyword args
+      Cosmological parameter values.
 
     Returns
     -------
@@ -560,10 +542,10 @@ def odesolve_func(cosmo, a, rtol=1e-4):
                          a[0],
                          y0,
                          solution_times=a,
-                         constants=cosmo)
+                         constants=kwcosmo)
 
   # While we are at it, compute second order derivatives growth
-  second_order_results = growth_ode(results.times, results.states, **cosmo)
+  second_order_results = growth_ode(results.times, results.states, **kwcosmo)
 
   # Normalize the ODE to present time
   # For first order growth and its derivative
@@ -591,22 +573,21 @@ def maybe_compute_ODE(cosmo, log10_amin=-2, steps=1024):
   """
     Either computes or returns the cached ODE solution
     """
-  if 'cache_ODE' in cosmo:
+  if 'cache_ODE' in cosmo._workspace:
     # If cache is found in the cosmo dictionary it means the ODE has already
     # been computed
-    cache = cosmo['cache_ODE']
+    cache = cosmo._workspace['cache_ODE']
     # Checking that the stored ODE results have the right lenght
     assert len(cache['a']) == steps
   else:
     # Otherwise, we compute it now, and save the results for later
     a = tf.convert_to_tensor(np.logspace(log10_amin, 0., steps),
                              dtype=tf.float32)
-    cache = odesolve_func(cosmo, a)
-    cosmo['cache_ODE'] = cache
+    cache = odesolve_func(a, **cosmo.to_dict())
+    cosmo._workspace['cache_ODE'] = cache
   return cache
 
 
-################################################################
 def D1(cosmo, a):
   """ Normalised first order growth factor.
 
@@ -673,9 +654,6 @@ def D2(cosmo, a):
   return tfp.math.interp_regular_1d_grid(lna, tf.math.log(cache['a'][0]),
                                          tf.math.log(cache['a'][-1]),
                                          cache['D2'])
-
-
-#################################################################
 
 
 def D1f(cosmo, a):
@@ -808,7 +786,6 @@ def f2(cosmo, a):
   return D2f(cosmo, a) * a / D2(cosmo, a)
 
 
-################################################################
 def Gf(cosmo, a):
   """
     FastPM growth factor function
@@ -863,9 +840,6 @@ def Gf2(cosmo, a):
     """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
   return D2f(cosmo, a) * a**3 * E(cosmo, a)
-
-
-################################################################
 
 
 def gf(cosmo, a):
@@ -946,29 +920,3 @@ def gf2(cosmo, a):
                                         cache['F2p'])
   return (f2p * a**3 * E(cosmo, a) + d2f * a**3 * dEa(cosmo, a) +
           3 * a**2 * E(cosmo, a) * d2f)
-
-
-#
-# if __name__ == "__main__":
-#   """ Tests implementation and draws first and second order growth.
-#   """
-#   import matplotlib.pyplot as plt
-#   log10_amin=-2
-#   steps=128
-#   atab =np.logspace(log10_amin, 0.0, steps)
-#   y0=tf.constant([[atab[0], -3./7 * 0.01**2], [1.0, -6. / 7 *0.01]],dtype=tf.float32)
-#
-#   results_func=odesolve_func(atab,y0)
-#
-#   #normalise D1 and D2 such that D1(a=1) = 1 and D2(a=1) = 1
-#   D1_norm=results_func.states[:,0,0]/results_func.states[-1,0,0]
-#   D2_norm=results_func.states[:,0,1]/results_func.states[-1,0,1]
-#   d1_fn=results_func.states[:,1,0]/results_func.states[-1,0,0]
-#   d2_fn=results_func.states[:,1,1]/results_func.states[-1,0,1]
-#
-#   plt.plot(results_func.times,D1_norm,label='$D_1$')
-#   plt.plot(results_func.times,D2_norm,label='$D_2$')
-#   plt.xlabel('Scale factor')
-#   plt.ylabel('Growth function')
-#   plt.legend()
-#   plt.show()
