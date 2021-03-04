@@ -103,14 +103,7 @@ def test_a_of_chi():
   """This function test the function computing the scale factor for corresponding (array) of radial comoving
     distance by reverse linear interpolation
   """
-  cosmo_tf = flowpm.cosmology.Cosmology(Omega_c=cosmo.Omega0_cdm,
-                                     Omega_b=cosmo.Omega0_b,
-                                     Omega_k=0.0,
-                                     h=cosmo.h,
-                                     n_s=cosmo.n_s,
-                                     sigma8=cosmo.sigma8,
-                                     w0=-1.,
-                                     wa=0.0)
+  cosmo_tf = flowpm.cosmology.Planck15()
 
   a = np.logspace(-2, 0.0, 512)
 
