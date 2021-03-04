@@ -91,9 +91,8 @@ def Eisenstein_Hu(cosmo, k, type="eisenhu_osc"):
   alpha_gamma = (1.0 - 0.328 * tf.math.log(431.0 * w_m) * w_b / w_m +
                  0.38 * tf.math.log(22.3 * w_m) *
                  (cosmo.Omega_b / cosmo.Omega_m)**2)
-  gamma_eff = (cosmo.Omega_m * cosmo.h *
-               (alpha_gamma + (1.0 - alpha_gamma) / (1.0 +
-                                                     (0.43 * k * sh_d)**4)))
+  gamma_eff = (cosmo.Omega_m * cosmo.h * (alpha_gamma + (1.0 - alpha_gamma) /
+                                          (1.0 + (0.43 * k * sh_d)**4)))
 
   if type == "eisenhu":
 
