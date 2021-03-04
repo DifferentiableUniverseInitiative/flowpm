@@ -11,6 +11,7 @@ import flowpm
 from flowpm.tfbackground import dchioverda, rad_comoving_distance, a_of_chi as a_of_chi_tf, transverse_comoving_distance as trans_comoving_distance, angular_diameter_distance as ang_diameter_distance
 from numpy.testing import assert_allclose
 from scipy import interpolate
+from nbodykit.cosmology import Cosmology
 from astropy.cosmology import Planck15
 import astropy.units as u
 
