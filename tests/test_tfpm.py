@@ -21,7 +21,6 @@ np.random.seed(0)
 bs = 50
 nc = 16
 
-
 # Create a simple Planck15 cosmology without neutrinos, and makes sure sigma8
 # is matched
 ref_cosmo = Cosmology.from_astropy(Planck15.clone(m_nu=0 * u.eV))

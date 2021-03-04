@@ -15,7 +15,6 @@ from nbodykit.cosmology import Cosmology
 from astropy.cosmology import Planck15
 import astropy.units as u
 
-
 # Create a simple Planck15 cosmology without neutrinos, and makes sure sigma8
 # is matched
 ref_cosmo = Cosmology.from_astropy(Planck15.clone(m_nu=0 * u.eV))
