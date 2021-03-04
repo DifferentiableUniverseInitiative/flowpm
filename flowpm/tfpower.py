@@ -85,7 +85,7 @@ def Eisenstein_Hu(cosmo, k, type="eisenhu_osc"):
       (1.0 + tf.math.sqrt(R_eq))))
   # Eq. (7) but in [hMpc^{-1}]
   k_silk = (1.6 * tf.math.pow(w_b, 0.52) * tf.math.pow(w_m, 0.73) *
-            (1.0 + tf.math.pow(10.4 * w_m, -0.95)) / cosmo["h"])
+            (1.0 + tf.math.pow(10.4 * w_m, -0.95)) / cosmo.h)
   #############################################
 
   alpha_gamma = (1.0 - 0.328 * tf.math.log(431.0 * w_m) * w_b / w_m +
