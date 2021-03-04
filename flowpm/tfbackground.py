@@ -546,7 +546,7 @@ def odesolve_func(a, rtol=1e-4, **kwcosmo):
                          constants=kwcosmo)
 
   # While we are at it, compute second order derivatives growth
-  second_order_results = growth_ode(results.times, results.states, kwcosmo)
+  second_order_results = growth_ode(results.times, results.states, **kwcosmo)
 
   # Normalize the ODE to present time
   # For first order growth and its derivative
