@@ -100,7 +100,7 @@ def test_a_of_chi():
 
   z = 1 / a - 1
 
-  chi = np.geomspace(500, 8000, 50)
+  chi = np.geomspace(100, 6000, 50)
 
   aofchi_tf = a_of_chi_tf(cosmo_tf, chi)
 
