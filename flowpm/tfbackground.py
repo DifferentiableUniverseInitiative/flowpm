@@ -4,6 +4,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 import flowpm.constants as constants
 from flowpm.scipy.interpolate import interp_tf
+from flowpm.cosmology import Cosmology
 
 
 def fde(cosmo, a, epsilon=1e-5):
@@ -466,7 +467,7 @@ def angular_diameter_distance(cosmo, a):
 
 
 # Equation 1.96 from Florent Leclercq thesis
-def growth_ode(a, y, **cosmo):
+def growth_ode(a, y, **kwcosmo):
   """Define the ode functions that will be used to compute the linear growth factor D_1(a) and
     second-order growth factor D_2(a) at a given scale factor
     Parameters
@@ -491,6 +492,8 @@ def growth_ode(a, y, **cosmo):
      (see :cite:`Florent Leclercq thesis` Eq. (1.96))
     """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
+  # Instantiate a cosmology object
+  cosmo = Cosmology(**kwcosmo)
   # Extracting entries
   (d1, d2), (d1_f, d2_f) = y
   # ODE for d1
@@ -507,19 +510,19 @@ def growth_ode(a, y, **cosmo):
 
 
 @tf.function
-def odesolve_func(cosmo, a, rtol=1e-4):
+def odesolve_func(a, rtol=1e-4, **kwcosmo):
   """ Solves the growth ODE system for a given cosmology at the requested
     scale factors.
 
     Parameters
     ----------
-    cosmo: dict
-      Cosmology dictionary.
     a: array_like
       Output scale factors, note that the ODE is initialized at a[0]
 
     rtol: float, optional
           Parameters determing the error control performed by the solver
+    kwcosmo: keyword args
+      Cosmological parameter values.
 
     Returns
     -------
@@ -540,10 +543,10 @@ def odesolve_func(cosmo, a, rtol=1e-4):
                          a[0],
                          y0,
                          solution_times=a,
-                         constants=cosmo)
+                         constants=kwcosmo)
 
   # While we are at it, compute second order derivatives growth
-  second_order_results = growth_ode(results.times, results.states, **cosmo)
+  second_order_results = growth_ode(results.times, results.states, kwcosmo)
 
   # Normalize the ODE to present time
   # For first order growth and its derivative
@@ -581,7 +584,7 @@ def maybe_compute_ODE(cosmo, log10_amin=-2, steps=1024):
     # Otherwise, we compute it now, and save the results for later
     a = tf.convert_to_tensor(np.logspace(log10_amin, 0., steps),
                              dtype=tf.float32)
-    cache = odesolve_func(cosmo, a)
+    cache = odesolve_func(a, cosmo.to_dict())
     cosmo._workspace['cache_ODE'] = cache
   return cache
 

@@ -41,6 +41,16 @@ class Cosmology:
         # results
         self._workspace = {}
 
+    def to_dict(self):
+        return {'Omega_c': self.Omega_c,
+                'Omega_b': self.Omega_b,
+                'h': self.h,
+                'n_s': self.n_s,
+                'sigma8': self.sigma8,
+                'Omega_k': self.Omega_k,
+                'w0': self.w0,
+                'wa': self.wa}
+
     def __str__(self):
         return (
             "Cosmological parameters: \n"
