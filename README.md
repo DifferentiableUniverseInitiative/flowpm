@@ -16,6 +16,7 @@ import tensorflow as tf
 import numpy as np
 import flowpm
 
+cosmo = flowpm.cosmology.Planck()
 stages = np.linspace(0.1, 1.0, 10, endpoint=True)
 
 initial_conditions = flowpm.linear_field(32,          # size of the cube
@@ -24,10 +25,10 @@ initial_conditions = flowpm.linear_field(32,          # size of the cube
                                          batch_size=16)
 
 # Sample particles
-state = flowpm.lpt_init(initial_conditions, a0=0.1)   
+state = flowpm.lpt_init(cosmo, initial_conditions, a0=0.1)   
 
 # Evolve particles down to z=0
-final_state = flowpm.nbody(state, stages, 32)         
+final_state = flowpm.nbody(cosmo, state, stages, 32)         
 
 # Retrieve final density field
 final_field = flowpm.cic_paint(tf.zeros_like(initial_conditions), final_state[0])
