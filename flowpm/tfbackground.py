@@ -509,7 +509,6 @@ def growth_ode(a, y, **kwcosmo):
   return dydt
 
 
-@tf.function
 def odesolve_func(a, rtol=1e-4, **kwcosmo):
   """ Solves the growth ODE system for a given cosmology at the requested
     scale factors.
