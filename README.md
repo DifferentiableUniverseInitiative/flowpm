@@ -1,4 +1,4 @@
-# flowpm [![Build Status](https://travis-ci.org/modichirag/flowpm.svg?branch=master)](https://travis-ci.org/modichirag/flowpm) [![PyPI version](https://badge.fury.io/py/flowpm.svg)](https://badge.fury.io/py/flowpm) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/modichirag/flowpm/blob/master/notebooks/flowpm_tutorial.ipynb) [![arXiv:2010.11847](https://img.shields.io/badge/astro--ph.IM-arXiv%3A2010.11847-B31B1B.svg)](https://arxiv.org/abs/2010.11847) [![youtube](https://img.shields.io/badge/-youtube-red?logo=youtube&labelColor=grey)](https://youtu.be/DHOaHTU61hM)    
+# flowpm [![Build Status](https://travis-ci.org/modichirag/flowpm.svg?branch=master)](https://travis-ci.org/modichirag/flowpm) [![PyPI version](https://badge.fury.io/py/flowpm.svg)](https://badge.fury.io/py/flowpm) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/modichirag/flowpm/blob/master/notebooks/flowpm_tutorial.ipynb) [![arXiv:2010.11847](https://img.shields.io/badge/astro--ph.IM-arXiv%3A2010.11847-B31B1B.svg)](https://arxiv.org/abs/2010.11847) [![youtube](https://img.shields.io/badge/-youtube-red?logo=youtube&labelColor=grey)](https://youtu.be/DHOaHTU61hM)   [![PEP8](https://img.shields.io/badge/code%20style-pep8-blue.svg)](https://www.python.org/dev/peps/pep-0008/) 
 
 
 Particle Mesh Simulation in TensorFlow, based on [fastpm-python](https://github.com/rainwoodman/fastpm-python) simulations
@@ -16,6 +16,7 @@ import tensorflow as tf
 import numpy as np
 import flowpm
 
+cosmo = flowpm.cosmology.Planck15()
 stages = np.linspace(0.1, 1.0, 10, endpoint=True)
 
 initial_conditions = flowpm.linear_field(32,          # size of the cube
@@ -24,10 +25,10 @@ initial_conditions = flowpm.linear_field(32,          # size of the cube
                                          batch_size=16)
 
 # Sample particles
-state = flowpm.lpt_init(initial_conditions, a0=0.1)   
+state = flowpm.lpt_init(cosmo, initial_conditions, a0=0.1)   
 
 # Evolve particles down to z=0
-final_state = flowpm.nbody(state, stages, 32)         
+final_state = flowpm.nbody(cosmo, state, stages, 32)         
 
 # Retrieve final density field
 final_field = flowpm.cic_paint(tf.zeros_like(initial_conditions), final_state[0])
