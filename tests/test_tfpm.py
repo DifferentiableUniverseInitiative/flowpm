@@ -4,11 +4,13 @@ import numpy as np
 from numpy.testing import assert_allclose
 from scipy.interpolate import InterpolatedUnivariateSpline as iuspline
 
-from nbodykit.cosmology import Cosmology, EHPower, Planck15
+from nbodykit.cosmology import Cosmology, EHPower
 from pmesh.pm import ParticleMesh
 from fastpm.core import Solver as Solver
 import fastpm.force.lpt as fpmops
 from fastpm.core import leapfrog
+from astropy.cosmology import Planck15
+import astropy.units as u
 
 import flowpm
 import flowpm.tfpm as tfpm
@@ -18,6 +20,12 @@ np.random.seed(0)
 
 bs = 50
 nc = 16
+
+
+# Create a simple Planck15 cosmology without neutrinos, and makes sure sigma8
+# is matched
+ref_cosmo = Cosmology.from_astropy(Planck15.clone(m_nu=0 * u.eV))
+ref_cosmo = ref_cosmo.match(sigma8=flowpm.cosmology.Planck15().sigma8.numpy())
 
 
 def test_linear_field_shape():
@@ -40,11 +48,11 @@ def test_lpt_init():
 
   pm = ParticleMesh(BoxSize=bs, Nmesh=[nc, nc, nc], dtype='f4')
   grid = pm.generate_uniform_particle_grid(shift=0).astype(np.float32)
-  solver = Solver(pm, Planck15, B=1)
+  solver = Solver(pm, ref_cosmo, B=1)
 
   # Generate initial state with fastpm
   whitec = pm.generate_whitenoise(100, mode='complex', unitary=False)
-  lineark = whitec.apply(lambda k, v: Planck15.get_pklin(
+  lineark = whitec.apply(lambda k, v: ref_cosmo.get_pklin(
       sum(ki**2 for ki in k)**0.5, 0)**0.5 * v / v.BoxSize.prod()**0.5)
   statelpt = solver.lpt(lineark, grid, a0, order=1)
 
@@ -62,7 +70,7 @@ def test_lpt1():
   grid = pm.generate_uniform_particle_grid(shift=0).astype(np.float32)
 
   whitec = pm.generate_whitenoise(100, mode='complex', unitary=False)
-  lineark = whitec.apply(lambda k, v: Planck15.get_pklin(
+  lineark = whitec.apply(lambda k, v: ref_cosmo.get_pklin(
       sum(ki**2 for ki in k)**0.5, 0)**0.5 * v / v.BoxSize.prod()**0.5)
 
   # Compute lpt1 from fastpm with matching kernel order
@@ -85,7 +93,7 @@ def test_lpt1_64():
   grid = pm.generate_uniform_particle_grid(shift=0).astype(np.float32)
 
   whitec = pm.generate_whitenoise(100, mode='complex', unitary=False)
-  lineark = whitec.apply(lambda k, v: Planck15.get_pklin(
+  lineark = whitec.apply(lambda k, v: ref_cosmo.get_pklin(
       sum(ki**2 for ki in k)**0.5, 0)**0.5 * v / v.BoxSize.prod()**0.5)
 
   # Compute lpt1 from fastpm with matching kernel order
@@ -106,7 +114,7 @@ def test_lpt2():
   grid = pm.generate_uniform_particle_grid(shift=0).astype(np.float32)
 
   whitec = pm.generate_whitenoise(100, mode='complex', unitary=False)
-  lineark = whitec.apply(lambda k, v: Planck15.get_pklin(
+  lineark = whitec.apply(lambda k, v: ref_cosmo.get_pklin(
       sum(ki**2 for ki in k)**0.5, 0)**0.5 * v / v.BoxSize.prod()**0.5)
 
   # Compute lpt1 from fastpm with matching kernel order
@@ -128,12 +136,12 @@ def test_nody():
 
   pm = ParticleMesh(BoxSize=bs, Nmesh=[nc, nc, nc], dtype='f4')
   grid = pm.generate_uniform_particle_grid(shift=0).astype(np.float32)
-  solver = Solver(pm, Planck15, B=1)
+  solver = Solver(pm, ref_cosmo, B=1)
   stages = np.linspace(0.1, 1.0, 10, endpoint=True)
 
   # Generate initial state with fastpm
   whitec = pm.generate_whitenoise(100, mode='complex', unitary=False)
-  lineark = whitec.apply(lambda k, v: Planck15.get_pklin(
+  lineark = whitec.apply(lambda k, v: ref_cosmo.get_pklin(
       sum(ki**2 for ki in k)**0.5, 0)**0.5 * v / v.BoxSize.prod()**0.5)
   statelpt = solver.lpt(lineark, grid, a0, order=1)
   finalstate = solver.nbody(statelpt, leapfrog(stages))
@@ -158,12 +166,12 @@ def test_rectangular_nody():
                     Nmesh=[nc, nc, 3 * nc],
                     dtype='f4')
   grid = pm.generate_uniform_particle_grid(shift=0).astype(np.float32)
-  solver = Solver(pm, Planck15, B=1)
+  solver = Solver(pm, ref_cosmo, B=1)
   stages = np.linspace(0.1, 1.0, 10, endpoint=True)
 
   # Generate initial state with fastpm
   whitec = pm.generate_whitenoise(100, mode='complex', unitary=False)
-  lineark = whitec.apply(lambda k, v: Planck15.get_pklin(
+  lineark = whitec.apply(lambda k, v: ref_cosmo.get_pklin(
       sum(ki**2 for ki in k)**0.5, 0)**0.5 * v / v.BoxSize.prod()**0.5)
   statelpt = solver.lpt(lineark, grid, a0, order=1)
   finalstate = solver.nbody(statelpt, leapfrog(stages))
