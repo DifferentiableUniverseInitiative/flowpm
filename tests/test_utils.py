@@ -3,7 +3,7 @@ import tensorflow as tf
 import numpy as np
 from numpy.testing import assert_allclose
 
-from flowpm.utils import cic_paint, cic_readout, r2c3d, c2r3d
+from flowpm.utils import cic_paint, cic_readout, r2c3d, c2r3d, r2c2d, c2r2d
 from pmesh.pm import ParticleMesh
 np.random.seed(0)
 
