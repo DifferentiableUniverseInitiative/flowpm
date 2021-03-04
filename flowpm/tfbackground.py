@@ -584,7 +584,7 @@ def maybe_compute_ODE(cosmo, log10_amin=-2, steps=1024):
     # Otherwise, we compute it now, and save the results for later
     a = tf.convert_to_tensor(np.logspace(log10_amin, 0., steps),
                              dtype=tf.float32)
-    cache = odesolve_func(a, cosmo.to_dict())
+    cache = odesolve_func(a, **cosmo.to_dict())
     cosmo._workspace['cache_ODE'] = cache
   return cache
 
