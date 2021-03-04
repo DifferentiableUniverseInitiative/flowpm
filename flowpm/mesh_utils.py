@@ -77,7 +77,7 @@ def _cic_paint(mesh, neighboor_coords, kernel, shift, name=None):
     batch_size = shape[0]
     nx, ny, nz = shape[-3], shape[-2], shape[-1]
 
-    #TODO: Assert shift shape
+    # TODO: Assert shift shape
     neighboor_coords = tf.reshape(neighboor_coords, (-1, 8, 4))
     neighboor_coords = neighboor_coords + tf.reshape(tf.constant(shift),
                                                      [1, 1, 4])
@@ -107,7 +107,11 @@ def _cic_readout(mesh, neighboor_coords, kernel, shift, name=None):
     mesh = mesh[:, 0, 0, 0]
     shape_part = tf.shape(neighboor_coords)
 
+<<<<<<< HEAD
     #TODO: Assert shift shape
+=======
+    # TODO: Assert shift shape
+>>>>>>> origin/master
     neighboor_coords = tf.reshape(neighboor_coords, (-1, 8, 4))
     neighboor_coords = neighboor_coords + tf.reshape(tf.constant(shift),
                                                      [1, 1, 4])

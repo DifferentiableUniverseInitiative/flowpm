@@ -323,7 +323,8 @@ def white_noise(nc,
                              mean=0.,
                              stddev=(nc[0] * nc[1] * nc[2])**0.5,
                              seed=seed)
-    if type == 'real': return white
+    if type == 'real':
+      return white
     elif type == 'complex':
       whitec = r2c3d(white, norm=nc[0] * nc[1] * nc[2])
       return whitec

@@ -155,7 +155,7 @@ def lpt2_source(dlin_k, kvec=None, name="LPT2Source"):
     return r2c3d(source, norm=nc[0] * nc[1] * nc[2])
 
 
-def lpt_init(linear, a, cosmo, order=2, kvec=None, name="LPTInit"):
+def lpt_init(cosmo, linear, a, order=2, kvec=None, name="LPTInit"):
   """ Estimate the initial LPT displacement given an input linear (real) field
 
   Parameters:
@@ -230,7 +230,7 @@ def apply_longrange(x,
     return f
 
 
-def kick(state, ai, ac, af, cosmo, dtype=tf.float32, name="Kick", **kwargs):
+def kick(cosmo, state, ai, ac, af, dtype=tf.float32, name="Kick", **kwargs):
   """Kick the particles given the state
 
   Parameters
@@ -254,7 +254,7 @@ def kick(state, ai, ac, af, cosmo, dtype=tf.float32, name="Kick", **kwargs):
     return state
 
 
-def drift(state, ai, ac, af, cosmo, dtype=tf.float32, name="Drift", **kwargs):
+def drift(cosmo, state, ai, ac, af, dtype=tf.float32, name="Drift", **kwargs):
   """Drift the particles given the state
 
   Parameters
@@ -278,9 +278,9 @@ def drift(state, ai, ac, af, cosmo, dtype=tf.float32, name="Drift", **kwargs):
     return state
 
 
-def force(state,
+def force(cosmo,
+          state,
           nc,
-          cosmo,
           pm_nc_factor=1,
           kvec=None,
           dtype=tf.float32,
@@ -316,9 +316,9 @@ def force(state,
 
     rho = cic_paint(rho, tf.multiply(state[0], pm_nc_factor), wts)
     rho = tf.multiply(rho,
-                      1. / nbar)  ###I am not sure why this is not needed here
+                      1. / nbar)  # I am not sure why this is not needed here
     delta_k = r2c3d(rho, norm=ncf[0] * ncf[1] * ncf[2])
-    fac = tf.cast(1.5 * cosmo['Omega0_m'], dtype=dtype)
+    fac = tf.cast(1.5 * cosmo.Omega_m, dtype=dtype)
     update = apply_longrange(tf.multiply(state[0], pm_nc_factor),
                              delta_k,
                              split=0,
@@ -337,12 +337,15 @@ def force(state,
     return state
 
 
-def nbody(state, stages, nc, cosmo, pm_nc_factor=1, name="NBody"):
+def nbody(cosmo, state, stages, nc, pm_nc_factor=1, name="NBody"):
   """
   Integrate the evolution of the state across the givent stages
 
   Parameters:
   -----------
+  cosmo: cosmology
+    Cosmological parameter object
+
   state: tensor (3, batch_size, npart, 3)
     Input state
 
@@ -363,7 +366,6 @@ def nbody(state, stages, nc, cosmo, pm_nc_factor=1, name="NBody"):
   with tf.name_scope(name):
     state = tf.convert_to_tensor(state, name="state")
 
-    shape = state.get_shape()
     if isinstance(nc, int):
       nc = [nc, nc, nc]
 
@@ -374,7 +376,7 @@ def nbody(state, stages, nc, cosmo, pm_nc_factor=1, name="NBody"):
     ai = stages[0]
 
     # first force calculation for jump starting
-    state = force(state, nc, cosmo, pm_nc_factor=pm_nc_factor)
+    state = force(cosmo, state, nc, pm_nc_factor=pm_nc_factor)
 
     x, p, f = ai, ai, ai
     # Loop through the stages
@@ -384,19 +386,19 @@ def nbody(state, stages, nc, cosmo, pm_nc_factor=1, name="NBody"):
       ah = (a0 * a1)**0.5
 
       # Kick step
-      state = kick(state, p, f, ah, cosmo)
+      state = kick(cosmo, state, p, f, ah)
       p = ah
 
       # Drift step
-      state = drift(state, x, p, a1, cosmo)
+      state = drift(cosmo, state, x, p, a1)
       x = a1
 
       # Force
-      state = force(state, nc, cosmo, pm_nc_factor=pm_nc_factor)
+      state = force(cosmo, state, nc, pm_nc_factor=pm_nc_factor)
       f = a1
 
       # Kick again
-      state = kick(state, p, f, a1, cosmo)
+      state = kick(cosmo, state, p, f, a1)
       p = a1
 
     return state

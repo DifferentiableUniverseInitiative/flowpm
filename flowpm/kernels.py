@@ -71,7 +71,6 @@ def gradient_kernel(kvec, direction, order=1):
     wts = wts.reshape(kvec[direction].shape)
     return wts
   else:
-    nc = len(kvec[0])
     w = kvec[direction]
     a = 1 / 6.0 * (8 * np.sin(w) - np.sin(2 * w))
     wts = a * 1j
