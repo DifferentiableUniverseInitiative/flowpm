@@ -16,7 +16,7 @@ import tensorflow as tf
 import numpy as np
 import flowpm
 
-cosmo = flowpm.cosmology.Planck()
+cosmo = flowpm.cosmology.Planck15()
 stages = np.linspace(0.1, 1.0, 10, endpoint=True)
 
 initial_conditions = flowpm.linear_field(32,          # size of the cube
