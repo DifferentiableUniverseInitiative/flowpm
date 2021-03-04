@@ -5,6 +5,7 @@ from __future__ import print_function
 
 import numpy as np
 
+
 def fftk(shape, symmetric=True, finite=False, dtype=np.float64):
   """ Return k_vector given a shape (nc, nc, nc) and box_size
   """
@@ -13,14 +14,15 @@ def fftk(shape, symmetric=True, finite=False, dtype=np.float64):
     kd = np.fft.fftfreq(shape[d])
     kd *= 2 * np.pi
     kdshape = np.ones(len(shape), dtype='int')
-    if symmetric and d == len(shape) -1:
-        kd = kd[:shape[d]//2 + 1]
+    if symmetric and d == len(shape) - 1:
+      kd = kd[:shape[d] // 2 + 1]
     kdshape[d] = len(kd)
     kd = kd.reshape(kdshape)
 
     k.append(kd.astype(dtype))
   del kd, kdshape
   return k
+
 
 def laplace_kernel(kvec):
   """
@@ -39,10 +41,11 @@ def laplace_kernel(kvec):
   kk = sum(ki**2 for ki in kvec)
   mask = (kk == 0).nonzero()
   kk[mask] = 1
-  wts = 1./kk
-  imask = (~(kk==0)).astype(int)
+  wts = 1. / kk
+  imask = (~(kk == 0)).astype(int)
   wts *= imask
   return wts
+
 
 def gradient_kernel(kvec, direction, order=1):
   """
@@ -64,15 +67,16 @@ def gradient_kernel(kvec, direction, order=1):
   if order == 0:
     wts = 1j * kvec[direction]
     wts = np.squeeze(wts)
-    wts[len(wts) //2] = 0
+    wts[len(wts) // 2] = 0
     wts = wts.reshape(kvec[direction].shape)
     return wts
   else:
     nc = len(kvec[0])
     w = kvec[direction]
-    a = 1 / 6.0  * (8 * np.sin(w) - np.sin(2 * w))
-    wts = a*1j
+    a = 1 / 6.0 * (8 * np.sin(w) - np.sin(2 * w))
+    wts = a * 1j
     return wts
+
 
 def longrange_kernel(kvec, r_split):
   """
@@ -92,7 +96,7 @@ def longrange_kernel(kvec, r_split):
     kernel
   """
   if r_split != 0:
-    kk = sum(ki ** 2 for ki in kvec)
+    kk = sum(ki**2 for ki in kvec)
     return np.exp(-kk * r_split**2)
   else:
     return 1.
