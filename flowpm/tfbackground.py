@@ -306,6 +306,48 @@ def dchioverda(cosmo, a):
   return constants.rh / (a**2 * E(cosmo, a))
 
 
+@tf.function
+def _distance_computation_func(a, rtol=1e-3, **kwcosmo):
+  """ Computes integral required by radial comoving distance.
+
+  Parameters
+  ----------
+  a: array_like
+    Output scale factors
+
+  rtol: float, optional
+        Parameters determing the error control performed by the solver
+
+  kwcosmo: keyword args
+    Cosmological parameter values.
+
+  Returns
+  -------
+  chi: array_like
+    Radial comoving distance computed at desired scale factors.
+  """
+  a = tf.convert_to_tensor(a, dtype=tf.float32)
+
+  @tf.function
+  def dchioverdlna(x, y, **kwcosmo):
+    # Instantiate a cosmology object
+    cosmo = Cosmology(**kwcosmo)
+    xa = tf.math.exp(x)
+    return dchioverda(cosmo, xa) * xa
+
+  solver = tfp.math.ode.BDF(rtol=rtol)
+
+  #  # Run the ODE
+  chitab = solver.solve(dchioverdlna,
+                        tf.math.log(a)[0],
+                        0.0,
+                        tf.math.log(a),
+                        constants=kwcosmo)
+  chitab = chitab.states[-1] - chitab.states
+
+  return chitab
+
+
 def rad_comoving_distance(cosmo, a, log10_amin=-3, steps=256, rtol=1e-3):
   r"""Radial comoving distance in [Mpc/h] for a given scale factor.
 
@@ -342,18 +384,11 @@ def rad_comoving_distance(cosmo, a, log10_amin=-3, steps=256, rtol=1e-3):
         \chi(a) =  R_H \int_a^1 \frac{da^\prime}{{a^\prime}^2 E(a^\prime)}
     """
   if "background.radial_comoving_distance" not in cosmo._workspace.keys():
-    atab = np.logspace(log10_amin, 0.0, steps)
+    atab = tf.convert_to_tensor(np.logspace(log10_amin, 0.0, steps),
+                                dtype=tf.float32)
 
-    def dchioverdlna(x, y):
-      xa = tf.cast(tf.math.exp(x), dtype=tf.float32)
-      return dchioverda(cosmo, xa) * xa
+    chitab = _distance_computation_func(atab, rtol=rtol, **cosmo.to_dict())
 
-    solver = tfp.math.ode.BDF(rtol=rtol)
-    #  # Run the ODE
-    chitab = solver.solve(dchioverdlna, np.log(atab)[0], 0.0, np.log(atab))
-    chitab = chitab.states[-1] - chitab.states
-    chitab = tf.convert_to_tensor(chitab, dtype=tf.float32)
-    atab = tf.convert_to_tensor(atab, dtype=tf.float32)
     cache = {"a": atab, "chi": chitab}
     cosmo._workspace["tfbackground.radial_comoving_distance"] = cache
   else:
