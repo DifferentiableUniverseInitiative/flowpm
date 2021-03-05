@@ -20,7 +20,6 @@ def lightcone(
     nc,
     plane_resolution,  # in arcmin
     plane_size,  # in pixels
-    cosmology,
     pm_nc_factor=1,
     name="NBody"):
   """
