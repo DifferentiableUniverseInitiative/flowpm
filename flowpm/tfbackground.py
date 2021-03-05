@@ -389,7 +389,7 @@ def rad_comoving_distance(cosmo, a, log10_amin=-3, steps=256, rtol=1e-3):
 
     chitab = _distance_computation_func(atab, rtol=rtol, **cosmo.to_dict())
 
-    cache = {"a": atab, "chi": chitab}
+    cache = {"a": atab[::-1], "chi": chitab[::-1]}
     cosmo._workspace["tfbackground.radial_comoving_distance"] = cache
   else:
     cache = cosmo._workspace["background.radial_comoving_distance"]

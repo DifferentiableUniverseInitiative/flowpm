@@ -40,6 +40,7 @@ def interp_tf(x, xp, fp):
   fp1 = tf.gather(fp, ind + tf.cast(tf.sign(s), dtype=tf.int64)) - fp0
   xp0 = tf.gather(xp, ind)
   xp1 = tf.gather(xp, ind + tf.cast(tf.sign(s), dtype=tf.int64)) - xp0
+  a = tf.where(fp1 == 0., fp1, fp1 / xp1)
   a = (fp1) / (xp1)
   b = fp0 - a * xp0
   return a * x + b
