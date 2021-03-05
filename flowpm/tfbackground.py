@@ -501,6 +501,7 @@ def angular_diameter_distance(cosmo, a):
 
 
 # Equation 1.96 from Florent Leclercq thesis
+@tf.function
 def growth_ode(a, y, **kwcosmo):
   """Define the ode functions that will be used to compute the linear growth factor D_1(a) and
     second-order growth factor D_2(a) at a given scale factor
@@ -604,7 +605,7 @@ def odesolve_func(a, rtol=1e-4, **kwcosmo):
   }
 
 
-def maybe_compute_ODE(cosmo, log10_amin=-2, steps=1024):
+def maybe_compute_ODE(cosmo, log10_amin=-2, steps=256):
   """
     Either computes or returns the cached ODE solution
     """
