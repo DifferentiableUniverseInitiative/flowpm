@@ -18,8 +18,8 @@
 # -- Project information -----------------------------------------------------
 
 project = 'FlowPM'
-copyright = '2021, Chirag Modi, Francois Lanusse'
-author = 'Chirag Modi, Francois Lanusse'
+copyright = '2021, FlowPM Developers'
+author = 'FlowPM Developers'
 
 
 # -- General configuration ---------------------------------------------------
