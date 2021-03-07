@@ -19,8 +19,8 @@ def linear_field(nc,
                  seed=None,
                  dtype=tf.float32,
                  name="LinearField"):
-  """Generates a linear field with a given linear power spectrum
-
+  """Generates a linear field with a given linear power spectrum.
+  
   Parameters:
   -----------
   nc: int, or list of ints
