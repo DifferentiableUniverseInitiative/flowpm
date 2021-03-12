@@ -1,4 +1,4 @@
-# flowpm
+# FlowPM
 [![Build Status](https://travis-ci.org/DifferentiableUniverseInitiative/flowpm.svg?branch=master)](https://travis-ci.org/DifferentiableUniverseInitiative/flowpm) [![PyPI version](https://badge.fury.io/py/flowpm.svg)](https://badge.fury.io/py/flowpm) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DifferentiableUniverseInitiative/flowpm/blob/master/notebooks/flowpm_tutorial.ipynb) [![arXiv:2010.11847](https://img.shields.io/badge/astro--ph.IM-arXiv%3A2010.11847-B31B1B.svg)](https://arxiv.org/abs/2010.11847) [![youtube](https://img.shields.io/badge/-youtube-red?logo=youtube&labelColor=grey)](https://youtu.be/DHOaHTU61hM)   [![PEP8](https://img.shields.io/badge/code%20style-pep8-blue.svg)](https://www.python.org/dev/peps/pep-0008/)
 
 
