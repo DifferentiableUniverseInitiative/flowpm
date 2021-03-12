@@ -53,8 +53,10 @@ def lightcone(
     shape = state.get_shape()
     batch_size = shape[1]
 
+    nstages, = stages.shape
+
     # Unrolling leapfrog integration to make tf Autograph happy
-    if len(stages) == 0:
+    if nstages == 0:
       return state
 
     ai = stages[0]
@@ -63,7 +65,7 @@ def lightcone(
     state = force(cosmo, state, nc, pm_nc_factor=pm_nc_factor)
 
     # Compute the width of the lens planes based on number of time steps
-    w = nc[2] // (len(stages) - 1)
+    w = nc[2] // (nstages - 1)
     nx = nc[0]
     nz = nc[2]
     lps = []
@@ -71,7 +73,7 @@ def lightcone(
 
     x, p, f = ai, ai, ai
     # Loop through the stages
-    for i in range(len(stages) - 1):
+    for i in range(nstages - 1):
       a0 = stages[i]
       a1 = stages[i + 1]
       ah = (a0 * a1)**0.5

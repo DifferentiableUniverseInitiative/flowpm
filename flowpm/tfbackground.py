@@ -614,7 +614,7 @@ def maybe_compute_ODE(cosmo, log10_amin=-2, steps=256):
     # been computed
     cache = cosmo._workspace['cache_ODE']
     # Checking that the stored ODE results have the right lenght
-    assert len(cache['a']) == steps
+    assert cache['a'].shape[0] == steps
   else:
     # Otherwise, we compute it now, and save the results for later
     a = tf.convert_to_tensor(np.logspace(log10_amin, 0., steps),
