@@ -1,10 +1,10 @@
-# flowpm
-[![Build Status](https://travis-ci.org/modichirag/flowpm.svg?branch=master)](https://travis-ci.org/modichirag/flowpm) [![PyPI version](https://badge.fury.io/py/flowpm.svg)](https://badge.fury.io/py/flowpm) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/modichirag/flowpm/blob/master/notebooks/flowpm_tutorial.ipynb) [![arXiv:2010.11847](https://img.shields.io/badge/astro--ph.IM-arXiv%3A2010.11847-B31B1B.svg)](https://arxiv.org/abs/2010.11847) [![youtube](https://img.shields.io/badge/-youtube-red?logo=youtube&labelColor=grey)](https://youtu.be/DHOaHTU61hM)   [![PEP8](https://img.shields.io/badge/code%20style-pep8-blue.svg)](https://www.python.org/dev/peps/pep-0008/) 
+# FlowPM
+[![Build Status](https://travis-ci.org/DifferentiableUniverseInitiative/flowpm.svg?branch=master)](https://travis-ci.org/DifferentiableUniverseInitiative/flowpm) [![PyPI version](https://badge.fury.io/py/flowpm.svg)](https://badge.fury.io/py/flowpm) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DifferentiableUniverseInitiative/flowpm/blob/master/notebooks/flowpm_tutorial.ipynb) [![arXiv:2010.11847](https://img.shields.io/badge/astro--ph.IM-arXiv%3A2010.11847-B31B1B.svg)](https://arxiv.org/abs/2010.11847) [![youtube](https://img.shields.io/badge/-youtube-red?logo=youtube&labelColor=grey)](https://youtu.be/DHOaHTU61hM)   [![PEP8](https://img.shields.io/badge/code%20style-pep8-blue.svg)](https://www.python.org/dev/peps/pep-0008/)
 
 
 Particle Mesh Simulation in TensorFlow, based on [fastpm-python](https://github.com/rainwoodman/fastpm-python) simulations
 
-Try me out: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/modichirag/flowpm/blob/master/notebooks/flowpm_blog.ipynb)
+Try me out: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DifferentiableUniverseInitiative/flowpm/blob/master/notebooks/flowpm_blog.ipynb)
 
 To install:
 ```
@@ -59,7 +59,7 @@ $ pip install --user mesh-tensorflow
 
 3) Install the Mesh TensorFlow branch of FlowPM
 ```
-$ git clone https://github.com/modichirag/flowpm.git
+$ git clone https://github.com/DifferentiableUniverseInitiative/flowpm.git
 $ cd flowpm
 $ git checkout mesh
 $ pip install --user -e .
@@ -88,7 +88,7 @@ $ ctpu up --name=flowpm --tpu-size=v3-32
 
   - Step 2: Installing dependencies and FlowPM:
 ```
-$ git clone https://github.com/modichirag/flowpm.git
+$ git clone https://github.com/DifferentiableUniverseInitiative/flowpm.git
 $ cd flowpm
 $ git checkout mesh
 $ pip3 install --user mesh-tensorflow
