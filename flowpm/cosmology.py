@@ -3,28 +3,24 @@ from functools import partial
 
 
 class Cosmology:
+  """ Cosmology object, stores primary and derived cosmological parameters.
+
+  """
   def __init__(self, Omega_c, Omega_b, h, n_s, sigma8, Omega_k, w0, wa):
     """
-        Cosmology object, stores primary and derived cosmological parameters.
-        Parameters:
-        -----------
-        Omega_c, float
-          Cold dark matter density fraction.
-        Omega_b, float
-          Baryonic matter density fraction.
-        h, float
-          Hubble constant divided by 100 km/s/Mpc; unitless.
-        n_s, float
-          Primordial scalar perturbation spectral index.
-        sigma8, float
-          Variance of matter density perturbations at an 8 Mpc/h scale
-        Omega_k, float
-          Curvature density fraction.
-        w0, float
-          First order term of dark energy equation
-        wa, float
-          Second order term of dark energy equation of state
-        """
+    Args:
+      Omega_c: `float` representing the cold dark matter density fraction.
+      Omega_b: `float` representing the baryonic matter density fraction.
+      h: `float` representing Hubble constant divided by 100 km/s/Mpc; unitless.
+      n_s: `float` representing the primordial scalar perturbation spectral
+        index.
+      sigma8: `float` representing the variance of matter density perturbations
+        at an 8 Mpc/h scale.
+      Omega_k: `float` representing the curvature density fraction.
+      w0: `float` representing the first order term of dark energy equation.
+      wa: `float` representing the second order term of dark energy equation
+        of state.
+    """
     # Store primary parameters
     self._Omega_c = tf.convert_to_tensor(Omega_c, dtype=tf.float32)
     self._Omega_b = tf.convert_to_tensor(Omega_b, dtype=tf.float32)
@@ -68,14 +64,18 @@ class Cosmology:
   # Cosmological parameters, base and derived
   @property
   def Omega(self):
+    """
+    """
     return 1.0 - self._Omega_k
 
   @property
   def Omega_b(self):
+    """Baryonic matter density fraction."""
     return self._Omega_b
 
   @property
   def Omega_c(self):
+    """Cold dark matter density fraction."""
     return self._Omega_c
 
   @property
