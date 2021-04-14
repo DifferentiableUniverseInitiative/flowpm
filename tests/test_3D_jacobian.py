@@ -69,9 +69,13 @@ def Flow_jac(Omega_c):
     return tape.jacobian(power_spectrum, params,experimental_use_pfor=False)
 
 #%%
-initial_conditions=compute_initial_cond(0.2589) 
+initial_conditions=compute_initial_cond(Omega_c) 
 
+#%%
 def test_Nbody_jacobian():
+    """ This function tests the Automatic differentiation implemented by TensorFlow  
+    computing the Jacobians of the 3D power spectrum both by Automatic differentiation 
+    and finite differences"""
     theoretical, numerical_jac=tf.test.compute_gradient( compute_powerspectrum, [Omega_c], delta=0.01)
     FlowPM_jac= Flow_jac(Omega_c)
     assert_allclose(numerical_jac[0],FlowPM_jac, rtol=1e-1)
