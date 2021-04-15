@@ -10,7 +10,6 @@ import tensorflow as tf
 import flowpm
 from flowpm.tfbackground import rad_comoving_distance
 from flowpm.tfpm import kick, drift, force
-import flowpm.constants as constants
 
 
 def lightcone(
@@ -21,6 +20,7 @@ def lightcone(
     plane_resolution,  # in arcmin
     plane_size,  # in pixels
     pm_nc_factor=1,
+    save_snapshots=False,
     name="NBody"):
   """
   Integrate the evolution of the state across the givent stages
@@ -63,13 +63,12 @@ def lightcone(
 
     # first force calculation for jump starting
     state = force(cosmo, state, nc, pm_nc_factor=pm_nc_factor)
-
-    # Compute the width of the lens planes based on number of time steps
-    w = nc[2] // (nstages - 1)
     nx = nc[0]
     nz = nc[2]
     lps = []
     lps_a = []
+    snapshots = []
+    w = 64
 
     x, p, f = ai, ai, ai
     # Loop through the stages
@@ -90,45 +89,51 @@ def lightcone(
       pos = state[0]
       d = pos[:, :, 2]
 
-      # This is the transverse comoving distance inside the box
-      xy = pos[:, :, :2] - nx / 2
-
       # Compute density plane in sky coordinates around the center of the lightcone
       # TODO: Confirm conversion from comoving distances to angular size! I thought
       # we should be using the angular diameter distance, but as far as I can see
       # everyone uses the transverse comoving distance, and I don't understand exactly why
       lens_plane = tf.zeros([batch_size, plane_size, plane_size])
 
-      # Convert coordinates to angular coords, and then into plane coords
-      xy = (xy / tf.expand_dims(d, -1)) / np.pi * 180 * 60 / plane_resolution
-      xy = xy + plane_size / 2
-
       # Selecting only the particles contributing to the lens plane
-      mask = tf.where((d > (nz - (i + 1) * w)) & (d <= (nz - i * w)), 1., 0.)
+      s = tf.gather(state,
+                    tf.where((d[0] > (nz - (i + 1) * w))
+                             & (d[0] <= (nz - i * w)))[:, 0],
+                    axis=2)
+      # NOTES!!! IT WILL ONLY WORK FOR BATCH 1
+
+      # This is the transverse comoving distance inside the box
+      xy = s[0, :, :, :2]
+      d = s[0, :, :, 2]
+      # Apply periodic conditions
+      xy = tf.math.mod(xy, nx)
+
+      # Convert coordinates to angular coords, and then into plane coords
+      # xy = (xy / tf.expand_dims(d, -1)) / np.pi * 180 * 60 / plane_resolution
+
+      xy = xy / nx * plane_size
+
+      # mask = tf.where((d > (nz - (i + 1) * w)) & (d <= (nz - i * w)), 1., 0.)
+
       # And falling inside the plane, NOTE: This is only necessary on CPU, on GPU
       # cic paint 2d can be made to work with non periodic conditions.
-      mask = mask * tf.where(
-          (xy[..., 0] > 0) & (xy[..., 0] < plane_size), 1., 0.)
+      mask = tf.where((xy[..., 0] > 0) & (xy[..., 0] < plane_size), 1., 0.)
       mask = mask * tf.where(
           (xy[..., 1] > 0) & (xy[..., 1] < plane_size), 1., 0.)
       # Compute lens planes by projecting particles
-      lens_plane = flowpm.utils.cic_paint_2d(lens_plane, xy + plane_size / 2,
-                                             mask)
+      lens_plane = flowpm.utils.cic_paint_2d(lens_plane, xy, mask)
+      # Subtracting mean: Is this the right thing to do???
+      #lens_plane = lens_plane - tf.reduce_mean(lens_plane, axis=[1,2], keepdims=True)
+      #
       lps.append(lens_plane)
-      lps_a.append(ah)
+      lps_a.append(a1)
 
       # Here we could trim the state vector for particles originally beyond the current lens plane
       # This way the simulation becomes smaller as it runs and we save resources
-      state = tf.reshape(state, [3, batch_size, nc[0], nc[1], -1, 3])
-      state = state[:, :, :, :, :(
-          nz - i * w -
-          w // 2), :]  # We keep w/2 to be safe, so we allow particle to travel
-      # A max distance of width/2
-      # redefine shape of state
-      nc = state.get_shape()[2:5]
-      state = tf.reshape(state, [3, batch_size, -1, 3])
-      # So this seems to work, but we should be a tiny bit careful because we break periodicity in the z
-      # direction at z=0.... probably not a big deal but still gotta check what that does.
+      #s = tf.reshape(state, [3, batch_size, nc[0], nc[1], -1, 3])
+      #s = s[:, :, :, :, (nz - (i + 1) * w):(nz - i * w), :]  #- tf.constant([0.,0.,(nz - (i + 1) * w)])
+      #print(i, (nz - (i + 1) * w), (nz - i * w))
+      snapshots.append(s)  #tf.reshape(s, [3, batch_size, -1, 3]))
 
       # Force
       state = force(cosmo, state, nc, pm_nc_factor=pm_nc_factor)
@@ -137,82 +142,48 @@ def lightcone(
       # Kick again
       state = kick(cosmo, state, p, f, a1)
       p = a1
-
-    return state, lps_a, lps
-
-
-def wlen(ds, a, nc, Boxsize, plane_size, field, cosmo):
-  """
-    Returns the correctly weighted lensing efficiency kernel
-
-    Parameters:
-    -----------
-    ds: float
-        comoving source distance
-
-    a : array_like or tf.TensorArray
-        Scale factor
-
-    nc : list
-        Size of the cube, number of cells
-
-    Boxsize: list
-        Physical size of the cube
-
-    plane_size : int
-       Number of pixels for x and  y
-
-    field: int or float
-        transveres degres of the field
-
-    Returns
-    -------
-    w : Scalar float Tensor
-        Weighted lensing efficiency kernel
-
-    """
-  d = rad_comoving_distance(cosmo, a)
-
-  # 2D mesh area in rad^2 per pixel
-  A = (field * np.pi / 180 / plane_size)**2
-
-  # mean 3D particle density
-  nbar = np.prod(nc) / np.prod(Boxsize)
-
-  # particles/Volume*angular pixel area* distance^2 -> 1/L units
-  columndens = (A * nbar) * (d**2)
-  w = ((ds - d) * (d / ds)) / (columndens)
-  w = w / a
-  return w
+    #return state, lps_a, lps, snapshots
+    if save_snapshots:
+      return state, lps_a, lps, snapshots
+    else:
+      return state, lps_a, lps
 
 
-def Born(lps_a, lps, ds, nc, Boxsize, plane_size, field, cosmo):
+def convergenceBorn(interp_im, rl, initial_positions, z, plane_size):
   """
     Compute the Born–approximated convergence
-
+    
     Parameters:
     -----------
-    lps_a : tf.TensorArray
-        Scale factor of lens planes
-
-    lps : tf.TensorArray
-        density field of each lens plane
-
-    ds: float
-        comoving source distance
-
+    interp_im : tf.TensorArray
+        density field of each lens plane projected on the sky
+        
+    rl : tf.TensorArray
+        Comoving distances of lens planes
+    
+    initial_positions : Astropy.units.quantity
+        Initial angular positions of the light ray bucket, according to the observer
+    
+    z: float
+        source redshift
+        
+    plane_size : int
+       Number of pixels for x and  y
+    
     Returns
     -------
     k_map : tf.TensorArray
         Born–approximated convergence
-
+    
     """
-  k_map = 0
-
-  # Compute constant prefactor:
-  constant_factor = 3 / 2 * cosmo.Omega_m * (constants.H0 / constants.c)**2
-
-  for i in range(len(lps_a)):
-    k_map += constant_factor * lps[i][0] * wlen(ds, lps_a[i], nc, Boxsize,
-                                                plane_size, field, cosmo)
-  return k_map
+  a_source = 1. / (1. + z)
+  cosmo = flowpm.cosmology.Planck15()
+  current_convergence = np.zeros(initial_positions.shape[1:])
+  distance = rl
+  last_lens = len(interp_im)
+  for k in range(last_lens):
+    plans = interp_im[k]
+    density = plans[0, :, 0].numpy().reshape([plane_size, plane_size]).T
+    current_convergence += density * (
+        1. - (distance[k] / rad_comoving_distance(cosmo, a_source)))
+  return current_convergence
