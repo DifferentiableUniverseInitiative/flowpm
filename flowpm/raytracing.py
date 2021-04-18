@@ -64,11 +64,14 @@ def density_plane(state,
 
     return density_plane
 
+
 def convergenceBorn(cosmo,
                     lensplanes,
-                    dx, dz, 
+                    dx,
+                    dz,
                     coords,
-                    z_source, name="convergenceBorn"):
+                    z_source,
+                    name="convergenceBorn"):
   """
   Compute the Born–approximated convergence
 
@@ -88,18 +91,21 @@ def convergenceBorn(cosmo,
     # Compute constant prefactor:
     constant_factor = 3 / 2 * cosmo.Omega_m * (constants.H0 / constants.c)**2
     # Compute comoving distance of source galaxies
-    r_s = flowpm.background.rad_comoving_distance(cosmo, 1/(1 + z_source))
+    r_s = flowpm.background.rad_comoving_distance(cosmo, 1 / (1 + z_source))
 
     convergence = 0
     for r, a, p in lensplanes:
       density_normalization = dz * r / a
-      p = (p - tf.reduce_mean(p, axis=[1,2], keepdims=True)) * constant_factor * density_normalization
+      p = (p - tf.reduce_mean(p, axis=[1, 2], keepdims=True)
+           ) * constant_factor * density_normalization
       c = coords * r / dx
-      c =  tf.expand_dims(c, axis=0) - 0.5
+      c = tf.expand_dims(c, axis=0) - 0.5
 
-      im = tfa.image.interpolate_bilinear(tf.expand_dims(p, -1), c, indexing='xy')
+      im = tfa.image.interpolate_bilinear(tf.expand_dims(p, -1),
+                                          c,
+                                          indexing='xy')
 
-      convergence += im * tf.reshape(tf.clip_by_value(1. - (r/r_s), 0, 1000), [1,1,-1])
-    
+      convergence += im * tf.reshape(tf.clip_by_value(1. - (r / r_s), 0, 1000),
+                                     [1, 1, -1])
+
     return convergence
-    

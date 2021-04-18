@@ -18,8 +18,9 @@ np.random.seed(0)
 bs = 200
 nc = 64
 plane_resolution = 64
-field=5
-npix=64
+field = 5
+npix = 64
+
 
 class FlowPMSnapshot(lt.simulations.nbody.NbodySnapshot):
   """
@@ -144,6 +145,7 @@ class FlowPMSnapshot(lt.simulations.nbody.NbodySnapshot):
     #Return
     return positions
 
+
 def test_density_plane(return_results=False):
   """ Tests cutting density planes from snapshots against lenstools
   """
@@ -224,13 +226,14 @@ def test_convergence_Born(return_results=False):
   a0 = 0.9
 
   # Create a state vector
-  initial_conditions = flowpm.linear_field([nc, nc, 10*nc], 
-                                           [bs, bs, 10*bs],
-                                           ipklin, batch_size=2)
+  initial_conditions = flowpm.linear_field([nc, nc, 10 * nc],
+                                           [bs, bs, 10 * bs],
+                                           ipklin,
+                                           batch_size=2)
   state = flowpm.lpt_init(cosmo, initial_conditions, a0)
 
-  r = tf.linspace(0., 10*bs, 11)
-  r_center = 0.5*(r[1:] + r[:-1])
+  r = tf.linspace(0., 10 * bs, 11)
+  r_center = 0.5 * (r[1:] + r[:-1])
   a_center = flowpm.background.a_of_chi(cosmo, r_center)
 
   constant_factor = 3 / 2 * cosmo.Omega_m * (constants.H0 / constants.c)**2
@@ -240,7 +243,7 @@ def test_convergence_Born(return_results=False):
   # TODO: remove the need for this!
   flowpm.io.save_state(cosmo,
                        state,
-                       a0, [nc, nc, 10*nc], [bs, bs, 10*bs],
+                       a0, [nc, nc, 10 * nc], [bs, bs, 10 * bs],
                        'snapshot_born_testing',
                        attrs={'comoving_distance': r_center[0]})
 
@@ -251,12 +254,11 @@ def test_convergence_Born(return_results=False):
   lensplanes = []
   tracer = lt.simulations.RayTracer(lens_type=lt.simulations.DensityPlane)
   for i in range(len(r_center)):
-    plane = flowpm.raytracing.density_plane(state,
-                                            [nc, nc, 10 * nc],
-                                             r_center[i]/bs*nc,
-                                             width=nc,
-                                             plane_resolution=plane_resolution)
-    r, a, p = r_center[i], a_center[i], plane[0]                                          
+    plane = flowpm.raytracing.density_plane(state, [nc, nc, 10 * nc],
+                                            r_center[i] / bs * nc,
+                                            width=nc,
+                                            plane_resolution=plane_resolution)
+    r, a, p = r_center[i], a_center[i], plane[0]
     lensplanes.append((r, a, plane))
 
     density_normalization = bs * r / a
@@ -264,42 +266,54 @@ def test_convergence_Born(return_results=False):
     # We upsample the lensplanes before giving them to lenstools because
     # lentools is using a weird kind of interpolation when converting from
     # comoving coordinates to angular coords. with a larger
-    p = tf.image.resize(tf.reshape(p,[1, plane_resolution, plane_resolution,1]), [2048, 2048])
-    
-    p = (p[0,:,:,0] * constant_factor * density_normalization).numpy()
+    p = tf.image.resize(
+        tf.reshape(p, [1, plane_resolution, plane_resolution, 1]),
+        [2048, 2048])
+
+    p = (p[0, :, :, 0] * constant_factor * density_normalization).numpy()
     p = p - np.mean(p)
-    lt_plane = lt.simulations.DensityPlane(p, 
-                                          angle=snapshot.header["box_size"],
-                                          redshift= 1/a - 1,
-                                          cosmology=snapshot.cosmology)
+    lt_plane = lt.simulations.DensityPlane(p,
+                                           angle=snapshot.header["box_size"],
+                                           redshift=1 / a - 1,
+                                           cosmology=snapshot.cosmology)
     tracer.addLens(lt_plane)
 
   # Adding dummy lensplane at the end
-  tracer.addLens(lt.simulations.DensityPlane(np.zeros((2048,2048)),
-                                           angle=snapshot.header["box_size"], 
-                                           redshift=0.99,
-                                           cosmology=snapshot.cosmology))
-  tracer.addLens(lt.simulations.DensityPlane(np.zeros((2048,2048)),
-                                           angle=snapshot.header["box_size"], 
-                                           redshift=2,
-                                           cosmology=snapshot.cosmology))
+  tracer.addLens(
+      lt.simulations.DensityPlane(np.zeros((2048, 2048)),
+                                  angle=snapshot.header["box_size"],
+                                  redshift=0.99,
+                                  cosmology=snapshot.cosmology))
+  tracer.addLens(
+      lt.simulations.DensityPlane(np.zeros((2048, 2048)),
+                                  angle=snapshot.header["box_size"],
+                                  redshift=2,
+                                  cosmology=snapshot.cosmology))
   tracer.reorderLenses()
 
   # Create an array of coordinates at which to retrieve the convernge maps
-  xgrid, ygrid = np.meshgrid(np.linspace(0, field, npix, endpoint=False), # range of X coordinates
-                           np.linspace(0, field, npix, endpoint=False)) # range of Y coordinates
+  xgrid, ygrid = np.meshgrid(
+      np.linspace(0, field, npix, endpoint=False),  # range of X coordinates
+      np.linspace(0, field, npix, endpoint=False))  # range of Y coordinates
 
-  coords = np.stack([xgrid, ygrid], axis=0)*u.deg
+  coords = np.stack([xgrid, ygrid], axis=0) * u.deg
   c = coords.reshape([2, -1]).T
 
   # Compute convergence map with lenstool
-  lt_map = tracer.convergenceBorn(coords, z=1.0)                                
-  
+  lt_map = tracer.convergenceBorn(coords, z=1.0)
+
   # Compute convergemce map with flowpm
-  fpm_map = flowpm.raytracing.convergenceBorn(cosmo, lensplanes, bs/nc, bs, c.to(u.rad), z_source=tf.ones([1]))
+  fpm_map = flowpm.raytracing.convergenceBorn(cosmo,
+                                              lensplanes,
+                                              bs / nc,
+                                              bs,
+                                              c.to(u.rad),
+                                              z_source=tf.ones([1]))
 
   # Comparing the final maps
-  assert_allclose(lt_map, fpm_map[0].numpy().reshape([npix, npix,-1])[:,:,-1], atol=5e-4)
+  assert_allclose(lt_map,
+                  fpm_map[0].numpy().reshape([npix, npix, -1])[:, :, -1],
+                  atol=5e-4)
 
   if return_results:
     return lt_map, fpm_map
