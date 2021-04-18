@@ -7,8 +7,8 @@ Created on Wed Feb  3 12:29:19 2021
 """
 import numpy as np
 import tensorflow as tf
+import tensorflow_addons as tfa
 import flowpm
-from flowpm.tfbackground import rad_comoving_distance
 import flowpm.constants as constants
 
 
@@ -64,34 +64,42 @@ def density_plane(state,
 
     return density_plane
 
-
-def Born(lps_a, lps, ds, nc, Boxsize, plane_size, field, cosmo):
+def convergenceBorn(cosmo,
+                    lensplanes,
+                    dx, dz, 
+                    coords,
+                    z_source, name="convergenceBorn"):
   """
-    Compute the Born–approximated convergence
+  Compute the Born–approximated convergence
 
-    Parameters:
-    -----------
-    lps_a : tf.TensorArray
-        Scale factor of lens planes
+  Args:
+    cosmo: `Cosmology`, cosmology object.
+    lensplanes: list of tuples (r, a, lens_plane), lens planes to use 
+    dx: float, transverse pixel resolution of the lensplanes [Mpc/h]
+    dz: float, width of the lensplanes [Mpc/h]
+    coords: a 3-D array of angular coordinates in radians of N points with shape [batch, N, 2].
+    z_source: 1-D `Tensor` of source redshifts with shape [Nz] .
+    name: `string`, name of the operation.
 
-    lps : tf.TensorArray
-        density field of each lens plane
+  Returns:
+    `Tensor` of shape [batch_size, N, Nz], of convergence values.
+  """
+  with tf.name_scope(name):
+    # Compute constant prefactor:
+    constant_factor = 3 / 2 * cosmo.Omega_m * (constants.H0 / constants.c)**2
+    # Compute comoving distance of source galaxies
+    r_s = flowpm.background.rad_comoving_distance(cosmo, 1/(1 + z_source))
 
-    ds: float
-        comoving source distance
+    convergence = 0
+    for r, a, p in lensplanes:
+      density_normalization = dz * r / a
+      p = (p - tf.reduce_mean(p, axis=[1,2], keepdims=True)) * constant_factor * density_normalization
+      c = coords * r / dx
+      c =  tf.expand_dims(c, axis=0) - 0.5
 
-    Returns
-    -------
-    k_map : tf.TensorArray
-        Born–approximated convergence
+      im = tfa.image.interpolate_bilinear(tf.expand_dims(p, -1), c, indexing='xy')
 
-    """
-  k_map = 0
-
-  # Compute constant prefactor:
-  constant_factor = 3 / 2 * cosmo.Omega_m * (constants.H0 / constants.c)**2
-
-  for i in range(len(lps_a)):
-    k_map += constant_factor * lps[i][0] * wlen(ds, lps_a[i], nc, Boxsize,
-                                                plane_size, field, cosmo)
-  return k_map
+      convergence += im * tf.reshape(tf.clip_by_value(1. - (r/r_s), 0, 1000), [1,1,-1])
+    
+    return convergence
+    
