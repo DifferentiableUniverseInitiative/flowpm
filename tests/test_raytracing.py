@@ -8,10 +8,13 @@ import flowpm
 import flowpm.constants as constants
 import lenstools as lt
 import bigfile
+import os
+
+data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 
 np.random.seed(0)
 
-bs = 50
+bs = 200
 nc = 64
 plane_resolution = 64
 
@@ -137,11 +140,11 @@ class FlowPMSnapshot(lt.simulations.nbody.NbodySnapshot):
     #Return
     return positions
 
-def test_density_plane():
+def test_density_plane(return_results=False):
   """ Tests cutting density planes from snapshots against lenstools
   """
-  klin = np.loadtxt('flowpm/data/Planck15_a1p00.txt').T[0]
-  plin = np.loadtxt('flowpm/data/Planck15_a1p00.txt').T[1]
+  klin = np.loadtxt(data_path+'/flowpm/data/Planck15_a1p00.txt').T[0]
+  plin = np.loadtxt(data_path+'/flowpm/data/Planck15_a1p00.txt').T[1]
   ipklin = iuspline(klin, plin)
 
   cosmo = flowpm.cosmology.Planck15()
@@ -193,5 +196,7 @@ def test_density_plane():
 
   assert_allclose(smooth_fpm_plane, smooth_lt_plane, rtol=2e-2)
 
+  if return_results:
+    return fpm_plane, lt_plane, smooth_fpm_plane, smooth_lt_plane
   
 
