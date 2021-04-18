@@ -12,7 +12,7 @@ from flowpm.tfbackground import rad_comoving_distance
 import flowpm.constants as constants
 
 
-def density_plane(state, nc, center, width, plane_size, name='density_plane'):
+def density_plane(state, nc, center, width, plane_resolution, name='density_plane'):
   """ Extract a slice from the input state vector and
   project it as a density plane.
 
@@ -44,18 +44,17 @@ def density_plane(state, nc, center, width, plane_size, name='density_plane'):
     xy = tf.math.mod(xy, nx)
 
     # Rescaling positions to target grid
-    xy = xy / nx * plane_size
+    xy = xy / nx * plane_resolution
 
     # Selecting only particles that fall inside the volume of interest
     mask = (d > (center - width / 2)) & (d <= (center + width / 2))
 
     # Painting density plane
-    density_plane = tf.zeros([batch_size, plane_size, plane_size])
+    density_plane = tf.zeros([batch_size, plane_resolution, plane_resolution])
     density_plane = flowpm.utils.cic_paint_2d(density_plane, xy, mask=mask)
 
-    print(tf.reduce_sum(density_plane, axis=[1, 2]))
     # Apply density normalization
-    density_plane = density_plane / ((nx / plane_size) * (ny / plane_size) *
+    density_plane = density_plane / ((nx / plane_resolution) * (ny / plane_resolution) *
                                      (width))
 
     return density_plane
