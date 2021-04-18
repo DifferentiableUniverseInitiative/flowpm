@@ -12,7 +12,12 @@ from flowpm.tfbackground import rad_comoving_distance
 import flowpm.constants as constants
 
 
-def density_plane(state, nc, center, width, plane_resolution, name='density_plane'):
+def density_plane(state,
+                  nc,
+                  center,
+                  width,
+                  plane_resolution,
+                  name='density_plane'):
   """ Extract a slice from the input state vector and
   project it as a density plane.
 
@@ -54,8 +59,8 @@ def density_plane(state, nc, center, width, plane_resolution, name='density_plan
     density_plane = flowpm.utils.cic_paint_2d(density_plane, xy, mask=mask)
 
     # Apply density normalization
-    density_plane = density_plane / ((nx / plane_resolution) * (ny / plane_resolution) *
-                                     (width))
+    density_plane = density_plane / ((nx / plane_resolution) *
+                                     (ny / plane_resolution) * (width))
 
     return density_plane
 

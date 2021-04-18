@@ -18,6 +18,7 @@ bs = 200
 nc = 64
 plane_resolution = 64
 
+
 class FlowPMSnapshot(lt.simulations.nbody.NbodySnapshot):
   """
     A class that handles FlowPM simulation snapshots for lenstools
@@ -74,7 +75,7 @@ class FlowPMSnapshot(lt.simulations.nbody.NbodySnapshot):
     header["w0"] = -1.
     header["wa"] = 0.
     header["h"] = bf_header["h"][0]
-    header["redshift"] = 1/(bf_header["Time"][0]) - 1
+    header["redshift"] = 1 / (bf_header["Time"][0]) - 1
     header["comoving_distance"] = bf_header["comoving_distance"][0] * 1.0e3
     header["scale_factor"] = bf_header["Time"][0]
 
@@ -114,11 +115,12 @@ class FlowPMSnapshot(lt.simulations.nbody.NbodySnapshot):
 
     #Read in positions in Mpc/h
     if (first is None) or (last is None):
-      positions = (data["0/Position"][:] + np.array(
-          [0.5 / self.header["nc"] * self.header["box_size_mpch"], 
-           0.5 / self.header["nc"] * self.header["box_size_mpch"],
-           0],
-          dtype=np.float32)) * self.Mpc_over_h
+      positions = (
+          data["0/Position"][:] + np.array([
+              0.5 / self.header["nc"] * self.header["box_size_mpch"],
+              0.5 / self.header["nc"] * self.header["box_size_mpch"], 0
+          ],
+                                           dtype=np.float32)) * self.Mpc_over_h
     else:
       positions = data["0/Position"][first:last] * self.Mpc_over_h
 
@@ -140,49 +142,54 @@ class FlowPMSnapshot(lt.simulations.nbody.NbodySnapshot):
     #Return
     return positions
 
+
 def test_density_plane(return_results=False):
   """ Tests cutting density planes from snapshots against lenstools
   """
-  klin = np.loadtxt(data_path+'/flowpm/data/Planck15_a1p00.txt').T[0]
-  plin = np.loadtxt(data_path+'/flowpm/data/Planck15_a1p00.txt').T[1]
+  klin = np.loadtxt(data_path + '/flowpm/data/Planck15_a1p00.txt').T[0]
+  plin = np.loadtxt(data_path + '/flowpm/data/Planck15_a1p00.txt').T[1]
   ipklin = iuspline(klin, plin)
 
   cosmo = flowpm.cosmology.Planck15()
 
   a0 = 0.9
   r0 = flowpm.background.rad_comoving_distance(cosmo, a0)
-  
+
   # Create a state vector
   initial_conditions = flowpm.linear_field(nc, bs, ipklin, batch_size=2)
   state = flowpm.lpt_init(cosmo, initial_conditions, a0)
 
   # Export the snapshot
-  flowpm.io.save_state(cosmo, state, a0, 
-           [nc, nc, nc], 
-           [bs, bs, bs], 'snapshot_density_testing',
-           attrs={'comoving_distance': r0})
+  flowpm.io.save_state(cosmo,
+                       state,
+                       a0, [nc, nc, nc], [bs, bs, bs],
+                       'snapshot_density_testing',
+                       attrs={'comoving_distance': r0})
 
   # Reload the snapshot with lenstools
   snapshot = FlowPMSnapshot.open('snapshot_density_testing')
 
   # Cut a lensplane in the middle of the volume
-  lt_plane, resolution, NumPart = snapshot.cutPlaneGaussianGrid(normal=2,
-                                                 plane_resolution=plane_resolution,   
-                                                 center=(bs/2)*snapshot.Mpc_over_h,
-                                                 thickness=(bs/4)*snapshot.Mpc_over_h,
-                                                 left_corner=np.zeros(3)*snapshot.Mpc_over_h,
-                                                 smooth=None,
-                                                 kind='density')
+  lt_plane, resolution, NumPart = snapshot.cutPlaneGaussianGrid(
+      normal=2,
+      plane_resolution=plane_resolution,
+      center=(bs / 2) * snapshot.Mpc_over_h,
+      thickness=(bs / 4) * snapshot.Mpc_over_h,
+      left_corner=np.zeros(3) * snapshot.Mpc_over_h,
+      smooth=None,
+      kind='density')
 
   # Cut the same lensplane with flowpm
-  fpm_plane = flowpm.raytracing.density_plane(state, nc, 
-                                            center=nc/2, 
-                                            width=nc/4,
-                                            plane_resolution=plane_resolution)
+  fpm_plane = flowpm.raytracing.density_plane(
+      state,
+      nc,
+      center=nc / 2,
+      width=nc / 4,
+      plane_resolution=plane_resolution)
 
   # Apply additional normalization terms to match lenstools definitions
   constant_factor = 3 / 2 * cosmo.Omega_m * (constants.H0 / constants.c)**2
-  density_normalization = bs/4 * r0 / a0
+  density_normalization = bs / 4 * r0 / a0
   fpm_plane = fpm_plane * density_normalization * constant_factor
 
   # Checking first the mean value, which accounts for any normalization
@@ -191,12 +198,12 @@ def test_density_plane(return_results=False):
 
   # To check pixelwise difference, we need to do some smoothing as lenstools and
   # flowpm use different painting kernels
-  smooth_lt_plane = np.fft.ifft2(fourier_gaussian(np.fft.fft2(lt_plane), 3)).real
-  smooth_fpm_plane = np.fft.ifft2(fourier_gaussian(np.fft.fft2(fpm_plane[0]), 3)).real
+  smooth_lt_plane = np.fft.ifft2(fourier_gaussian(np.fft.fft2(lt_plane),
+                                                  3)).real
+  smooth_fpm_plane = np.fft.ifft2(
+      fourier_gaussian(np.fft.fft2(fpm_plane[0]), 3)).real
 
   assert_allclose(smooth_fpm_plane, smooth_lt_plane, rtol=2e-2)
 
   if return_results:
     return fpm_plane, lt_plane, smooth_fpm_plane, smooth_lt_plane
-  
-
