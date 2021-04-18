@@ -36,27 +36,28 @@ def density_plane(state, nc, center, width, plane_size, name='density_plane'):
 
     shape = tf.shape(pos)
     batch_size = shape[0]
-    
-    xy = pos[...,:2]
+
+    xy = pos[..., :2]
     d = pos[..., 2]
-        
+
     # Apply 2d periodic conditions
     xy = tf.math.mod(xy, nx)
-    
+
     # Rescaling positions to target grid
     xy = xy / nx * plane_size
 
-    # Selecting only particles that fall inside the volume of interest  
-    mask = (d > (center - width/2)) & (d <=(center + width/2))
-  
+    # Selecting only particles that fall inside the volume of interest
+    mask = (d > (center - width / 2)) & (d <= (center + width / 2))
+
     # Painting density plane
     density_plane = tf.zeros([batch_size, plane_size, plane_size])
     density_plane = flowpm.utils.cic_paint_2d(density_plane, xy, mask=mask)
 
-    print(tf.reduce_sum(density_plane, axis=[1,2]) )
+    print(tf.reduce_sum(density_plane, axis=[1, 2]))
     # Apply density normalization
-    density_plane = density_plane / ((nx / plane_size) * (ny / plane_size) * (width))
-    
+    density_plane = density_plane / ((nx / plane_size) * (ny / plane_size) *
+                                     (width))
+
     return density_plane
 
 

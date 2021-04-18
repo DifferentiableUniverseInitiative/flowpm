@@ -8,6 +8,7 @@ import tensorflow as tf
 from flowpm.tfbackground import f1, E, f2, Gf, gf, gf2, D1, D2, D1f
 from flowpm.utils import white_noise, c2r3d, r2c3d, cic_paint, cic_readout
 from flowpm.kernels import fftk, laplace_kernel, gradient_kernel, longrange_kernel
+
 __all__ = ['linear_field', 'lpt_init', 'nbody']
 
 
@@ -337,7 +338,13 @@ def force(cosmo,
     return state
 
 
-def nbody(cosmo, state, stages, nc, pm_nc_factor=1, return_intermediate_states=False, name="NBody"):
+def nbody(cosmo,
+          state,
+          stages,
+          nc,
+          pm_nc_factor=1,
+          return_intermediate_states=False,
+          name="NBody"):
   """
   Integrate the evolution of the state across the givent stages
 
