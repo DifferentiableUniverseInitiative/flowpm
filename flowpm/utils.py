@@ -70,7 +70,7 @@ def cic_paint(mesh, part, weight=None, name="CiCPaint"):
     return mesh
 
 
-def cic_paint_2d(mesh, part, weight=None, name="CiCPaint2D"):
+def cic_paint_2d(mesh, part, weight=None, mask=None, name="CiCPaint2D"):
   """
   Paints particules on a 2D mesh.
 
@@ -84,12 +84,17 @@ def cic_paint_2d(mesh, part, weight=None, name="CiCPaint2D"):
 
   weight: tensor (batch_size, npart)
     List of weights  for each particle
+
+  mask: tensor (batch_size, npart)
+    Binary mask of whether particles should be included in the paint or not.
   """
   with tf.name_scope(name):
     mesh = tf.convert_to_tensor(mesh, name="mesh")
     part = tf.convert_to_tensor(part, name="part")
     if weight is not None:
       weight = tf.convert_to_tensor(weight, name="weight")
+    if mask is not None:
+      mask = tf.convert_to_tensor(mask, name="mask")
 
     shape = tf.shape(mesh)
     batch_size, nx, ny = shape[0], shape[1], shape[2]
@@ -111,6 +116,7 @@ def cic_paint_2d(mesh, part, weight=None, name="CiCPaint2D"):
 
     if weight is not None:
       kernel = tf.multiply(tf.expand_dims(weight, axis=-1), kernel)
+    kernel = tf.reshape(kernel, (-1, 4))
 
     neighboor_coords = tf.cast(neighboor_coords, tf.int32)
     neighboor_coords = tf.math.mod(neighboor_coords, nc)
@@ -121,9 +127,15 @@ def cic_paint_2d(mesh, part, weight=None, name="CiCPaint2D"):
     b = tf.tile(batch_idx,
                 [1] + list(neighboor_coords.get_shape()[1:-1]) + [1])
     neighboor_coords = tf.concat([b, neighboor_coords], axis=-1)
+    neighboor_coords = tf.reshape(neighboor_coords, (-1, 4, 3))
 
-    update = tf.scatter_nd(tf.reshape(neighboor_coords, (-1, 4, 3)),
-                           tf.reshape(kernel, (-1, 4)), [batch_size, nx, ny])
+    # Only keep the particles we want to keep if mask is supplied
+    if mask is not None:
+      mask = tf.where(tf.reshape(mask, [-1]))
+      neighboor_coords = tf.gather(neighboor_coords, tf.reshape(mask, [-1]))
+      kernel = tf.gather(kernel, tf.reshape(mask, [-1]))
+
+    update = tf.scatter_nd(neighboor_coords, kernel, [batch_size, nx, ny])
     mesh = mesh + update
     return mesh
 
