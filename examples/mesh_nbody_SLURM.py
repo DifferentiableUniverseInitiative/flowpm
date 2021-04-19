@@ -5,6 +5,7 @@ from scipy.interpolate import InterpolatedUnivariateSpline as iuspline
 from matplotlib import pyplot as plt
 
 import tensorflow.compat.v1 as tf
+
 tf.disable_v2_behavior()
 import tensorflow_probability as tfp
 import mesh_tensorflow as mtf
