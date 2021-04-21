@@ -88,6 +88,8 @@ def convergenceBorn(cosmo,
     `Tensor` of shape [batch_size, N, Nz], of convergence values.
   """
   with tf.name_scope(name):
+    coords = tf.convert_to_tensor(coords, dtype=tf.float32)
+
     # Compute constant prefactor:
     constant_factor = 3 / 2 * cosmo.Omega_m * (constants.H0 / constants.c)**2
     # Compute comoving distance of source galaxies
@@ -100,6 +102,10 @@ def convergenceBorn(cosmo,
            ) * constant_factor * density_normalization
       c = coords * r / dx
       c = tf.expand_dims(c, axis=0) - 0.5
+
+      # Applying periodic conditions on lensplane
+      shape = tf.shape(p)
+      c = tf.math.mod(c, tf.cast(shape[1], tf.float32))
 
       im = tfa.image.interpolate_bilinear(tf.expand_dims(p, -1),
                                           c,
