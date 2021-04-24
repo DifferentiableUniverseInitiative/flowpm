@@ -10,7 +10,7 @@ import mesh_tensorflow as mtf
 import tensorflow_probability as tfp
 from astropy.cosmology import Planck15
 
-from .background import MatterDominated
+from .legacy_background import MatterDominated
 from . import mesh_ops
 from . import mesh_utils
 from . import mesh_kernels
