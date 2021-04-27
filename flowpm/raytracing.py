@@ -21,12 +21,14 @@ def rotation_matrices():
   x = np.asarray([1, 0, 0], dtype=np.float32)
   y = np.asarray([0, 1, 0], dtype=np.float32)
   z = np.asarray([0, 0, 1], dtype=np.float32)
-  M_matrices = [np.asarray([x,y,z],dtype=np.float32), 
-                np.asarray([x,z,y],dtype=np.float32),
-                np.asarray([z,y,x],dtype=np.float32),
-                np.asarray([z,x,y],dtype=np.float32),
-                np.asarray([y,x,z],dtype=np.float32), 
-                np.asarray([y,z,x],dtype=np.float32)]
+  M_matrices = [
+      np.asarray([x, y, z], dtype=np.float32),
+      np.asarray([x, z, y], dtype=np.float32),
+      np.asarray([z, y, x], dtype=np.float32),
+      np.asarray([z, x, y], dtype=np.float32),
+      np.asarray([y, x, z], dtype=np.float32),
+      np.asarray([y, z, x], dtype=np.float32)
+  ]
 
   return M_matrices
 
