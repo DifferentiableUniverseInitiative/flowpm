@@ -40,7 +40,7 @@ def fde(cosmo, a, epsilon=1e-5):
     (see :cite:`2005:Percival`) where :math:`f(a)` is computed as
     :math:`f(a) = \frac{-3}{\ln(a)} \int_0^{\ln(a)} [1 + w(a^\prime)]
     d \ln(a^\prime)`. In the case of Linder's parametrisation for the
-    dark energy in Eq. :eq:`linderParam` :math:`f(a)` becomes:
+    dark energy :math:`f(a)` becomes:
 
     .. math::
 
@@ -52,32 +52,31 @@ def fde(cosmo, a, epsilon=1e-5):
 
 
 def w(cosmo, a):
-  """Dark Energy equation of state parameter using the Linder
-    parametrisation.
+  r"""Dark Energy equation of state parameter using the Linder
+  parametrisation.
 
-    Parameters
-    ----------
-    cosmo: Cosmology
-      Cosmological parameters structure
+  Parameters
+  ----------
+  cosmo: Cosmology
+    Cosmological parameters structure
 
-    a : array_like or tf.TensorArray
-        Scale factor
+  a : array_like or tf.TensorArray
+      Scale factor
 
-    Returns
-    -------
-    w : Scalar float Tensor
-        The Dark Energy equation of state parameter at the specified
-        scale factor
+  Returns
+  -------
+  w : Scalar float Tensor
+      The Dark Energy equation of state parameter at the specified
+      scale factor
 
-    Notes
-    -----
+  Notes
+  -----
+  The Linder parametrization :cite:`2003:Linder` for the Dark Energy
+  equation of state :math:`p = w \rho` is given by:
 
-    The Linder parametrization :cite:`2003:Linder` for the Dark Energy
-    equation of state :math:`p = w \rho` is given by:
+  .. math::
 
-    .. math::
-
-        w(a) = w_0 + w (1 -a)
+      w(a) = w_0 + w (1 -a)
   """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
   return cosmo.w0 + cosmo.wa * (1.0 - a)
@@ -143,35 +142,35 @@ def H(cosmo, a):
 
 def dfde(cosmo, a, epsilon=1e-5):
   r"""Derivative of the evolution parameter for the Dark Energy density
-    f(a) with respect to the scale factor.
+  f(a) with respect to the scale factor.
 
-    Parameters
-    ----------
-    cosmo: Cosmology
-      Cosmological parameters structure
+  Parameters
+  ----------
+  cosmo: Cosmology
+    Cosmological parameters structure
 
-    a : array_like or tf.TensorArray
-        Scale factor
+  a : array_like or tf.TensorArray
+    Scale factor
 
-    epsilon: float value
-            Small number to make sure we are not dividing by 0 and avoid a singularity
+  epsilon: float value
+    Small number to make sure we are not dividing by 0 and avoid a singularity
 
-    Returns
-    -------
-    df(a)/da :  Scalar float Tensor
-        Derivative of the evolution parameter for the Dark Energy density
-        with respect to the scale factor.
+  Returns
+  -------
+  df(a)/da :  Scalar float Tensor
+    Derivative of the evolution parameter for the Dark Energy density
+    with respect to the scale factor.
 
-    Notes
-    -----
+  Notes
+  -----
+  The expression for :math:`\frac{df(a)}{da}` is:
 
-    The expression for :math:`\frac{df(a)}{da}` is:
+  .. math::
 
-    .. math::
+      \frac{df}{da}(a) = =\frac{3w_a \left( \ln(a-\epsilon)-
+  \frac{a-1}{a-\epsilon}\right)}{\ln^2(a-\epsilon)}
 
-        \frac{df}{da}(a) = =\frac{3w_a \left( \ln(a-\epsilon)-
-    \frac{a-1}{a-\epsilon}\right)}{\ln^2(a-\epsilon)}
-    """
+  """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
   return (3 * cosmo.wa * (tf.math.log(a - epsilon) - (a - 1) / (a - epsilon)) /
           tf.math.pow(tf.math.log(a - epsilon), 2))
@@ -404,21 +403,21 @@ def rad_comoving_distance(cosmo, a, log10_amin=-3, steps=256, rtol=1e-3):
 
 def a_of_chi(cosmo, chi):
   r"""Computes the scale factor for corresponding (array) of radial comoving
-    distance by reverse linear interpolation.
+  distance by reverse linear interpolation.
 
-    Parameters:
-    -----------
-    cosmo: Cosmology
-      Cosmological parameters
+  Parameters
+  ----------
+  cosmo: Cosmology
+    Cosmological parameters
 
-    chi: array_like or tf.TensorArray
-      radial comoving distance to query.
+  chi: array_like or tf.TensorArray
+    radial comoving distance to query.
 
-    Returns:
-    --------
-    a : tf.TensorArray
-      Scale factors corresponding to requested distances
-    """
+  Returns
+  -------
+  a : tf.TensorArray
+    Scale factors corresponding to requested distances
+  """
   # Check if distances have already been computed, force computation otherwise
   if "background.radial_comoving_distance" not in cosmo._workspace.keys():
     rad_comoving_distance(cosmo, 1.0)
@@ -476,56 +475,59 @@ def transverse_comoving_distance(cosmo, a):
 def angular_diameter_distance(cosmo, a):
   r"""Angular diameter distance in [Mpc/h] for a given scale factor.
 
-    Parameters
-    ----------
-    cosmo: Cosmology
-      Cosmological parameters structure
+  Parameters
+  ----------
+  cosmo: Cosmology
+    Cosmological parameters structure
 
-    a : tf.TensorArray
-        Scale factor
+  a : tf.TensorArray
+    Scale factor
 
-    Returns
-    -------
-    d_A : tf.TensorArray
+  Returns
+  -------
+  d_A : tf.TensorArray
 
-    Notes
-    -----
-    Angular diameter distance is expressed in terms of the transverse
-    comoving distance as:
+  Notes
+  -----
+  Angular diameter distance is expressed in terms of the transverse
+  comoving distance as:
 
-    .. math::
+  .. math::
 
-        d_A(a) = a f_k(a)
-    """
+      d_A(a) = a f_k(a)
+  """
   return a * transverse_comoving_distance(cosmo, a)
 
 
 # Equation 1.96 from Florent Leclercq thesis
 @tf.function
 def growth_ode(a, y, **kwcosmo):
-  """Define the ode functions that will be used to compute the linear growth factor D_1(a) and
-    second-order growth factor D_2(a) at a given scale factor
-    Parameters
-    ----------
-    a: array_like or tf.TensorArray
-      Scale factor
+  r"""Define the ode functions that will be used to compute the linear
+  growth factor D_1(a) and second-order growth factor D_2(a) at a given
+  scale factor.
 
-    y: tf.TensorArray
-    Contain the value of y for each desired scale factors in a, with the initial value y0 in the first row
+  Parameters
+  ----------
+  a: array_like or tf.TensorArray
+    Scale factor
 
-    cosmo: Cosmology
-      Cosmological parameters structure
+  y: tf.TensorArray
+  Contain the value of y for each desired scale factors in a, with the initial value y0 in the first row
 
-    Notes
-    -----
-    Linear growth factor D_1(a) is given by
-    .. math::
-    a^2\frac{d^2 D_1}{da^2}+
-    \left( \Omega_{\Lambda}(a)-
-    \frac{ \Omega_{m}(a)}{2} +2
-    \right) a \frac{dD_1}{da}=\frac{3}{2}  \Omega_{m}(a)D_1
-     (see :cite:`Florent Leclercq thesis` Eq. (1.96))
-    """
+  cosmo: Cosmology
+    Cosmological parameters structure
+
+  Notes
+  -----
+  Linear growth factor D_1(a) is given by
+  .. math::
+  a^2\frac{d^2 D_1}{da^2}+
+  \left( \Omega_{\Lambda}(a)-
+  \frac{ \Omega_{m}(a)}{2} +2
+  \right) a \frac{dD_1}{da}=\frac{3}{2}  \Omega_{m}(a)D_1
+
+  (see :cite:`Florent Leclercq thesis` Eq. (1.96))
+  """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
   # Instantiate a cosmology object
   cosmo = Cosmology(**kwcosmo)
@@ -546,25 +548,25 @@ def growth_ode(a, y, **kwcosmo):
 
 @tf.function
 def odesolve_func(a, rtol=1e-4, **kwcosmo):
-  """ Solves the growth ODE system for a given cosmology at the requested
-    scale factors.
+  r""" Solves the growth ODE system for a given cosmology at the requested
+  scale factors.
 
-    Parameters
-    ----------
-    a: array_like
-      Output scale factors, note that the ODE is initialized at a[0]
+  Parameters
+  ----------
+  a: array_like
+    Output scale factors, note that the ODE is initialized at a[0]
 
-    rtol: float, optional
-          Parameters determing the error control performed by the solver
-    kwcosmo: keyword args
-      Cosmological parameter values.
+  rtol: float, optional
+        Parameters determing the error control performed by the solver
+  kwcosmo: keyword args
+    Cosmological parameter values.
 
-    Returns
-    -------
-    (D1, D1f), (D2, D2f): dictionary
-      First and second order growth factors, and their derivatives, computed at
-      the requested scale factors.
-    """
+  Returns
+  -------
+  (D1, D1f), (D2, D2f): dictionary
+    First and second order growth factors, and their derivatives, computed at
+    the requested scale factors.
+  """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
   # Matter dominated initial condition.
   # Row 1: Initial condition of first(column 1) and second order (column 2) growth factors
@@ -607,8 +609,8 @@ def odesolve_func(a, rtol=1e-4, **kwcosmo):
 
 def maybe_compute_ODE(cosmo, log10_amin=-2, steps=256):
   """
-    Either computes or returns the cached ODE solution
-    """
+  Either computes or returns the cached ODE solution
+  """
   if 'cache_ODE' in cosmo._workspace:
     # If cache is found in the cosmo dictionary it means the ODE has already
     # been computed
@@ -625,30 +627,29 @@ def maybe_compute_ODE(cosmo, log10_amin=-2, steps=256):
 
 
 def D1(cosmo, a):
-  """ Normalised first order growth factor.
+  r""" Normalised first order growth factor.
 
-    Parameters
-    ----------
-    cosmo: dict
-      Cosmology dictionary.
-    a : tf.TensorArray
-        Scale factor.
+  Parameters
+  ----------
+  cosmo: dict
+    Cosmology dictionary.
+  a : tf.TensorArray
+    Scale factor.
 
-    Returns
-    -------
-    Scalar float Tensor
-        normalised D1.
+  Returns
+  -------
+  D1: scalar float Tensor
+    Normalised D1.
 
-    Notes
-    -----
+  Notes
+  -----
+  The expression for :math:`D_{1norm}(a)` is:
 
-    The expression for :math:`D_{1norm}(a)` is:
+  .. math::
 
-    .. math::
+      D_{1norm}(a)=\frac{D_1(a)}{D_1(a=1)}
 
-        D_{1norm}(a)=\frac{D_1(a)}{D_1(a=1)}
-
-    """
+  """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
   # Maybe compute ODE or use stored result
   cache = maybe_compute_ODE(cosmo)
@@ -659,30 +660,30 @@ def D1(cosmo, a):
 
 
 def D2(cosmo, a):
-  """ Normalised second order growth factor
+  r""" Normalised second order growth factor
 
-    Parameters
-    ----------
-    cosmo: dict
-      Cosmology dictionary.
-    a : tf.TensorArray
-        Scale factor.
+  Parameters
+  ----------
+  cosmo: dict
+    Cosmology dictionary.
+  a : tf.TensorArray
+      Scale factor.
 
-    Returns
-    -------
-    Scalar float Tensor
-        normalised D2.
+  Returns
+  -------
+  Scalar float Tensor
+      normalised D2.
 
-    Notes
-    -----
+  Notes
+  -----
 
-    The expression for :math:`D_{2norm}(a)` is:
+  The expression for :math:`D_{2norm}(a)` is:
 
-    .. math::
+  .. math::
 
-        D_{2norm}(a)=\frac{D_2(a)}{D_2(a=1)}
+      D_{2norm}(a)=\frac{D_2(a)}{D_2(a=1)}
 
-    """
+  """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
   # Maybe compute ODE or use stored result
   cache = maybe_compute_ODE(cosmo)
@@ -693,31 +694,31 @@ def D2(cosmo, a):
 
 
 def D1f(cosmo, a):
-  """ Derivative of the first order growth factor respect to scale factor a
+  r""" Derivative of the first order growth factor respect to scale factor a
 
-    Parameters
-    ----------
-    cosmo: dict
-      Cosmology dictionary.
+  Parameters
+  ----------
+  cosmo: dict
+    Cosmology dictionary.
 
-    a : tf.TensorArray
-        Scale factor.
+  a : tf.TensorArray
+      Scale factor.
 
-    Returns
-    -------
-    Scalar float Tensor
-        normalised derivative D1.
+  Returns
+  -------
+  Scalar float Tensor
+      normalised derivative D1.
 
-    Notes
-    -----
+  Notes
+  -----
 
-    The expression for :math:`D'_{1norm}(a)` is:
+  The expression for :math:`D'_{1norm}(a)` is:
 
-    .. math::
+  .. math::
 
-        D'_{1norm}(a)=\frac{D'_1(a)}{D_1(a=1)}
+      D'_{1norm}(a)=\frac{D'_1(a)}{D_1(a=1)}
 
-    """
+  """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
   # Maybe compute ODE or use stored result
   cache = maybe_compute_ODE(cosmo)
@@ -728,31 +729,31 @@ def D1f(cosmo, a):
 
 
 def D2f(cosmo, a):
-  """ Derivative of the second order growth factor respect to scale factor a
+  r""" Derivative of the second order growth factor respect to scale factor a
 
-    Parameters
-    ----------
-    cosmo: dict
-      Cosmology dictionary.
+  Parameters
+  ----------
+  cosmo: dict
+    Cosmology dictionary.
 
-    a : tf.TensorArray
-        Scale factor.
+  a : tf.TensorArray
+      Scale factor.
 
-    Returns
-    -------
-    Scalar float Tensor
-        normalised derivative D2.
+  Returns
+  -------
+  Scalar float Tensor
+      normalised derivative D2.
 
-    Notes
-    -----
+  Notes
+  -----
 
-    The expression for :math:`D'_{2norm}(a)` is:
+  The expression for :math:`D'_{2norm}(a)` is:
 
-    .. math::
+  .. math::
 
-        D'_{2norm}(a)=\frac{D'_2(a)}{D_2(a=1)}
+      D'_{2norm}(a)=\frac{D'_2(a)}{D_2(a=1)}
 
-    """
+  """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
   # Maybe compute ODE or use stored result
   cache = maybe_compute_ODE(cosmo)
@@ -763,147 +764,145 @@ def D2f(cosmo, a):
 
 
 def f1(cosmo, a):
-  """ Linear order growth rate
+  r""" Linear order growth rate
 
-    Parameters
-    ----------
-    cosmo: dict
-      Cosmology dictionary.
+  Parameters
+  ----------
+  cosmo: dict
+    Cosmology dictionary.
 
-    a : tf.TensorArray
-        Scale factor.
+  a : tf.TensorArray
+      Scale factor.
 
-    Returns
-    -------
-    Scalar float Tensor
-        Linear order growth rate.
+  Returns
+  -------
+  Scalar float Tensor
+      Linear order growth rate.
 
-    Notes
-    -----
+  Notes
+  -----
 
-    The expression for :math:`f_{1}(a)` is:
+  The expression for :math:`f_{1}(a)` is:
 
-    .. math::
+  .. math::
 
-        f{1}(a)=\frac{D'_1(a)}{D_1(a=1)}*a
+      f{1}(a)=\frac{D'_1(a)}{D_1(a=1)}*a
 
-    """
+  """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
   return D1f(cosmo, a) * a / D1(cosmo, a)
 
 
 def f2(cosmo, a):
-  """ Second order growth rate.
+  r""" Second order growth rate.
 
-    Parameters
-    ----------
-    cosmo: dict
-      Cosmology dictionary.
+  Parameters
+  ----------
+  cosmo: dict
+    Cosmology dictionary.
 
-    a : tf.TensorArray
-        Scale factor.
+  a : tf.TensorArray
+      Scale factor.
 
-    Returns
-    -------
-    Scalar float Tensor
-        Linear order growth rate.
+  Returns
+  -------
+  Scalar float Tensor
+      Linear order growth rate.
 
-    Notes
-    -----
+  Notes
+  -----
 
-    The expression for :math:`f_{2}(a)` is:
+  The expression for :math:`f_{2}(a)` is:
 
-    .. math::
+  .. math::
 
-        f{2}(a)=\frac{D'_2(a)}{D_2(a=1)}*a
+      f{2}(a)=\frac{D'_2(a)}{D_2(a=1)}*a
 
-    """
+  """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
   return D2f(cosmo, a) * a / D2(cosmo, a)
 
 
 def Gf(cosmo, a):
+  r"""
+  FastPM growth factor function
+
+  Parameters
+  ----------
+  cosmo: dict
+    Cosmology dictionary.
+
+  a : tf.TensorArray
+     Scale factor.
+
+  Returns
+  -------
+  Scalar float Tensor : FastPM growth factor function.
+
+  Notes
+  -----
+
+  The expression for :math:`Gf(a)` is:
+
+  .. math::
+      Gf(a)=D'_{1norm}*a**3*E(a)
   """
-    FastPM growth factor function
-
-    Parameters
-    ----------
-    cosmo: dict
-      Cosmology dictionary.
-
-    a : tf.TensorArray
-       Scale factor.
-
-    Returns
-    -------
-    Scalar float Tensor : FastPM growth factor function.
-
-    Notes
-    -----
-
-    The expression for :math:`Gf(a)` is:
-
-    .. math::
-        Gf(a)=D'_{1norm}*a**3*E(a)
-    """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
   return D1f(cosmo, a) * a**3 * E(cosmo, a)
 
 
 def Gf2(cosmo, a):
+  r""" FastPM second order growth factor function
+
+  Parameters
+  ----------
+  cosmo: dict
+    Cosmology dictionary.
+
+  a : tf.TensorArray
+     Scale factor.
+
+  Returns
+  -------
+  Scalar float Tensor : FastPM second order growth factor function.
+
+  Notes
+  -----
+
+  The expression for :math:`Gf_2(a)` is:
+
+  .. math::
+      Gf_2(a)=D'_{2norm}*a**3*E(a)
   """
-    FastPM second order growth factor function
-
-    Parameters
-    ----------
-    cosmo: dict
-      Cosmology dictionary.
-
-    a : tf.TensorArray
-       Scale factor.
-
-    Returns
-    -------
-    Scalar float Tensor : FastPM second order growth factor function.
-
-    Notes
-    -----
-
-         The expression for :math:`Gf_2(a)` is:
-
-    .. math::
-        Gf_2(a)=D'_{2norm}*a**3*E(a)
-    """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
   return D2f(cosmo, a) * a**3 * E(cosmo, a)
 
 
 def gf(cosmo, a):
+  r""" Derivative of Gf against a
+
+  Parameters
+  ----------
+  cosmo: dict
+     Cosmology dictionary.
+
+  a : tf.TensorArray
+     Scale factor.
+
+  Returns
+  -------
+  Scalar float Tensor : the derivative of Gf against a.
+
+  Notes
+  -----
+
+  The expression for :math:`gf(a)` is:
+
+  .. math::
+      gf(a)=\frac{dGF}{da}= D^{''}_1 * a ** 3 *E(a) +D'_{1norm}*a ** 3 * E'(a)
+              +   3 * a ** 2 * E(a)*D'_{1norm}
+
   """
-    Derivative of Gf against a
-
-            Parameters
-            ----------
-            cosmo: dict
-               Cosmology dictionary.
-
-            a : tf.TensorArray
-               Scale factor.
-
-            Returns
-            -------
-            Scalar float Tensor : the derivative of Gf against a.
-
-            Notes
-            -----
-
-         The expression for :math:`gf(a)` is:
-
-    .. math::
-        gf(a)=\frac{dGF}{da}= D^{''}_1 * a ** 3 *E(a) +D'_{1norm}*a ** 3 * E'(a)
-                +   3 * a ** 2 * E(a)*D'_{1norm}
-
-    """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
   # Maybe compute ODE or use stored result
   cache = maybe_compute_ODE(cosmo)
@@ -919,31 +918,30 @@ def gf(cosmo, a):
 
 
 def gf2(cosmo, a):
+  r""" Derivative of Gf2 against a
+
+  Parameters
+  ----------
+  cosmo: dict
+    Cosmology dictionary.
+
+  a : tf.TensorArray
+     Scale factor.
+
+  Returns
+  -------
+  Scalar float Tensor : the derivative of Gf2 against a.
+
+  Notes
+  -----
+
+  The expression for :math:`gf2(a)` is:
+
+  .. math::
+      gf_2(a)=\frac{dGF_2}{da}= D^{''}_2 * a ** 3 *E(a) +D'_{2norm}*a ** 3 * E'(a)
+              +   3 * a ** 2 * E(a)*D'_{2norm}
+
   """
-    Derivative of Gf2 against a
-
-            Parameters
-            ----------
-            cosmo: dict
-              Cosmology dictionary.
-
-            a : tf.TensorArray
-               Scale factor.
-
-            Returns
-            -------
-            Scalar float Tensor : the derivative of Gf2 against a.
-
-            Notes
-            -----
-
-         The expression for :math:`gf2(a)` is:
-
-    .. math::
-        gf_2(a)=\frac{dGF_2}{da}= D^{''}_2 * a ** 3 *E(a) +D'_{2norm}*a ** 3 * E'(a)
-                +   3 * a ** 2 * E(a)*D'_{2norm}
-
-    """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
   # Maybe compute ODE or use stored result
   cache = maybe_compute_ODE(cosmo)
