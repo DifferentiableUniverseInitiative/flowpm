@@ -12,9 +12,33 @@ import flowpm
 import flowpm.constants as constants
 
 
+def generate_matrix():
+  """ Generate the possible rotation matrices
+    """
+  x = np.asarray([1, 0, 0], dtype=int)
+  y = np.asarray([0, 1, 0], dtype=int)
+  z = np.asarray([0, 0, 1], dtype=int)
+  M_matrices = [np.asarray([x,y,z],dtype=int), np.asarray([x,z,y],dtype=int),np.asarray([z,y,x],dtype=int),np.asarray([z,x,y],dtype=int), \
+                     np.asarray([y,x,z],dtype=int), np.asarray([y,z,x],dtype=int)]
+
+  return M_matrices
+
+
+def shift():
+  """ Generate possible xy shifts
+    """
+  I = np.zeros(3)
+  facx = np.random.uniform(0, 1)
+  facy = np.random.uniform(0, 1)
+  xyshifts = [np.asarray([facx, facy, 0], dtype=float)]
+  return I + xyshifts
+
+
 def density_plane(state,
                   nc,
                   center,
+                  Matrix,
+                  shift,
                   width,
                   plane_resolution,
                   name='density_plane'):
@@ -41,9 +65,10 @@ def density_plane(state,
 
     shape = tf.shape(pos)
     batch_size = shape[0]
-
-    xy = pos[..., :2]
-    d = pos[..., 2]
+    y = tf.einsum('ij,bkj->bki', Matrix, pos)
+    y = tf.add(y, [nx, ny, nz] * shift)
+    xy = y[..., :2]
+    d = y[..., 2]
 
     # Apply 2d periodic conditions
     xy = tf.math.mod(xy, nx)
