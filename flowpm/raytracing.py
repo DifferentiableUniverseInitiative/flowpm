@@ -12,21 +12,31 @@ import flowpm
 import flowpm.constants as constants
 
 
-def generate_matrix():
-  """ Generate the possible rotation matrices
-    """
-  x = np.asarray([1, 0, 0], dtype=int)
-  y = np.asarray([0, 1, 0], dtype=int)
-  z = np.asarray([0, 0, 1], dtype=int)
-  M_matrices = [np.asarray([x,y,z],dtype=int), np.asarray([x,z,y],dtype=int),np.asarray([z,y,x],dtype=int),np.asarray([z,x,y],dtype=int), \
-                     np.asarray([y,x,z],dtype=int), np.asarray([y,z,x],dtype=int)]
+def rotation_matrices():
+  """ Generate the 3D rotation matrices along the 3 axis.
+
+  Returns:
+    list of 6 3x3 float rotation matrices 
+  """
+  x = np.asarray([1, 0, 0], dtype=np.float32)
+  y = np.asarray([0, 1, 0], dtype=np.float32)
+  z = np.asarray([0, 0, 1], dtype=np.float32)
+  M_matrices = [np.asarray([x,y,z],dtype=np.float32), 
+                np.asarray([x,z,y],dtype=np.float32),
+                np.asarray([z,y,x],dtype=np.float32),
+                np.asarray([z,x,y],dtype=np.float32),
+                np.asarray([y,x,z],dtype=np.float32), 
+                np.asarray([y,z,x],dtype=np.float32)]
 
   return M_matrices
 
 
-def shift():
-  """ Generate possible xy shifts
-    """
+def random_2d_shift():
+  """ Generates a random xy shift
+
+  Returns:
+    float vector of shape [3] for x,y,z random shifts between 0 and 1.
+  """
   I = np.zeros(3)
   facx = np.random.uniform(0, 1)
   facy = np.random.uniform(0, 1)
@@ -37,10 +47,10 @@ def shift():
 def density_plane(state,
                   nc,
                   center,
-                  Matrix,
-                  shift,
                   width,
                   plane_resolution,
+                  rotation=None,
+                  shift=None,
                   name='density_plane'):
   """ Extract a slice from the input state vector and
   project it as a density plane.
@@ -51,6 +61,8 @@ def density_plane(state,
     center: float, center of the slice along the z axis in voxel coordinates
     width: float, width of the slice in voxel coordinates
     plane_size: int, number of pixels of the density plane. 
+    rotation: 3x3 float tensor, 3D rotation matrix to apply to the cube before cutting the plane
+    shift: float tensor of shape [3], 3D shift to apply to the cube before cutting the plane
     name: `string`, name of the operation.
 
   Returns:
@@ -65,10 +77,15 @@ def density_plane(state,
 
     shape = tf.shape(pos)
     batch_size = shape[0]
-    y = tf.einsum('ij,bkj->bki', Matrix, pos)
-    y = tf.add(y, [nx, ny, nz] * shift)
-    xy = y[..., :2]
-    d = y[..., 2]
+
+    # Apply optional shifts and rotations to the cube
+    if rotation is not None:
+      pos = tf.einsum('ij,bkj->bki', rotation, pos)
+    if shift is not None:
+      pos = pos + [nx, ny, nz] * shift
+
+    xy = pos[..., :2]
+    d = pos[..., 2]
 
     # Apply 2d periodic conditions
     xy = tf.math.mod(xy, nx)
