@@ -41,7 +41,7 @@ jobs:
             setuptools \
             nbodykit \
             runtests
-          pip install gast==0.2.2 tensorflow==2.3.1 tensorflow-probability==0.11.1
+          pip install tensorflow==2.3.1 tensorflow-probability==0.11.1
           pip install -e .[testing]
 
       - name: Run the tests
