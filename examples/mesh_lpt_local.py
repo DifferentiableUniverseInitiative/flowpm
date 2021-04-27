@@ -14,7 +14,6 @@ import flowpm.mtfpm as mtfpm
 import flowpm.mesh_utils as mesh_utils
 import flowpm
 from astropy.cosmology import Planck15
-from flowpm.tfpm import PerturbationGrowth
 from flowpm import linear_field, lpt_init, nbody, cic_paint
 from scipy.interpolate import InterpolatedUnivariateSpline as iuspline
 from matplotlib import pyplot as plt
@@ -27,8 +26,8 @@ tf.flags.DEFINE_integer("tasks_per_node", 1, "Number of task in each node")
 tf.flags.DEFINE_integer("nc", 64, "Size of the cube")
 tf.flags.DEFINE_integer("batch_size", 1, "Batch Size")
 tf.flags.DEFINE_float("box_size", 200, "Batch Size")
-tf.flags.DEFINE_integer("nx", 2, "# blocks along x")
-tf.flags.DEFINE_integer("ny", 2, "# blocks along y")
+tf.flags.DEFINE_integer("nx", 1, "# blocks along x")
+tf.flags.DEFINE_integer("ny", 1, "# blocks along y")
 tf.flags.DEFINE_integer("dsample", 2, "downsampling factor")
 tf.flags.DEFINE_integer("hsize", 16, "halo size")
 tf.flags.DEFINE_float("a0", 0.1, "initial scale factor")
@@ -123,14 +122,13 @@ def lpt_prototype(mesh,
       halo_size,
       lr_shape,
       hr_shape,
-      k_dims,
       part_shape[1:],
       antialias=True,
   )
 
   # Here we can run our nbody
   #final_state = state
-  final_state = mtfpm.nbody_single(state, stages, lr_shape, hr_shape, k_dims,
+  final_state = mtfpm.nbody_single(state, stages, lr_shape, hr_shape,
                                    kv_lr, halo_size)
 
   # paint the field
@@ -163,12 +161,12 @@ def lpt_prototype(mesh,
 
 def main(_):
 
-  mesh_shape = [("row", 2), ("col", 2)]
+  mesh_shape = [("row", FLAGS.nx), ("col", FLAGS.ny)]
   layout_rules = [("nx_lr", "row"), ("ny_lr", "col"), ("nx", "row"),
                   ("ny", "col"), ("ty_lr", "row"), ("tz_lr", "col"),
                   ("nx_block", "row"), ("ny_block", "col")]
 
-  mesh_hosts = ["localhost:%d" % (8222 + j) for j in range(4)]
+  mesh_hosts = ["localhost:%d" % (8222 + j) for j in range(FLAGS.nx*FLAGS.ny)]
 
   # Create a cluster from the mesh hosts.
   cluster = tf.train.ClusterSpec({
@@ -211,10 +209,10 @@ def main(_):
       ipklin,  # Initial power spectrum
       batch_size=FLAGS.batch_size)
 
-  state = lpt_init(initial_conditions, a0=a0, order=1)
+  #state = lpt_init(initial_conditions, a0=a0, order=1)
   #final_state = state
-  final_state = nbody(state, stages, nc)
-  tfinal_field = cic_paint(tf.zeros_like(initial_conditions), final_state[0])
+  #final_state = nbody(state, stages, nc)
+  tfinal_field = initial_conditions #cic_paint(tf.zeros_like(initial_conditions), final_state[0])
 
   # Compute necessary Fourier kernels
   kvec = flowpm.kernels.fftk((nc, nc, nc), symmetric=False)

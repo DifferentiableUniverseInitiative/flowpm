@@ -1,4 +1,9 @@
 from mpi4py import MPI
+import os
+comm = MPI.COMM_WORLD
+os.environ["CUDA_VISIBLE_DEVICES"]="%d"%(comm.rank+1) # This is specific to my machine
+
+from mpi4py import MPI
 comm = MPI.COMM_WORLD
 
 import numpy as np
@@ -158,7 +163,7 @@ def lpt_prototype(mesh,
 
   state = mtfpm.lpt_init_single(
       initc,
-      a, # a0
+      a0,
       kv_lr,
       halo_size,
       lr_shape,
@@ -167,7 +172,7 @@ def lpt_prototype(mesh,
       antialias=True,
   )
   # Here we can run our nbody
-  final_state = state  #mtfpm.nbody(state, stages, lr_shape, hr_shape, k_dims, kv_lr, kv_hr, halo_size, downsampling_factor=downsampling_factor)
+  final_state = mtfpm.nbody_single(state, stages, lr_shape, hr_shape, kv_lr, halo_size)
 
   # paint the field
   final_field = mtf.zeros(mesh, shape=hr_shape)
