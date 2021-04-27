@@ -1,5 +1,5 @@
 # FlowPM
-[![Build Status](https://travis-ci.org/DifferentiableUniverseInitiative/flowpm.svg?branch=master)](https://travis-ci.org/DifferentiableUniverseInitiative/flowpm) [![PyPI version](https://badge.fury.io/py/flowpm.svg)](https://badge.fury.io/py/flowpm) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DifferentiableUniverseInitiative/flowpm/blob/master/notebooks/flowpm_tutorial.ipynb) [![arXiv:2010.11847](https://img.shields.io/badge/astro--ph.IM-arXiv%3A2010.11847-B31B1B.svg)](https://arxiv.org/abs/2010.11847) [![youtube](https://img.shields.io/badge/-youtube-red?logo=youtube&labelColor=grey)](https://youtu.be/DHOaHTU61hM)   [![PEP8](https://img.shields.io/badge/code%20style-pep8-blue.svg)](https://www.python.org/dev/peps/pep-0008/)
+[![Build Status](https://travis-ci.org/DifferentiableUniverseInitiative/flowpm.svg?branch=master)](https://travis-ci.org/DifferentiableUniverseInitiative/flowpm) [![PyPI version](https://badge.fury.io/py/flowpm.svg)](https://badge.fury.io/py/flowpm) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DifferentiableUniverseInitiative/flowpm/blob/master/notebooks/flowpm_tutorial.ipynb) [![arXiv:2010.11847](https://img.shields.io/badge/astro--ph.IM-arXiv%3A2010.11847-B31B1B.svg)](https://arxiv.org/abs/2010.11847) [![youtube](https://img.shields.io/badge/-youtube-red?logo=youtube&labelColor=grey)](https://youtu.be/DHOaHTU61hM)   [![PEP8](https://img.shields.io/badge/code%20style-pep8-blue.svg)](https://www.python.org/dev/peps/pep-0008/) [![Documentation Status](https://readthedocs.org/projects/flowpm/badge/?version=latest)](https://flowpm.readthedocs.io/en/documentation/?badge=documentation)
 
 
 Particle Mesh Simulation in TensorFlow, based on [fastpm-python](https://github.com/rainwoodman/fastpm-python) simulations
@@ -11,7 +11,7 @@ To install:
 $ pip install flowpm
 ```
 
-For a minimal working example of FlowPM, see this [notebook](notebook/flowpm_tutorial.ipynb). The steps are as follows:
+For a minimal working example of FlowPM, see this [notebook](notebooks/flowpm_demo.ipynb). The steps are as follows:
 ```python
 import tensorflow as tf
 import numpy as np
