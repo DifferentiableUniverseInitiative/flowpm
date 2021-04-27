@@ -16,7 +16,7 @@ setup(name='flowpm',
       license='MIT',
       packages=find_packages(),
       install_requires=[
-          'astropy', 'scipy', 'mesh-tensorflow', 'tensorflow_probability'
+          'astropy', 'scipy', 'mesh-tensorflow', 'tensorflow_probability', 'tensorflow_addons'
       ],
       tests_require=['fastpm'],
       extras_require={
