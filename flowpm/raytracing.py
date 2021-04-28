@@ -150,7 +150,7 @@ def convergenceBorn(cosmo,
       shape = tf.shape(p)
       c = tf.math.mod(c, tf.cast(shape[1], tf.float32))
 
-      # Shifting pixel center convention 
+      # Shifting pixel center convention
       c = tf.expand_dims(c, axis=0) - 0.5
 
       im = tfa.image.interpolate_bilinear(tf.expand_dims(p, -1),
