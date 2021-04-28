@@ -16,11 +16,12 @@ setup(name='flowpm',
       license='MIT',
       packages=find_packages(),
       install_requires=[
-          'astropy', 'scipy', 'mesh-tensorflow', 'tensorflow_probability'
+          'astropy', 'scipy', 'mesh-tensorflow', 'tensorflow_probability',
+          'tensorflow_addons'
       ],
-      tests_require=['fastpm'],
+      tests_require=['fastpm', 'lenstools'],
       extras_require={
-          'testing': ['fastpm'],
+          'testing': ['fastpm', 'lenstools'],
       },
       use_scm_version=True,
       setup_requires=['setuptools_scm'],
