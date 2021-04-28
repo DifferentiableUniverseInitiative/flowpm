@@ -42,7 +42,7 @@ def random_2d_shift():
   I = np.zeros(3)
   facx = np.random.uniform(0, 1)
   facy = np.random.uniform(0, 1)
-  xyshifts = [np.asarray([facx, facy, 0], dtype=float)]
+  xyshifts = [np.asarray([facx, facy, 0], dtype=np.float32)]
   return I + xyshifts
 
 
