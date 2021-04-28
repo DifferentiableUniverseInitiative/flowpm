@@ -145,11 +145,13 @@ def convergenceBorn(cosmo,
       p = (p - tf.reduce_mean(p, axis=[1, 2], keepdims=True)
            ) * constant_factor * density_normalization
       c = coords * r / dx
-      c = tf.expand_dims(c, axis=0) - 0.5
 
       # Applying periodic conditions on lensplane
       shape = tf.shape(p)
       c = tf.math.mod(c, tf.cast(shape[1], tf.float32))
+
+      # Shifting pixel center convention 
+      c = tf.expand_dims(c, axis=0) - 0.5
 
       im = tfa.image.interpolate_bilinear(tf.expand_dims(p, -1),
                                           c,
