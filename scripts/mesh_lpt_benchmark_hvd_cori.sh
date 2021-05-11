@@ -13,4 +13,4 @@ module purge && module load cgpu esslurm tensorflow/2.4.1-gpu
 
 export SLURM_CPU_BIND="cores"
 
-srun python mesh_lpt_benchmark_hvd.py --nc=512 --batch_size=1 --nx=2 --ny=2 --hsize=32 --output_file="./timelines/timeline_mesh4"
+srun python mesh_lpt_benchmark_hvd.py --nc=512 --batch_size=1 --nx=2 --ny=2 --hsize=32 --output_file="timeline_mesh4"
