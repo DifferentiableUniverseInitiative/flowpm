@@ -215,6 +215,7 @@ def main(_):
     plt.colorbar()
     plt.savefig("mesh_nbody_%d-row:%d-col:%d.png" %
               (FLAGS.nc, FLAGS.nx, FLAGS.ny))
+    plt.close()
   exit(-1)
 
 if __name__ == "__main__":
