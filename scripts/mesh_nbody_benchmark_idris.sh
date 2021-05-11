@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=lpt_benchmark     # nom du job
+#SBATCH --job-name=nbody_benchmark   # nom du job
 ##SBATCH --partition=gpu_p2          # de-commente pour la partition gpu_p2
 #SBATCH --ntasks=16                  # nombre total de tache MPI (= nombre total de GPU)
 #SBATCH --ntasks-per-node=4          # nombre de tache MPI par noeud (= nombre de GPU par noeud)
@@ -9,8 +9,8 @@
 # /!\ Attention, "multithread" fait reference a l'hyperthreading dans la terminologie Slurm
 #SBATCH --hint=nomultithread         # hyperthreading desactive
 #SBATCH --time=00:10:00              # temps d'execution maximum demande (HH:MM:SS)
-#SBATCH --output=lpt_benchmark%j.out # nom du fichier de sortie
-#SBATCH --error=lpt_benchmark%j.out  # nom du fichier d'erreur (ici commun avec la sortie)
+#SBATCH --output=nbody_benchmark%j.out # nom du fichier de sortie
+#SBATCH --error=nbody_benchmark%j.out  # nom du fichier d'erreur (ici commun avec la sortie)
 #SBATCH -A ftb@gpu                   # specify the project
 #SBATCH --qos=qos_gpu-dev            # using the dev queue, as this is only for profiling
 
