@@ -213,7 +213,7 @@ def main(_):
     plt.imshow(c[0].sum(axis=2))
     plt.title('Mesh TensorFlow')
     plt.colorbar()
-    plt.savefig("figs/mesh_nbody_%d-b1%d-b2%d.png" %
+    plt.savefig("mesh_nbody_%d-row:%d-col:%d.png" %
               (FLAGS.nc, FLAGS.nx, FLAGS.ny))
   exit(-1)
 
