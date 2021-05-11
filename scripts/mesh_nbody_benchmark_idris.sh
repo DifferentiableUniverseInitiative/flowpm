@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=lpt_benchmark     # nom du job
 ##SBATCH --partition=gpu_p2          # de-commente pour la partition gpu_p2
-#SBATCH --ntasks=4                   # nombre total de tache MPI (= nombre total de GPU)
+#SBATCH --ntasks=16                  # nombre total de tache MPI (= nombre total de GPU)
 #SBATCH --ntasks-per-node=4          # nombre de tache MPI par noeud (= nombre de GPU par noeud)
 #SBATCH --gres=gpu:4                 # nombre de GPU par nœud (max 8 avec gpu_p2)
 #SBATCH --cpus-per-task=10           # nombre de coeurs CPU par tache (un quart du noeud ici)
@@ -23,4 +23,4 @@ module load tensorflow-gpu/py3/2.4.1+nccl-2.8.3-1
 # echo des commandes lancees
 set -x
 
-srun python mesh_lpt_benchmark_hvd.py --nc=512 --batch_size=1 --nx=2 --ny=2 --hsize=32 --output_file="timeline_mesh4"
+srun python mesh_nbody_benchmark.py --nc=512 --batch_size=1 --nx=4 --ny=4 --hsize=32

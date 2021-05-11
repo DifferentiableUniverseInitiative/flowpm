@@ -1,51 +1,35 @@
 from mpi4py import MPI
-import os
-comm = MPI.COMM_WORLD
-os.environ["CUDA_VISIBLE_DEVICES"]="%d"%(comm.rank+1) # This is specific to my machine
-
-from mpi4py import MPI
 comm = MPI.COMM_WORLD
 
+import time
 import numpy as np
-import os
-import math
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
+
 import mesh_tensorflow as mtf
 from mesh_tensorflow.hvd_simd_mesh_impl import HvdSimdMeshImpl
 
-import time
-import sys
-sys.path.append('../')
-sys.path.append('../flowpm/')
+import flowpm
 import flowpm.mesh_ops as mpm
 import flowpm.mtfpm as mtfpm
 import flowpm.mesh_utils as mesh_utils
-import flowpm
+
 from astropy.cosmology import Planck15
-from flowpm import linear_field, lpt_init, nbody, cic_paint
-from scipy.interpolate import InterpolatedUnivariateSpline as iuspline
 from matplotlib import pyplot as plt
 cosmology = Planck15
 
 tf.flags.DEFINE_integer("nc", 128, "Size of the cube")
 tf.flags.DEFINE_integer("batch_size", 1, "Batch Size")
-tf.flags.DEFINE_float("box_size", 500, "Batch Size")
+tf.flags.DEFINE_float("box_size", 100, "Box Size [Mpc/h]")
 tf.flags.DEFINE_float("a0", 0.1, "initial scale factor")
 tf.flags.DEFINE_float("af", 1.0, "final scale factor")
-tf.flags.DEFINE_integer("nsteps", 5, "Number of time steps")
+tf.flags.DEFINE_integer("nsteps", 10, "Number of time steps")
 
-#pyramid flags
-tf.flags.DEFINE_integer("dsample", 0, "downsampling factor")
 tf.flags.DEFINE_integer("hsize", 0, "halo size")
 
 #mesh flags
 tf.flags.DEFINE_integer("nx", 4, "# blocks along x")
 tf.flags.DEFINE_integer("ny", 2, "# blocks along y")
-# tf.flags.DEFINE_string("mesh_shape", "row:4,col:2", "mesh shape")
-#tf.flags.DEFINE_string("layout", "nx:b1", "layout rules")
-tf.flags.DEFINE_string("output_file", "timeline",
-                       "Name of the output timeline file")
 
 FLAGS = tf.flags.FLAGS
 
@@ -61,11 +45,10 @@ def lpt_prototype(mesh,
     Prototype of function computing LPT deplacement.
 
     Returns output tensorflow and mesh tensorflow tensors
-    """
-
+  """
   klin = np.loadtxt('../flowpm/data/Planck15_a1p00.txt').T[0]
   plin = np.loadtxt('../flowpm/data/Planck15_a1p00.txt').T[1]
-  ipklin = iuspline(klin, plin)
+  
   stages = np.linspace(a0, a, nsteps, endpoint=True)
 
   # Define the named dimensions
@@ -80,12 +63,6 @@ def lpt_prototype(mesh,
                    min(nc // n_block_x, nc // n_block_y, nc // n_block_z))
     print('WARNING: REDUCING HALO SIZE from %d to %d' % (halo_size, new_size))
     halo_size = new_size
-
-  # Parameters of the large scales decomposition
-  downsampling_factor = 0
-  lnc = nc // 2**downsampling_factor
-
-  #
 
   fx_dim = mtf.Dimension("nx", nc)
   fy_dim = mtf.Dimension("ny", nc)
@@ -149,17 +126,7 @@ def lpt_prototype(mesh,
   part_shape = [batch_dim, fx_dim, fy_dim, fz_dim]
 
   # Begin simulation
-
   initc = mtfpm.linear_field(mesh, shape, bs, nc, pk, kv)
-
-  #    # Reshaping array into high resolution mesh
-  #    field = mtf.slicewise(lambda x:tf.expand_dims(tf.expand_dims(tf.expand_dims(x, axis=1),axis=1),axis=1),
-  #                      [initc],
-  #                      output_dtype=tf.float32,
-  #                      output_shape=hr_shape,
-  #                      name='my_reshape',
-  #                      splittable_dims=lr_shape[:-1]+hr_shape[1:4]+part_shape[1:3])
-  #
 
   state = mtfpm.lpt_init_single(
       initc,
@@ -189,7 +156,6 @@ def lpt_prototype(mesh,
     final_field = mtf.slice(final_field, halo_size, block_size_dim.size,
                             block_size_dim.name)
 
-  #final_field = mtf.reshape(final_field,  [batch_dim, fx_dim, fy_dim, fz_dim])
   # Hack usisng  custom reshape because mesh is pretty dumb
   final_field = mtf.slicewise(lambda x: x[:, 0, 0, 0], [final_field],
                               output_dtype=tf.float32,
@@ -200,8 +166,6 @@ def lpt_prototype(mesh,
   ret_initc = mtf.reshape(initc, [batch_dim, ffx_dim, ffy_dim, ffz_dim])
   ret_fifn  = mtf.reshape(final_field, [batch_dim, ffx_dim, ffy_dim, ffz_dim])
   return ret_initc, ret_fifn
-
-  ##
 
 
 def main(_):
@@ -214,20 +178,17 @@ def main(_):
                   ("ty_lr", "row"), ("tz_lr", "col"), 
                   ("nx_block", "row"), ("ny_block", "col")]
 
-  r = comm.Get_rank()
-  print("Hello, I'm",r)
-
-  mesh_impl =HvdSimdMeshImpl(mtf.convert_to_shape(mesh_shape), 
-                            mtf.convert_to_layout_rules(layout_rules))
+  mesh_impl = HvdSimdMeshImpl(mtf.convert_to_shape(mesh_shape), 
+                              mtf.convert_to_layout_rules(layout_rules))
 
   # Build the model
   # Create computational graphs and some initializations
-
   graph = mtf.Graph()
   mesh = mtf.Mesh(graph, "nbody_mesh")
 
   initial_conditions, mesh_final_field = lpt_prototype(
       mesh, bs=FLAGS.box_size, nc=FLAGS.nc, batch_size=FLAGS.batch_size)
+
   # Lower mesh computation
   lowering = mtf.Lowering(graph, {mesh: mesh_impl})
 
@@ -236,7 +197,11 @@ def main(_):
   result = lowering.export_to_tf_tensor(mesh_final_field)
 
   with tf.Session() as sess:
+    start = time.time()
     a, c = sess.run([initc, result])
+    end = time.time()
+    ttime = (end - start)
+    print('Time for ', mesh_shape, ' is : ', ttime)
 
   if comm.rank == 0:  
     plt.figure(figsize=(9, 3))
@@ -248,40 +213,8 @@ def main(_):
     plt.imshow(c[0].sum(axis=2))
     plt.title('Mesh TensorFlow')
     plt.colorbar()
-    plt.savefig("figs/mesh_lpt_%d-b1%d-b2%d.png" %
+    plt.savefig("figs/mesh_nbody_%d-b1%d-b2%d.png" %
               (FLAGS.nc, FLAGS.nx, FLAGS.ny))
-
-  with tf.Session() as sess:
-
-    start = time.time()
-    err = sess.run(result)
-    end = time.time()
-
-    niter = 10
-    start = time.time()
-    for i in range(niter):
-      err = sess.run(result)
-    end = time.time()
-    ttime = (end - start) / niter
-
-
-#        profiler = tf.profiler.Profiler(sess.graph)
-#
-#        run_meta = tf.RunMetadata()
-#        err = sess.run(result,
-#                       options=tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE),
-#                       run_metadata=run_meta)
-#
-#        profiler.add_step(0, run_meta)
-#
-#        opts = (tf.profiler.ProfileOptionBuilder(
-#            tf.profiler.ProfileOptionBuilder.time_and_memory())
-#            .with_step(0)
-#            .with_timeline_output(FLAGS.output_file).build())
-#        profiler.profile_graph(options=opts)
-#
-
-  print('Time for ', mesh_shape, ' is : ', ttime)
   exit(-1)
 
 if __name__ == "__main__":
