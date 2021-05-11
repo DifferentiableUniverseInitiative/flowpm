@@ -23,4 +23,4 @@ module load tensorflow-gpu/py3/2.4.1+nccl-2.8.3-1
 # echo des commandes lancees
 set -x
 
-srun python mesh_nbody_benchmark.py --nc=512 --batch_size=1 --nx=4 --ny=4 --hsize=32
+srun /gpfslocalsup/pub/idrtools/bind_gpu.sh python mesh_nbody_benchmark.py --nc=512 --batch_size=1 --nx=4 --ny=4 --hsize=32
