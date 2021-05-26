@@ -20,7 +20,7 @@
 module purge
 
 # chargement des modules
-module load tensorflow-gpu/py3/2.4.1+nccl-2.8.3-1 nvidia-nsight-systems/2021.1.1
+module load tensorflow-gpu/py3/2.4.1+cuda-11.2 nvidia-nsight-systems/2021.1.1
 #module load tensorflow-gpu/py3/2.4.1+nccl-2.8.3-1
 
 # echo des commandes lancees
@@ -34,5 +34,5 @@ ln -s $JOBSCRATCH /tmp/nvidia
 #srun nvprof --profile-child-processes -f -o result-mesh_nbody-%p.nvvp /gpfslocalsup/pub/idrtools/bind_gpu.sh python -u mesh_nbody_benchmark.py --nc=512 --batch_size=1 --nx=2 --ny=2 --hsize=32
 
 # execution du code avec binding via bind_gpu.sh : 1 GPU pour 1 tache MPI.
-srun --unbuffered --mpi=pmi2 -o mesh_nbody_%t.log /gpfslocalsup/pub/idrtools/bind_gpu.sh nsys profile --stats=true -t nvtx,cuda,mpi -o result-%q{SLURM_TASK_PID} python -u mesh_nbody_benchmark.py --nc=128 --batch_size=1 --nx=2 --ny=2 --hsize=32 --nsteps=3
+srun --unbuffered --mpi=pmi2 -o mesh_nbody_%t.log /gpfslocalsup/pub/idrtools/bind_gpu.sh nsys profile --stats=true -t nvtx,cuda,mpi -o result-%q{SLURM_TASK_PID} python -u mesh_nbody_benchmark.py  --nc=128 --batch_size=1 --nx=2 --ny=2 --hsize=32 --nsteps=2
 
