@@ -1,3 +1,6 @@
+import sys
+sys.path.insert(0,'..') 
+
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
 
@@ -17,20 +20,20 @@ from astropy.cosmology import Planck15
 cosmology = Planck15
 tf.random.set_random_seed(200*comm.Get_rank())
 
-tf.flags.DEFINE_integer("nc", 512, "Size of the cube")
+tf.flags.DEFINE_integer("nc", 128, "Size of the cube")
 tf.flags.DEFINE_integer("batch_size", 1, "Batch Size")
 tf.flags.DEFINE_float("box_size", 512, "Box Size [Mpc/h]")
 tf.flags.DEFINE_float("a0", 0.1, "initial scale factor")
 tf.flags.DEFINE_float("af", 1.0, "final scale factor")
-tf.flags.DEFINE_integer("nsteps", 10, "Number of time steps")
+tf.flags.DEFINE_integer("nsteps", 3, "Number of time steps")
 
 #pyramid flags
 tf.flags.DEFINE_integer("dsample", 2, "downsampling factor")
 tf.flags.DEFINE_integer("hsize", 32, "halo size")
 
 #mesh flags
-tf.flags.DEFINE_integer("nx", 2, "# blocks along x")
-tf.flags.DEFINE_integer("ny", 2, "# blocks along y")
+tf.flags.DEFINE_integer("nx", 1, "# blocks along x")
+tf.flags.DEFINE_integer("ny", 1, "# blocks along y")
 
 FLAGS = tf.flags.FLAGS
 
