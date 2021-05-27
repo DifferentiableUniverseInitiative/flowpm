@@ -21,7 +21,7 @@ import flowpm.mtfpm as mtfpm
 import flowpm.mesh_utils as mesh_utils
 
 from astropy.cosmology import Planck15
-#from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt
 cosmology = Planck15
 
 tf.flags.DEFINE_integer("nc", 128, "Size of the cube")
