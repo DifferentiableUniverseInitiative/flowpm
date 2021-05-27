@@ -12,7 +12,6 @@ tf.disable_v2_behavior()
 
 import mesh_tensorflow as mtf
 from mesh_tensorflow.hvd_simd_mesh_impl import HvdSimdMeshImpl
-from mesh_tensorflow.nvtx_ops import add_nvtx
 
 
 import flowpm
