@@ -10,9 +10,6 @@ import numpy as np
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
 
-import nvtx.plugins.tf as nvtx_tf
-from nvtx.plugins.tf.estimator import NVTXHook
-
 import mesh_tensorflow as mtf
 from mesh_tensorflow.hvd_simd_mesh_impl import HvdSimdMeshImpl
 from mesh_tensorflow.nvtx_ops import add_nvtx
@@ -136,7 +133,6 @@ def lpt_prototype(mesh,
 
   # Begin simulation
   initc = mtfpm.linear_field(mesh, shape, bs, nc, pk, kv)
-  initc = add_nvtx(initc, message='linear_field', domain_name='nbody')
 
   state = mtfpm.lpt_init_single(
       initc,
@@ -148,11 +144,9 @@ def lpt_prototype(mesh,
       part_shape[1:],
       antialias=True,
   )
- # state= add_nvtx(state, message='after_init', domain_name='nbody')
 
   # Here we can run our nbody
   final_state = mtfpm.nbody_single(state, stages, lr_shape, hr_shape, kv_lr, halo_size)
- #final_state= add_nvtx(final_state, message='after_nbody', domain_name='nbody')
 
   # paint the field
   final_field = mtf.zeros(mesh, shape=hr_shape)
@@ -160,9 +154,8 @@ def lpt_prototype(mesh,
     final_field = mtf.pad(final_field, [halo_size, halo_size],
                           block_size_dim.name)
 
-  final_state0 = add_nvtx(final_state[0], message='before_paint', domain_name='nbody')
   final_field = mesh_utils.cic_paint(final_field, final_state0, halo_size)
-  final_field = add_nvtx(final_field, message='after_paint', domain_name='nbody')
+  
   # Halo exchange
   for blocks_dim, block_size_dim in zip(hr_shape[1:4], final_field.shape[-3:]):
     final_field = mpm.halo_reduce(final_field, blocks_dim, block_size_dim,
@@ -211,28 +204,28 @@ def main(_):
   # Retrieve output of computation
   initc = lowering.export_to_tf_tensor(initial_conditions)
   result = lowering.export_to_tf_tensor(mesh_final_field)
-  nvtx_callback = NVTXHook(skip_n_steps=0, name='Train')
 
-  with tf.compat.v1.train.MonitoredSession(hooks=[nvtx_callback]) as sess:
+  with tf.Session() as sess:
     start = time.time()
     a, c = sess.run([initc, result])
     end = time.time()
     ttime = (end - start)
     print('Time for ', mesh_shape, ' is : ', ttime)
 
-  #if comm.rank == 0:  
-  #  plt.figure(figsize=(9, 3))
-  #  plt.subplot(121)
-  #  plt.imshow(a[0].sum(axis=2))
-  #  plt.title('Initial Conditions')
+  if comm.rank == 0:  
+    plt.figure(figsize=(9, 3))
+    plt.subplot(121)
+    plt.imshow(a[0].sum(axis=2))
+    plt.title('Initial Conditions')
 
-  #  plt.subplot(122)
-  #  plt.imshow(c[0].sum(axis=2))
-  #  plt.title('Mesh TensorFlow')
-  #  plt.colorbar()
-  #  plt.savefig("mesh_nbody_%d-row:%d-col:%d.png" %
-  #            (FLAGS.nc, FLAGS.nx, FLAGS.ny))
-  #  plt.close()
+    plt.subplot(122)
+    plt.imshow(c[0].sum(axis=2))
+    plt.title('Mesh TensorFlow')
+    plt.colorbar()
+    plt.savefig("mesh_nbody_%d-row:%d-col:%d.png" %
+              (FLAGS.nc, FLAGS.nx, FLAGS.ny))
+    plt.close()
+  
   exit(0)
 
 

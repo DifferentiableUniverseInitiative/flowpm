@@ -5,12 +5,6 @@ from __future__ import print_function
 import mesh_tensorflow as mtf
 import tensorflow.compat.v1 as tf
 
-
-import nvtx.plugins.tf as nvtx_tf
-from nvtx.plugins.tf.estimator import NVTXHook
-from mesh_tensorflow.nvtx_ops import add_nvtx
-
-
 from . import mesh_ops
 from . import mesh_kernels
 
@@ -54,8 +48,6 @@ def _cic_indexing(mesh, part, weight=None, name=None):
 
     if weight is not None:
       kernel = tf.multiply(tf.expand_dims(weight, axis=-1), kernel)
-
-    #neighboor_coords = tf.cast(neighboor_coords, tf.int32)
 
     # Adding batch dimension to the neighboor coordinates
     batch_idx = tf.range(0, batch_size)
@@ -155,7 +147,6 @@ def cic_paint(mesh, part, halo_size, weight=None, name=None):
   """
   nk = mtf.Dimension("nk", 8)
   nl = mtf.Dimension("nl", 4)
-  part = add_nvtx(part, message='part before cic_indexing', domain_name='cic_paint')
   indices, values = mtf.slicewise(
       _cic_indexing, [mesh, part],
       output_dtype=[tf.float32, tf.float32],
@@ -164,15 +155,12 @@ def cic_paint(mesh, part, halo_size, weight=None, name=None):
           mtf.Shape(part.shape.dims[:-1] + [nk])
       ],
       splittable_dims=mesh.shape[:-3] + part.shape[1:-1])
-  values = add_nvtx(values, message='values after cic_indexing and before cic_paint', domain_name='cic_paint')
-  mesh = add_nvtx(mesh, message='mesh before cic_paint', domain_name='cic_paint')
   mesh = mtf.slicewise(lambda x, y, z: _cic_paint(
       x, y, z, shift=[0, halo_size, halo_size, halo_size]),
                        [mesh, indices, values],
                        output_dtype=tf.float32,
                        output_shape=mesh.shape,
                        splittable_dims=mesh.shape[:-3] + part.shape[1:-1])
-  mesh = add_nvtx(mesh, message='mesh after cic_paint', domain_name='cic_paint')
   return mesh
 
 
