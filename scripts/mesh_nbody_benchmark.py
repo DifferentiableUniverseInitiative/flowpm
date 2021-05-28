@@ -9,6 +9,7 @@ tf.disable_v2_behavior()
 import mesh_tensorflow as mtf
 from mesh_tensorflow.hvd_simd_mesh_impl import HvdSimdMeshImpl
 
+
 import flowpm
 import flowpm.mesh_ops as mpm
 import flowpm.mtfpm as mtfpm
@@ -23,13 +24,13 @@ tf.flags.DEFINE_integer("batch_size", 1, "Batch Size")
 tf.flags.DEFINE_float("box_size", 100, "Box Size [Mpc/h]")
 tf.flags.DEFINE_float("a0", 0.1, "initial scale factor")
 tf.flags.DEFINE_float("af", 1.0, "final scale factor")
-tf.flags.DEFINE_integer("nsteps", 10, "Number of time steps")
+tf.flags.DEFINE_integer("nsteps", 3, "Number of time steps")
 
-tf.flags.DEFINE_integer("hsize", 0, "halo size")
+tf.flags.DEFINE_integer("hsize", 32, "halo size")
 
 #mesh flags
-tf.flags.DEFINE_integer("nx", 4, "# blocks along x")
-tf.flags.DEFINE_integer("ny", 2, "# blocks along y")
+tf.flags.DEFINE_integer("nx", 1, "# blocks along x")
+tf.flags.DEFINE_integer("ny", 1, "# blocks along y")
 
 FLAGS = tf.flags.FLAGS
 
@@ -138,6 +139,7 @@ def lpt_prototype(mesh,
       part_shape[1:],
       antialias=True,
   )
+
   # Here we can run our nbody
   final_state = mtfpm.nbody_single(state, stages, lr_shape, hr_shape, kv_lr, halo_size)
 
@@ -146,7 +148,9 @@ def lpt_prototype(mesh,
   for block_size_dim in hr_shape[-3:]:
     final_field = mtf.pad(final_field, [halo_size, halo_size],
                           block_size_dim.name)
-  final_field = mesh_utils.cic_paint(final_field, final_state[0], halo_size)
+
+  final_field = mesh_utils.cic_paint(final_field, final_state0, halo_size)
+  
   # Halo exchange
   for blocks_dim, block_size_dim in zip(hr_shape[1:4], final_field.shape[-3:]):
     final_field = mpm.halo_reduce(final_field, blocks_dim, block_size_dim,
@@ -216,7 +220,9 @@ def main(_):
     plt.savefig("mesh_nbody_%d-row:%d-col:%d.png" %
               (FLAGS.nc, FLAGS.nx, FLAGS.ny))
     plt.close()
-  exit(-1)
+  
+  exit(0)
+
 
 if __name__ == "__main__":
   tf.app.run(main=main)
