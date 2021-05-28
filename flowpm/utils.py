@@ -53,15 +53,16 @@ def cic_paint(mesh, part, weight=None, name="CiCPaint"):
     if weight is not None:
       kernel = tf.multiply(tf.expand_dims(weight, axis=-1), kernel)
 
-    neighboor_coords = tf.cast(neighboor_coords, tf.int32)
     neighboor_coords = tf.math.mod(neighboor_coords, nc)
 
     # Adding batch dimension to the neighboor coordinates
-    batch_idx = tf.range(0, batch_size)
+    batch_idx = tf.cast(tf.range(0, batch_size), dtype=tf.float32)
     batch_idx = tf.reshape(batch_idx, (batch_size, 1, 1, 1))
     b = tf.tile(batch_idx,
                 [1] + list(neighboor_coords.get_shape()[1:-1]) + [1])
     neighboor_coords = tf.concat([b, neighboor_coords], axis=-1)
+
+    neighboor_coords = tf.cast(neighboor_coords, tf.int32)
 
     update = tf.scatter_nd(tf.reshape(neighboor_coords, (-1, 8, 4)),
                            tf.reshape(kernel, (-1, 8)),
@@ -181,9 +182,9 @@ def cic_readout(mesh, part, name="CiCReadout"):
     kernel = 1. - tf.abs(part - neighboor_coords)
     kernel = kernel[..., 0] * kernel[..., 1] * kernel[..., 2]
 
-    neighboor_coords = tf.cast(neighboor_coords, tf.int32)
     neighboor_coords = tf.math.mod(neighboor_coords, nc)
 
+    neighboor_coords = tf.cast(neighboor_coords, tf.int32)
     meshvals = tf.gather_nd(mesh, neighboor_coords, batch_dims=1)
     weightedvals = tf.multiply(meshvals, kernel)
     value = tf.reduce_sum(weightedvals, axis=-1)
