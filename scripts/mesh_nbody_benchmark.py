@@ -1,4 +1,3 @@
-import sys
 sys.path.insert(0,'..') 
 
 
@@ -230,4 +229,3 @@ def main(_):
 
 if __name__ == "__main__":
   tf.app.run(main=main)
-
