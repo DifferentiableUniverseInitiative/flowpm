@@ -209,13 +209,22 @@ def nbody_fn(mesh,
         antialias=True,
     )
 
+  final_state = mtfpm.nbody(state,
+                            stages,
+                            lr_shape,
+                            hr_shape,
+                            kv_lr,
+                            kv_hr,
+                            halo_size)
+  #                               downsampling_factor=downsampling_factor)
+
   # Try to project the state vector to a 2d mesh
   projected_field = mtf.zeros(mesh, shape=lp_shape)
   for block_size_dim in lp_shape[-2:]:
     projected_field = mtf.pad(projected_field, [halo_size, halo_size],
                           block_size_dim.name)
   projected_field = mesh_utils.cic_paint2d(projected_field, 
-                                       mtf.slice(state[0] / nc * lensplane_nc, 0, 2, "ndim"), 
+                                       mtf.slice(final_state[0] / nc * lensplane_nc, 0, 2, "ndim"), 
                                        halo_size)
   # Halo exchange
   for blocks_dim, block_size_dim in zip(lp_shape[1:3], projected_field.shape[-2:]):
@@ -226,14 +235,7 @@ def nbody_fn(mesh,
     projected_field = mtf.slice(projected_field, halo_size, block_size_dim.size,
                                   block_size_dim.name)
 
-  # final_state = mtfpm.nbody(state,
-  #                               stages,
-  #                               lr_shape,
-  #                               hr_shape,
-  #                               kv_lr,
-  #                               kv_hr,
-  #                               halo_size,
-  #                               downsampling_factor=downsampling_factor)
+
   # # paint the field
   # final_field = mtf.zeros(mesh, shape=hr_shape)
   # for block_size_dim in hr_shape[-3:]:
@@ -253,7 +255,7 @@ def nbody_fn(mesh,
                               output_dtype=tf.float32,
                               output_shape=[batch_dim, lpx_dim, lpy_dim],
                               name='my_dumb_reshape',
-                              splittable_dims=lp_shape)
+                              splittable_dims=lp_shape+[lpx_dim, lpy_dim])
 
   return initc, projected_field
 
