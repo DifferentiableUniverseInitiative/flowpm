@@ -293,7 +293,7 @@ def cic_paint2d(mesh, part, halo_size, weight=None, name=None):
       ],
       splittable_dims=mesh.shape[:-2] + part.shape[1:-1])
   mesh = mtf.slicewise(lambda x, y, z: _cic_paint2d(
-      x, y, z, shift=[0, halo_size, halo_size, halo_size]),
+      x, y, z, shift=[0, halo_size, halo_size]),
                        [mesh, indices, values],
                        output_dtype=tf.float32,
                        output_shape=mesh.shape,
