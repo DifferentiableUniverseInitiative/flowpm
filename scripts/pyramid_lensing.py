@@ -235,29 +235,34 @@ def nbody_fn(mesh,
     projected_field = mtf.slice(projected_field, halo_size, block_size_dim.size,
                                   block_size_dim.name)
 
-
-  # # paint the field
-  # final_field = mtf.zeros(mesh, shape=hr_shape)
-  # for block_size_dim in hr_shape[-3:]:
-  #   final_field = mtf.pad(final_field, [halo_size, halo_size],
-  #                         block_size_dim.name)
-  # final_field = mesh_utils.cic_paint(final_field, final_state[0], halo_size)
-  # # Halo exchange
-  # for blocks_dim, block_size_dim in zip(hr_shape[1:4], final_field.shape[-3:]):
-  #   final_field = mpm.halo_reduce(final_field, blocks_dim, block_size_dim,
-  #                                 halo_size)
-  # # Remove borders
-  # for block_size_dim in hr_shape[-3:]:
-  #   final_field = mtf.slice(final_field, halo_size, block_size_dim.size,
-  #                           block_size_dim.name)
-
   projected_field = mtf.slicewise(lambda x: x[:, 0, 0], [projected_field],
                               output_dtype=tf.float32,
                               output_shape=[batch_dim, lpx_dim, lpy_dim],
                               name='my_dumb_reshape',
                               splittable_dims=lp_shape+[lpx_dim, lpy_dim])
 
-  return initc, projected_field
+  # paint the field in 3D
+  final_field = mtf.zeros(mesh, shape=hr_shape)
+  for block_size_dim in hr_shape[-3:]:
+    final_field = mtf.pad(final_field, [halo_size, halo_size],
+                          block_size_dim.name)
+  final_field = mesh_utils.cic_paint(final_field, final_state[0], halo_size)
+  # Halo exchange
+  for blocks_dim, block_size_dim in zip(hr_shape[1:4], final_field.shape[-3:]):
+    final_field = mpm.halo_reduce(final_field, blocks_dim, block_size_dim,
+                                  halo_size)
+  # Remove borders
+  for block_size_dim in hr_shape[-3:]:
+    final_field = mtf.slice(final_field, halo_size, block_size_dim.size,
+                            block_size_dim.name)
+
+  final_field = mtf.slicewise(lambda x: x[:, 0, 0, 0], [final_field],
+                              output_dtype=tf.float32,
+                              output_shape=[batch_dim, fx_dim, fy_dim, fz_dim],
+                              name='my_dumb_reshape',
+                              splittable_dims=part_shape[:-1] + hr_shape[:4])
+
+  return initc, projected_field, final_field
 
 
 def main(_):
@@ -281,23 +286,25 @@ def main(_):
   plin = np.loadtxt('../flowpm/data/Planck15_a1p00.txt').T[1]
   
   # Defines the computational graph for the nbody
-  initial_conditions, final_field = nbody_fn(mesh, klin, plin)
+  initial_conditions, projected_field, final_field = nbody_fn(mesh, klin, plin)
 
   # Lower mesh computation
   lowering = mtf.Lowering(graph, {mesh: mesh_impl})
   
   # Retrieve fields as tf tensors
   tf_initc = lowering.export_to_tf_tensor(initial_conditions)
+  tf_proj = lowering.export_to_tf_tensor(projected_field)
   tf_final = lowering.export_to_tf_tensor(final_field)
   
   with tf.Session() as sess:
     start = time.time()
-    init_conds, final = sess.run([tf_initc, tf_final])
+    init_conds, proj, final = sess.run([tf_initc,  tf_proj, tf_final])
     end = time.time()
     print('\n Time for the mesh run : %f \n' % (end - start))
 
   # Export these fields
   np.save('simulation_output_%d.npy'%comm.Get_rank(), final)
+  np.save('simulation_proj_%d.npy'%comm.Get_rank(), proj)
   np.save('simulation_input_%d.npy'%comm.Get_rank(), init_conds)
 
   exit(0)
