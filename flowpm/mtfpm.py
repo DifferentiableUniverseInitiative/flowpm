@@ -335,7 +335,8 @@ def nbody(state,
           halo_size,
           cosmology=Planck15,
           pm_nc_factor=1,
-          downsampling_factor=2):
+          downsampling_factor=2,
+          return_intermediate_states=False):
   """
   Integrate the evolution of the state across the givent stages
 
@@ -378,6 +379,7 @@ def nbody(state,
                 downsampling_factor=downsampling_factor)
 
   x, p, f = ai, ai, ai
+  intermediate_states = []
   # Loop through the stages
   for i in range(len(stages) - 1):
     a0 = stages[i]
@@ -407,8 +409,13 @@ def nbody(state,
     # Kick again
     state = kick(state, p, f, a1, cosmology=cosmology)
     p = a1
+    intermediate_states.append((a1, state))
+    
+  if return_intermediate_states:
+    return intermediate_states
+  else:
+    return state
 
-  return state
 
 
 def lpt_init_single(lr_field,

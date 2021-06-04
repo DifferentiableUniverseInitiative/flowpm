@@ -163,7 +163,6 @@ def cic_paint(mesh, part, halo_size, weight=None, name=None):
                        splittable_dims=mesh.shape[:-3] + part.shape[1:-1])
   return mesh
 
-
 def cic_readout(mesh, part, halo_size, name=None):
   nk = mtf.Dimension("nk", 8)
   nl = mtf.Dimension("nl", 4)
@@ -182,6 +181,124 @@ def cic_readout(mesh, part, halo_size, name=None):
                         output_shape=part.shape[:-1],
                         splittable_dims=mesh.shape[:-3] + part.shape[1:-1])
   return value
+
+def _cic_indexing2d(mesh, part, weight=None, name=None):
+  """
+  Computes the indices and weights to use for painting the local particles on
+  mesh, stops short of actually applying the painting.
+
+  Parameters:
+  -----------
+  mesh: tensor (batch_size, nc, nc)
+    Input 2D mesh tensor
+
+  part: tensor (batch_size, npart, 2)
+    List of 3D particle coordinates, assumed to be in mesh units
+
+  weight: tensor (batch_size, npart)
+    List of weights  for each particle
+  """
+  with tf.name_scope(name, "cic_indexing2d", [mesh, part, weight]):
+    shape = tf.shape(mesh)
+    batch_size = shape[0]
+    nx, ny = shape[-2], shape[-1]
+    part_shape = part.shape
+
+    # Flatten part if it's not already done
+    if len(part.shape) > 2:
+      part = tf.reshape(part, (batch_size, -1, 2))
+
+    # Extract the indices of all the mesh points affected by each particles
+    part = tf.expand_dims(part, 2)
+    floor = tf.floor(part)
+    connection = tf.expand_dims(
+        tf.constant([[[0, 0], [1., 0], [0., 1], [1., 1]]]), 0)
+    neighboor_coords = floor + connection
+    kernel = 1. - tf.abs(part - neighboor_coords)
+    kernel = kernel[..., 0] * kernel[..., 1]
+
+    if weight is not None:
+      kernel = tf.multiply(tf.expand_dims(weight, axis=-1), kernel)
+
+    # Adding batch dimension to the neighboor coordinates
+    batch_idx = tf.range(0, batch_size)
+    batch_idx = tf.reshape(batch_idx, (batch_size, 1, 1))
+    b = tf.tile(batch_idx,
+                [1] + list(neighboor_coords.get_shape()[1:-1]) + [1])
+    b=tf.cast(b,tf.float32)
+    neighboor_coords = tf.concat([b, neighboor_coords], axis=-1)
+    return tf.reshape(neighboor_coords, part_shape[:-1] + [4, 3]), tf.reshape(
+        kernel, part_shape[:-1] + [4])
+
+
+def _cic_paint2d(mesh, neighboor_coords, kernel, shift, name=None):
+  """
+  Paints particules on a 3D mesh.
+
+  Parameters:
+  -----------
+  mesh: tensor (batch_size, nc, nc, nc)
+    Input 3D mesh tensor
+
+  shift: [x,y] array of coordinate shifting
+  """
+  with tf.name_scope(name, "cic_update2d", [mesh, neighboor_coords, kernel]):
+    shape = tf.shape(mesh)
+    batch_size = shape[0]
+    nx, ny = shape[-2], shape[-1]
+
+    # TODO: Assert shift shape
+    neighboor_coords = tf.reshape(neighboor_coords, (-1, 4, 3))
+    neighboor_coords = neighboor_coords + tf.reshape(tf.constant(shift, dtype=tf.float32),
+                                                     [1, 1, 3])
+    neighboor_coords = tf.cast(neighboor_coords, tf.int32) 
+    update = tf.scatter_nd(neighboor_coords, tf.reshape(kernel, (-1, 4)),
+                           [batch_size, nx, ny])
+
+    mesh = mesh + tf.reshape(update, mesh.shape)
+    return mesh
+
+def cic_paint2d(mesh, part, halo_size, weight=None, name=None):
+  """
+  Distributed Cloud In Cell implementation.
+
+  Parameters:
+  -----------
+  mesh: tensor (batch_size, nc, nc, nc)
+    Input 3D mesh tensor
+
+  part: tensor (batch_size, npart, 3)
+    List of 3D particle coordinates, assumed to be in mesh units if
+    boxsize is None
+
+  splitted_dims: list of Dimensions in mesh
+    List of dimensions along which the particles are splitted
+
+  weight: tensor (batch_size, npart)
+    List of weights  for each particle
+
+  ----
+  The current implementation applies slicewise CiC paintings, and send/recv the
+  part tensor with neighboring devices on the mesh to make sure particles
+  displaced outside of their initial boundaries get a chance to be painted.
+  """
+  nk = mtf.Dimension("nk", 4)
+  nl = mtf.Dimension("nl", 3)
+  indices, values = mtf.slicewise(
+      _cic_indexing2d, [mesh, part],
+      output_dtype=[tf.float32, tf.float32],
+      output_shape=[
+          mtf.Shape(part.shape.dims[:-1] + [nk, nl]),
+          mtf.Shape(part.shape.dims[:-1] + [nk])
+      ],
+      splittable_dims=mesh.shape[:-3] + part.shape[1:-1])
+  mesh = mtf.slicewise(lambda x, y, z: _cic_paint2d(
+      x, y, z, shift=[0, halo_size, halo_size, halo_size]),
+                       [mesh, indices, values],
+                       output_dtype=tf.float32,
+                       output_shape=mesh.shape,
+                       splittable_dims=mesh.shape[:-3] + part.shape[1:-1])
+  return mesh
 
 
 def downsample(field, downsampling_factor=2, antialias=True):
