@@ -32,8 +32,8 @@ tf.flags.DEFINE_integer("dsample", 2, "downsampling factor")
 tf.flags.DEFINE_integer("hsize", 32, "halo size")
 
 #mesh flags
-tf.flags.DEFINE_integer("nx", 1, "# blocks along x")
-tf.flags.DEFINE_integer("ny", 1, "# blocks along y")
+tf.flags.DEFINE_integer("nx", 2, "# blocks along x")
+tf.flags.DEFINE_integer("ny", 2, "# blocks along y")
 
 FLAGS = tf.flags.FLAGS
 
@@ -253,7 +253,7 @@ def nbody_fn(mesh,
                               output_dtype=tf.float32,
                               output_shape=[batch_dim, lpx_dim, lpy_dim],
                               name='my_dumb_reshape',
-                              splittable_dims=lp_shape + [lpx_dim, lpy_dim])
+                              splittable_dims=lp_shape)
 
   return initc, projected_field
 
