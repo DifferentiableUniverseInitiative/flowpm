@@ -222,7 +222,7 @@ def _cic_indexing2d(mesh, part, weight=None, name=None):
 
     # Adding batch dimension to the neighboor coordinates
     batch_idx = tf.range(0, batch_size)
-    batch_idx = tf.reshape(batch_idx, (batch_size, 1, 1))
+    batch_idx = tf.reshape(batch_idx, (batch_size, 1, 1, 1))
     b = tf.tile(batch_idx,
                 [1] + list(neighboor_coords.get_shape()[1:-1]) + [1])
     b=tf.cast(b,tf.float32)
