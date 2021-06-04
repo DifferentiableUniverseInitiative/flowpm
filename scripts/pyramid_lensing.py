@@ -214,8 +214,9 @@ def nbody_fn(mesh,
   for block_size_dim in lp_shape[-2:]:
     projected_field = mtf.pad(projected_field, [halo_size, halo_size],
                           block_size_dim.name)
+  print("DEBUG", state[0])
   projected_field = mesh_utils.cic_paint2d(projected_field, 
-                                       state[0], 
+                                       mtf.slice(state[0], 0, 2, "ndim"), 
                                        halo_size)
   # Halo exchange
   for blocks_dim, block_size_dim in zip(lp_shape[1:3], projected_field.shape[-2:]):

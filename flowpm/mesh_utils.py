@@ -267,7 +267,7 @@ def cic_paint2d(mesh, part, halo_size, weight=None, name=None):
   mesh: tensor (batch_size, nc, nc, nc)
     Input 3D mesh tensor
 
-  part: tensor (batch_size, npart, 3)
+  part: tensor (batch_size, npart, 2)
     List of 3D particle coordinates, assumed to be in mesh units if
     boxsize is None
 
