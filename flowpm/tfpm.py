@@ -8,6 +8,7 @@ import tensorflow as tf
 from flowpm.tfbackground import f1, E, f2, Gf, gf, gf2, D1, D2, D1f
 from flowpm.utils import white_noise, c2r3d, r2c3d, cic_paint, cic_readout
 from flowpm.kernels import fftk, laplace_kernel, gradient_kernel, longrange_kernel
+
 __all__ = ['linear_field', 'lpt_init', 'nbody']
 
 
@@ -337,7 +338,13 @@ def force(cosmo,
     return state
 
 
-def nbody(cosmo, state, stages, nc, pm_nc_factor=1, name="NBody"):
+def nbody(cosmo,
+          state,
+          stages,
+          nc,
+          pm_nc_factor=1,
+          return_intermediate_states=False,
+          name="NBody"):
   """
   Integrate the evolution of the state across the givent stages
 
@@ -358,10 +365,14 @@ def nbody(cosmo, state, stages, nc, pm_nc_factor=1, name="NBody"):
   pm_nc_factor: int
     Upsampling factor for computing
 
+  return_intermediate_states: boolean
+    If true, the frunction will return each intermediate states,
+    not only the last one.
+
   Returns
   -------
-  state: tensor (3, batch_size, npart, 3)
-    Integrated state to final condition
+  state: tensor (3, batch_size, npart, 3), or list of states
+    Integrated state to final condition, or list of intermediate steps
   """
   with tf.name_scope(name):
     state = tf.convert_to_tensor(state, name="state")
@@ -379,6 +390,7 @@ def nbody(cosmo, state, stages, nc, pm_nc_factor=1, name="NBody"):
     state = force(cosmo, state, nc, pm_nc_factor=pm_nc_factor)
 
     x, p, f = ai, ai, ai
+    intermediate_states = []
     # Loop through the stages
     for i in range(len(stages) - 1):
       a0 = stages[i]
@@ -400,5 +412,9 @@ def nbody(cosmo, state, stages, nc, pm_nc_factor=1, name="NBody"):
       # Kick again
       state = kick(cosmo, state, p, f, a1)
       p = a1
+      intermediate_states.append((a1, state))
 
-    return state
+    if return_intermediate_states:
+      return intermediate_states
+    else:
+      return state
