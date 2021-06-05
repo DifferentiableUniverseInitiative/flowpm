@@ -300,7 +300,7 @@ def main(_):
     # Apply random shuffling
     plane = tf.expand_dims(plane, axis=-1)
     plane = tf.image.random_flip_left_right(plane)
-    plane = tf.image.random_flip_up_done(plane)
+    plane = tf.image.random_flip_up_down(plane)
     shift_x = np.random.randint(0, FLAGS.lensplane_nc -1)
     shift_y = np.random.randint(0, FLAGS.lensplane_nc -1)
     plane = tf.roll(plane, shift=[shift_x, shift_y], axis=[1,2])
