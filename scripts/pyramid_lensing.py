@@ -10,6 +10,7 @@ from mesh_tensorflow.hvd_simd_mesh_impl import HvdSimdMeshImpl
 import flowpm.mesh_ops as mpm
 import flowpm.mtfpm as mtfpm
 import flowpm.mesh_utils as mesh_utils
+import flowpm.mesh_raytracing as mesh_raytracing
 import flowpm
 from astropy.cosmology import Planck15
 ##
@@ -17,15 +18,17 @@ from astropy.cosmology import Planck15
 cosmology = Planck15
 tf.random.set_random_seed(200*comm.Get_rank())
 
-tf.flags.DEFINE_integer("nc", 128, "Size of the cube")
+tf.flags.DEFINE_integer("nc", 256, "Size of the cube")
 tf.flags.DEFINE_integer("batch_size", 1, "Batch Size")
-tf.flags.DEFINE_float("box_size", 512, "Box Size [Mpc/h]")
+tf.flags.DEFINE_float("box_size", 256, "Box Size [Mpc/h]")
 tf.flags.DEFINE_float("a0", 0.1, "initial scale factor")
 tf.flags.DEFINE_float("af", 1.0, "final scale factor")
-tf.flags.DEFINE_integer("nsteps", 3, "Number of time steps")
 
 # Ray tracing flags
 tf.flags.DEFINE_integer("lensplane_nc", 512, "Size of the lens planes")
+tf.flags.DEFINE_float("field_size", 5., "Size of the lensing field in degrees")
+tf.flags.DEFINE_integer("field_npix", 512, "Number of pixels in the lensing field")
+tf.flags.DEFINE_integer("n_lens", 22, "Number of lensplanes in the lightcone")
 
 #pyramid flags
 tf.flags.DEFINE_integer("dsample", 2, "downsampling factor")
@@ -38,7 +41,9 @@ tf.flags.DEFINE_integer("ny", 2, "# blocks along y")
 FLAGS = tf.flags.FLAGS
 
 def nbody_fn(mesh,
-             klin, plin,
+             klin, 
+             plin,
+             stages,
              nc=FLAGS.nc,
              bs=FLAGS.box_size,
              batch_size=FLAGS.batch_size,
@@ -49,7 +54,6 @@ def nbody_fn(mesh,
              dtype=tf.float32):
   """ Pyramid N-body function
   """
-  stages = np.linspace(a0, a, nsteps, endpoint=True)
 
   # Define the named dimensions
   # Parameters of the small scales decomposition
@@ -209,60 +213,37 @@ def nbody_fn(mesh,
         antialias=True,
     )
 
-  final_state = mtfpm.nbody(state,
-                            stages,
-                            lr_shape,
-                            hr_shape,
-                            kv_lr,
-                            kv_hr,
-                            halo_size)
-  #                               downsampling_factor=downsampling_factor)
+  states = mtfpm.nbody(state,
+                       stages,
+                       lr_shape,
+                       hr_shape,
+                       kv_lr,
+                       kv_hr,
+                       halo_size,
+                       downsampling_factor=downsampling_factor,
+                       return_intermediate_states=True)
 
-  # Try to project the state vector to a 2d mesh
-  projected_field = mtf.zeros(mesh, shape=lp_shape)
-  for block_size_dim in lp_shape[-2:]:
-    projected_field = mtf.pad(projected_field, [halo_size, halo_size],
-                          block_size_dim.name)
-  projected_field = mesh_utils.cic_paint2d(projected_field, 
-                                       mtf.slice(final_state[0] / nc * lensplane_nc, 0, 2, "ndim"), 
-                                       halo_size)
-  # Halo exchange
-  for blocks_dim, block_size_dim in zip(lp_shape[1:3], projected_field.shape[-2:]):
-    projected_field = mpm.halo_reduce(projected_field, blocks_dim, block_size_dim,
-                                       halo_size)
-  # Remove borders
-  for block_size_dim in lp_shape[-2:]:
-    projected_field = mtf.slice(projected_field, halo_size, block_size_dim.size,
-                                  block_size_dim.name)
+  # Extract lensplanes
+  lensplanes = []
+  for i in range(len(stages)):
+    plane = mesh_raytracing.density_plane(
+        states[::-1][i][1],
+        FLAGS.nc,
+        plane_resolution=lensplane_nc,
+        halo_size=halo_size, 
+        lp_shape=lp_shape)
+    # Remove split axis
+    plane = mtf.slicewise(lambda x: x[:, 0, 0], [plane],
+                          output_dtype=tf.float32,
+                          output_shape=[batch_dim, lpx_dim, lpy_dim],
+                          name='my_dumb_reshape',
+                          splittable_dims=lp_shape+[lpx_dim, lpy_dim])
 
-  projected_field = mtf.slicewise(lambda x: x[:, 0, 0], [projected_field],
-                              output_dtype=tf.float32,
-                              output_shape=[batch_dim, lpx_dim, lpy_dim],
-                              name='my_dumb_reshape',
-                              splittable_dims=lp_shape+[lpx_dim, lpy_dim])
+    # Anonymize and export
+    plane = mtf.anonymize(plane)
+    lensplanes.append((states[::-1][i][0], plane))
 
-  # paint the field in 3D
-  final_field = mtf.zeros(mesh, shape=hr_shape)
-  for block_size_dim in hr_shape[-3:]:
-    final_field = mtf.pad(final_field, [halo_size, halo_size],
-                          block_size_dim.name)
-  final_field = mesh_utils.cic_paint(final_field, final_state[0], halo_size)
-  # Halo exchange
-  for blocks_dim, block_size_dim in zip(hr_shape[1:4], final_field.shape[-3:]):
-    final_field = mpm.halo_reduce(final_field, blocks_dim, block_size_dim,
-                                  halo_size)
-  # Remove borders
-  for block_size_dim in hr_shape[-3:]:
-    final_field = mtf.slice(final_field, halo_size, block_size_dim.size,
-                            block_size_dim.name)
-
-  final_field = mtf.slicewise(lambda x: x[:, 0, 0, 0], [final_field],
-                              output_dtype=tf.float32,
-                              output_shape=[batch_dim, fx_dim, fy_dim, fz_dim],
-                              name='my_dumb_reshape',
-                              splittable_dims=part_shape[:-1] + hr_shape[:4])
-
-  return initc, projected_field, final_field
+  return lensplanes
 
 
 def main(_):
@@ -285,27 +266,69 @@ def main(_):
   klin = np.loadtxt('../flowpm/data/Planck15_a1p00.txt').T[0]
   plin = np.loadtxt('../flowpm/data/Planck15_a1p00.txt').T[1]
   
+  # Instantiates a cosmology with desired parameters
+  cosmology = flowpm.cosmology.Planck15()
+
+  # Schedule the center of the lensplanes we want for ray tracing
+  r = tf.linspace(0., FLAGS.box_size * FLAGS.n_lens, FLAGS.n_lens + 1)
+  r_center = 0.5 * (r[1:] + r[:-1])
+
+  # Retrieve the scale factor corresponding to these distances
+  a = flowpm.tfbackground.a_of_chi(cosmology, r)
+  a_center = flowpm.tfbackground.a_of_chi(cosmology, r_center)
+
+  # We run 5 steps from initial scale factor to start of raytracing
+  init_stages = tf.linspace(FLAGS.a0, a[-1], 5)
+  # Then one step per lens plane
+  stages = tf.concat([init_stages, a_center[::-1]], axis=0)
+
   # Defines the computational graph for the nbody
-  initial_conditions, projected_field, final_field = nbody_fn(mesh, klin, plin)
+  mesh_lensplanes = nbody_fn(mesh, klin, plin, stages)
 
   # Lower mesh computation
   lowering = mtf.Lowering(graph, {mesh: mesh_impl})
-  
-  # Retrieve fields as tf tensors
-  tf_initc = lowering.export_to_tf_tensor(initial_conditions)
-  tf_proj = lowering.export_to_tf_tensor(projected_field)
-  tf_final = lowering.export_to_tf_tensor(final_field)
+
+  lensplanes = []
+  for i in range(len(a_center)):
+    plane = lowering.export_to_tf_tensor(mesh_lensplanes[i][1])
+    print("expected vs found", a_center[::-1][i], mesh_lensplanes[i][0])
+    # Apply random shuffling
+    plane = tf.expand_dims(plane, axis=-1)
+    plane = tf.image.random_flip_left_right(plane)
+    plane = tf.image.random_flip_up_done(plane)
+    shift_x = np.random.randint(0, FLAGS.lensplane_nc -1)
+    shift_y = np.random.randint(0, FLAGS.lensplane_nc -1)
+    plane = tf.roll(plane, shift=[shift_x, shift_y], axis=[1,2])
+    lensplanes.append((r_center[i], a_center[::-1][i], plane[..., 0]))
+
+  # And now, interpolate and ray trace
+  xgrid, ygrid = np.meshgrid(
+      np.linspace(0, FLAGS.field_size, FLAGS.field_npix,
+                  endpoint=False),  # range of X coordinates
+      np.linspace(0, FLAGS.field_size, FLAGS.field_npix,
+                  endpoint=False))  # range of Y coordinates
+
+  coords = np.stack([xgrid, ygrid], axis=0) 
+  c = coords.reshape([2, -1]).T / 180.*np.pi # to radians
+  # Create array of source redshifts
+  z_source = tf.linspace(0.5, 1, 4)
+  m = flowpm.raytracing.convergenceBorn(cosmology,
+                                        lensplanes,
+                                        dx=FLAGS.box_size / FLAGS.lensplane_nc,
+                                        dz=FLAGS.box_size,
+                                        coords=c,
+                                        z_source=z_source)
+  m = tf.reshape(m, [1, FLAGS.field_npix, FLAGS.field_npix, -1])
+
   
   with tf.Session() as sess:
     start = time.time()
-    init_conds, proj, final = sess.run([tf_initc,  tf_proj, tf_final])
+    maps = sess.run(m)
     end = time.time()
     print('\n Time for the mesh run : %f \n' % (end - start))
 
   # Export these fields
-  np.save('simulation_output_%d.npy'%comm.Get_rank(), final)
-  np.save('simulation_proj_%d.npy'%comm.Get_rank(), proj)
-  np.save('simulation_input_%d.npy'%comm.Get_rank(), init_conds)
+  np.save('convergence_maps_%d.npy'%comm.Get_rank(), maps)
 
   exit(0)
 
