@@ -294,9 +294,9 @@ def main(_):
   lowering = mtf.Lowering(graph, {mesh: mesh_impl})
 
   lensplanes = []
-  for i in range(len(mesh_lensplanes)):
+  for i in range(len(r_center)):
     plane = lowering.export_to_tf_tensor(mesh_lensplanes[i][1])
-    print("expected vs found", a_center[i], mesh_lensplanes[i][0])
+    print("expected vs found", a_center[i], mesh_lensplanes[i][0], r_center[i])
     # Apply random shuffling
     plane = tf.expand_dims(plane, axis=-1)
     plane = tf.image.random_flip_left_right(plane)
