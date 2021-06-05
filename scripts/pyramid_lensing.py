@@ -226,7 +226,7 @@ def nbody_fn(mesh,
 
   # Extract lensplanes
   lensplanes = []
-  for i in range(n_stages):
+  for i in range(n_stages-1):
     plane = mesh_raytracing.density_plane(
         states[::-1][i][1],
         FLAGS.nc,
