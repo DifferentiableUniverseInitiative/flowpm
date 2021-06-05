@@ -31,7 +31,7 @@ def interp_tf(x, xp, fp):
   ind = tf.math.argmin((tf.expand_dims(x, 1) - tf.expand_dims(xp, 0))**2,
                        axis=-1)
   # Perform linear interpolation
-  ind = tf.clip_by_value(ind, 1, tf.shape(xp, dtype=tf.int64)[0] - 2)
+  ind = tf.clip_by_value(ind, 1, tf.shape(xp, out_type=tf.int64)[0] - 2)
   xi = tf.gather(xp, ind)
   # Figure out if we are on the right or the left of nearest
   s = tf.cast(tf.math.sign(tf.clip_by_value(x, xp[-2], xp[1]) - xi),
