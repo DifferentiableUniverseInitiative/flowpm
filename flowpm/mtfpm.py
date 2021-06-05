@@ -328,6 +328,7 @@ def force(state,
 
 def nbody(state,
           stages,
+          n_stages,
           lr_shape,
           hr_shape,
           kvec_lr,
@@ -381,7 +382,7 @@ def nbody(state,
   x, p, f = ai, ai, ai
   intermediate_states = []
   # Loop through the stages
-  for i in range(len(stages) - 1):
+  for i in range(n_stages - 1):
     a0 = stages[i]
     a1 = stages[i + 1]
     ah = (a0 * a1)**0.5

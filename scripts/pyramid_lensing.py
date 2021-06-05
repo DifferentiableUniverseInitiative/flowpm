@@ -44,6 +44,7 @@ def nbody_fn(mesh,
              klin, 
              plin,
              stages,
+             n_stages,
              nc=FLAGS.nc,
              bs=FLAGS.box_size,
              batch_size=FLAGS.batch_size,
@@ -214,6 +215,7 @@ def nbody_fn(mesh,
 
   states = mtfpm.nbody(state,
                        stages,
+                       n_stages,
                        lr_shape,
                        hr_shape,
                        kv_lr,
@@ -224,7 +226,7 @@ def nbody_fn(mesh,
 
   # Extract lensplanes
   lensplanes = []
-  for i in range(len(stages)):
+  for i in range(n_stages):
     plane = mesh_raytracing.density_plane(
         states[::-1][i][1],
         FLAGS.nc,
@@ -280,15 +282,15 @@ def main(_):
   init_stages = tf.linspace(FLAGS.a0, a[-1], 5)
   # Then one step per lens plane
   stages = tf.concat([init_stages, a_center[::-1]], axis=0)
-
+  n_stages = 5 + FLAGS.n_lens
   # Defines the computational graph for the nbody
-  mesh_lensplanes = nbody_fn(mesh, klin, plin, stages)
+  mesh_lensplanes = nbody_fn(mesh, klin, plin, stages, n_stages)
 
   # Lower mesh computation
   lowering = mtf.Lowering(graph, {mesh: mesh_impl})
 
   lensplanes = []
-  for i in range(len(a_center)):
+  for i in range(FLAGS.n_lens):
     plane = lowering.export_to_tf_tensor(mesh_lensplanes[i][1])
     print("expected vs found", a_center[::-1][i], mesh_lensplanes[i][0])
     # Apply random shuffling
