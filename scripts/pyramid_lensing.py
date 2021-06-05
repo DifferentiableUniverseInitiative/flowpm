@@ -49,7 +49,6 @@ def nbody_fn(mesh,
              batch_size=FLAGS.batch_size,
              a0=FLAGS.a0,
              a=FLAGS.af,
-             nsteps=FLAGS.nsteps,
              lensplane_nc=FLAGS.lensplane_nc,
              dtype=tf.float32):
   """ Pyramid N-body function
