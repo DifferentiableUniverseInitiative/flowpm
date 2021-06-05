@@ -4,7 +4,7 @@ import tensorflow.compat.v1 as tf
 
 import flowpm
 import flowpm.mesh_utils as mesh_utils
-import flowpm.mtfpm as mpm
+import flowpm.mesh_ops as mpm
 
 def density_plane(state,
                   nc,
