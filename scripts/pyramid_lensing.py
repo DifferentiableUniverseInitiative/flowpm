@@ -282,6 +282,10 @@ def main(_):
   init_stages = tf.linspace(FLAGS.a0, a[-1], 5)
   # Then one step per lens plane
   stages = tf.concat([init_stages, a_center[::-1]], axis=0)
+  
+  with tf.Session() as sess:
+    stages, r_center, a_center = sess.run([stages, r_center, a_center])
+
   n_stages = 5 + FLAGS.n_lens
   # Defines the computational graph for the nbody
   mesh_lensplanes = nbody_fn(mesh, klin, plin, stages, n_stages)
