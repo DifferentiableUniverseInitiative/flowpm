@@ -18,16 +18,16 @@ from astropy.cosmology import Planck15
 cosmology = Planck15
 tf.random.set_random_seed(200*comm.Get_rank())
 
-tf.flags.DEFINE_integer("nc", 256, "Size of the cube")
+tf.flags.DEFINE_integer("nc", 512, "Size of the cube")
 tf.flags.DEFINE_integer("batch_size", 1, "Batch Size")
-tf.flags.DEFINE_float("box_size", 256, "Box Size [Mpc/h]")
+tf.flags.DEFINE_float("box_size", 100, "Box Size [Mpc/h]")
 tf.flags.DEFINE_float("a0", 0.1, "initial scale factor")
 tf.flags.DEFINE_float("af", 1.0, "final scale factor")
 
 # Ray tracing flags
-tf.flags.DEFINE_integer("lensplane_nc", 512, "Size of the lens planes")
+tf.flags.DEFINE_integer("lensplane_nc", 2048, "Size of the lens planes")
 tf.flags.DEFINE_float("field_size", 5., "Size of the lensing field in degrees")
-tf.flags.DEFINE_integer("field_npix", 512, "Number of pixels in the lensing field")
+tf.flags.DEFINE_integer("field_npix", 1024, "Number of pixels in the lensing field")
 tf.flags.DEFINE_integer("n_lens", 22, "Number of lensplanes in the lightcone")
 
 #pyramid flags
@@ -35,8 +35,8 @@ tf.flags.DEFINE_integer("dsample", 2, "downsampling factor")
 tf.flags.DEFINE_integer("hsize", 32, "halo size")
 
 #mesh flags
-tf.flags.DEFINE_integer("nx", 2, "# blocks along x")
-tf.flags.DEFINE_integer("ny", 2, "# blocks along y")
+tf.flags.DEFINE_integer("nx", 4, "# blocks along x")
+tf.flags.DEFINE_integer("ny", 4, "# blocks along y")
 
 FLAGS = tf.flags.FLAGS
 
@@ -279,14 +279,14 @@ def main(_):
   a_center = flowpm.tfbackground.a_of_chi(cosmology, r_center)
 
   # We run 5 steps from initial scale factor to start of raytracing
-  init_stages = tf.linspace(FLAGS.a0, a[-1], 5)
+  init_stages = tf.linspace(FLAGS.a0, a[-1], 10)
   # Then one step per lens plane
   stages = tf.concat([init_stages, a_center[::-1]], axis=0)
   
   with tf.Session() as sess:
     stages, r_center, a_center = sess.run([stages, r_center, a_center])
 
-  n_stages = 5 + FLAGS.n_lens
+  n_stages = 10 + FLAGS.n_lens
   # Defines the computational graph for the nbody
   mesh_lensplanes = nbody_fn(mesh, klin, plin, stages, n_stages)
 
