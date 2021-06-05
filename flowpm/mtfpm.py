@@ -361,9 +361,9 @@ def nbody(state,
   """
   assert pm_nc_factor == 1
 
-  # Unrolling leapfrog integration to make tf Autograph happy
-  if len(stages) == 0:
-    return state
+  # # Unrolling leapfrog integration to make tf Autograph happy
+  # if len(stages) == 0:
+  #   return state
 
   ai = stages[0]
 
@@ -415,8 +415,6 @@ def nbody(state,
     return intermediate_states
   else:
     return state
-
-
 
 def lpt_init_single(lr_field,
                     a0,
