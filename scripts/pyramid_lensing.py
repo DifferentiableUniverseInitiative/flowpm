@@ -202,7 +202,7 @@ def nbody_fn(mesh,
   state = mtfpm.lpt_init(
         low,
         high,
-        0.1,
+        a0,
         kv_lr,
         kv_hr,
         halo_size,
@@ -294,9 +294,9 @@ def main(_):
   lowering = mtf.Lowering(graph, {mesh: mesh_impl})
 
   lensplanes = []
-  for i in range(FLAGS.n_lens):
+  for i in range(len(mesh_lensplanes)):
     plane = lowering.export_to_tf_tensor(mesh_lensplanes[i][1])
-    print("expected vs found", a_center[::-1][i], mesh_lensplanes[i][0])
+    print("expected vs found", a_center[i], mesh_lensplanes[i][0])
     # Apply random shuffling
     plane = tf.expand_dims(plane, axis=-1)
     plane = tf.image.random_flip_left_right(plane)
@@ -304,7 +304,7 @@ def main(_):
     shift_x = np.random.randint(0, FLAGS.lensplane_nc -1)
     shift_y = np.random.randint(0, FLAGS.lensplane_nc -1)
     plane = tf.roll(plane, shift=[shift_x, shift_y], axis=[1,2])
-    lensplanes.append((r_center[i], a_center[::-1][i], plane[..., 0]))
+    lensplanes.append((r_center[i], a_center[i], plane[..., 0]))
 
   # And now, interpolate and ray trace
   xgrid, ygrid = np.meshgrid(
