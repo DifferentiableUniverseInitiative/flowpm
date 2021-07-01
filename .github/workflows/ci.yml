@@ -28,7 +28,7 @@ jobs:
       - uses: conda-incubator/setup-miniconda@v2
         with:
           python-version: 3.7
-          channels: bccp,defaults
+          channels: defaults
           channel-priority: strict
           show-channel-urls: true
 
@@ -39,7 +39,6 @@ jobs:
           conda install --quiet \
             pip \
             setuptools \
-            nbodykit \
             runtests
           pip install tensorflow==2.3.1 tensorflow-probability==0.11.1
           pip install -e .[testing]
