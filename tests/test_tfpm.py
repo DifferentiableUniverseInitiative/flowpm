@@ -154,6 +154,7 @@ def test_nbody():
 
   assert_allclose(final_cube, tfread[0], atol=1.2)
 
+
 def test_nbody_B2():
   """ Checking end to end nbody
   """
@@ -180,6 +181,7 @@ def test_nbody_B2():
   tfread = pmutils.cic_paint(tf.zeros_like(tlinear), state[0]).numpy()
 
   assert_allclose(final_cube, tfread[0], atol=5e-3)
+
 
 def test_rectangular_nody():
   """ Checking end to end nbody on a rectangular grid case
