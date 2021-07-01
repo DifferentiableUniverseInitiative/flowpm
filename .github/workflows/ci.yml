@@ -38,8 +38,7 @@ jobs:
           conda config --set always_yes yes
           conda install --quiet \
             pip \
-            setuptools \
-            runtests
+            setuptools
           pip install tensorflow==2.3.1 tensorflow-probability==0.11.1
           pip install -e .[testing]
 
