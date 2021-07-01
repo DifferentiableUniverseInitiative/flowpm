@@ -325,7 +325,7 @@ def force(cosmo,
                              split=0,
                              factor=fac)
 
-    update = tf.expand_dims(update, axis=0)
+    update = tf.expand_dims(update, axis=0) / pm_nc_factor
 
     indices = tf.constant([[2]])
     shape = state.shape
