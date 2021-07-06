@@ -7,7 +7,7 @@ import numpy as np
 import tensorflow as tf
 from flowpm.tfbackground import f1, E, f2, Gf, gf, gf2, D1, D2, D1f
 from flowpm.utils import white_noise, c2r3d, r2c3d, cic_paint, cic_readout
-from flowpm.kernels import fftk, laplace_kernel, gradient_kernel, longrange_kernel
+from flowpm.kernels import fftk, laplace_kernel, gradient_kernel, longrange_kernel, PGD_kernel
 __all__ = ['linear_field', 'lpt_init', 'nbody']
 
 
@@ -230,6 +230,63 @@ def apply_longrange(x,
     return f
 
 
+def apply_PGD(x,
+                    delta_k,
+                    alpha,
+                    kl,
+                    ks,
+                    kvec=None,
+                    name="ApplyLongrange"):
+  """
+  Estimate the short range force on the particles given a state.
+
+  Parameters:
+  -----------
+  x: tensor
+    Input state tensor of shape (3, batch_size, npart, 3) 
+    
+  delta_k:
+     Density in the Fourier space   
+    
+  alpha: float
+    Free parameter. Factor of proportionality between the displacement and the Particle-mesh force.
+
+  kl: float
+    Long range scale parameter
+    
+  ks: float
+    Short range scale parameter
+  """
+  # use the four point kernel to suppresse artificial growth of noise like terms
+  with tf.name_scope(name):
+    x = tf.convert_to_tensor(x, name="pos")
+    delta_k = tf.convert_to_tensor(delta_k, name="delta_k")
+
+    shape = delta_k.get_shape()
+    nc = shape[1:]
+
+    if kvec is None:
+      kvec = fftk(nc, symmetric=False)
+
+    ndim = 3
+    norm = nc[0] * nc[1] * nc[2]
+    
+    lap = tf.cast(laplace_kernel(kvec), tf.complex64)
+    PGD_range = PGD_kernel(kvec,kl,ks)
+    kweight = lap * PGD_range
+    pot_k = tf.multiply(delta_k, kweight)
+    
+    f = []
+    for d in range(ndim):
+      force_dc = tf.multiply(pot_k, gradient_kernel(kvec, d))
+      forced = c2r3d(force_dc, norm=norm)
+      force = cic_readout(forced, x)
+      f.append(force)
+
+    f = tf.stack(f, axis=2)
+    f = tf.multiply(f, alpha)
+    return f
+
 def kick(cosmo, state, ai, ac, af, dtype=tf.float32, name="Kick", **kwargs):
   """Kick the particles given the state
 
@@ -238,7 +295,7 @@ def kick(cosmo, state, ai, ac, af, dtype=tf.float32, name="Kick", **kwargs):
   state: tensor
     Input state tensor of shape (3, batch_size, npart, 3)
 
-  ai, ac, af: float
+  ai, ac, af: float 
   """
   with tf.name_scope(name):
     state = tf.convert_to_tensor(state, name="state")
@@ -337,31 +394,92 @@ def force(cosmo,
     return state
 
 
-def nbody(cosmo, state, stages, nc, pm_nc_factor=1, name="NBody"):
+def PGD_correction(
+          state,
+          nc,
+          alpha,
+          kl,
+          ks,
+          pm_nc_factor=1,
+          kvec=None,
+          dtype=tf.float32,
+          name="Force",
+          **kwargs):
+  """
+  Estimate the short range force on the particles given a state.
+
+  Parameters:
+  -----------
+  state: tensor
+    Input state tensor of shape (3, batch_size, npart, 3)
+    
+  nc: int, or list of ints
+    Number of cells
+
+  alpha: float
+    Free parameter. Factor of proportionality between the displacement and the Particle-mesh force.
+
+  kl: float
+    Long range scale parameter
+    
+  ks: float
+    Short range scale parameter
+
+  pm_nc_factor: int
+    Resolution factor. Ratio of the size per side of the mesh and the number of particles per side
+  """
+  with tf.name_scope(name):
+    state = tf.convert_to_tensor(state, name="state")
+
+    shape = state.get_shape()
+    batch_size = shape[1]
+    ncf = [n * pm_nc_factor for n in nc]
+
+    rho = tf.zeros([batch_size] + ncf)
+    wts = tf.ones((batch_size, nc[0] * nc[1] * nc[2]))
+    nbar = nc[0] * nc[1] * nc[2] / (ncf[0] * ncf[1] * ncf[2])
+
+    rho = cic_paint(rho, tf.multiply(state[0], pm_nc_factor), wts)
+    rho = tf.multiply(rho,
+                      1. / nbar)  # I am not sure why this is not needed here
+    delta_k = r2c3d(rho, norm=ncf[0] * ncf[1] * ncf[2])
+    update = apply_PGD(tf.multiply(state[0], pm_nc_factor),
+                             delta_k,
+                             alpha,
+                              kl,
+                              ks,
+                               )
+    return update
+
+
+def nbody(cosmo,
+          state,
+          stages,
+          nc,
+          pm_nc_factor=1,
+          return_intermediate_states=False,
+          name="NBody"):
   """
   Integrate the evolution of the state across the givent stages
-
   Parameters:
   -----------
   cosmo: cosmology
     Cosmological parameter object
-
   state: tensor (3, batch_size, npart, 3)
     Input state
-
   stages: array
     Array of scale factors
-
   nc: int, or list of ints
     Number of cells
-
   pm_nc_factor: int
     Upsampling factor for computing
-
+  return_intermediate_states: boolean
+    If true, the frunction will return each intermediate states,
+    not only the last one.
   Returns
   -------
-  state: tensor (3, batch_size, npart, 3)
-    Integrated state to final condition
+  state: tensor (3, batch_size, npart, 3), or list of states
+    Integrated state to final condition, or list of intermediate steps
   """
   with tf.name_scope(name):
     state = tf.convert_to_tensor(state, name="state")
@@ -379,6 +497,7 @@ def nbody(cosmo, state, stages, nc, pm_nc_factor=1, name="NBody"):
     state = force(cosmo, state, nc, pm_nc_factor=pm_nc_factor)
 
     x, p, f = ai, ai, ai
+    intermediate_states = []
     # Loop through the stages
     for i in range(len(stages) - 1):
       a0 = stages[i]
@@ -400,5 +519,9 @@ def nbody(cosmo, state, stages, nc, pm_nc_factor=1, name="NBody"):
       # Kick again
       state = kick(cosmo, state, p, f, a1)
       p = a1
+      intermediate_states.append((a1, state))
 
-    return state
+    if return_intermediate_states:
+      return intermediate_states
+    else:
+      return state
