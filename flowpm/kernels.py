@@ -12,7 +12,7 @@ def fftk(shape, symmetric=True, finite=False, dtype=np.float64):
   k = []
   for d in range(len(shape)):
     kd = np.fft.fftfreq(shape[d])
-    #kd *= 2 * np.pi
+    kd *= 2 * np.pi
     kdshape = np.ones(len(shape), dtype='int')
     if symmetric and d == len(shape) - 1:
       kd = kd[:shape[d] // 2 + 1]
