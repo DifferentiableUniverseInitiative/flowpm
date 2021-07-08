@@ -129,7 +129,7 @@ def PGD_kernel(kvec,kl,ks):
   ks4 = ks**4
   mask = (kk == 0).nonzero()
   kk[mask] = 1
-  v = - np.exp(-kl2 / kk) * np.exp(-kk**2 / ks4) 
+  v = np.exp(-kl2 / kk) * np.exp(-kk**2 / ks4) 
   imask = (~(kk == 0)).astype(int)
   v *= imask
   return v

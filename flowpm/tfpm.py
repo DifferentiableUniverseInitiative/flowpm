@@ -431,6 +431,7 @@ def PGD_correction(
                               kl,
                               ks,
                                )
+    update = tf.expand_dims(update, axis=0) / pm_nc_factor
     return update
 
 
