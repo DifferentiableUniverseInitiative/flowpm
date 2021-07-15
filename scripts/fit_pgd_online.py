@@ -30,12 +30,12 @@ gradient_kernel = flowpm.kernels.gradient_kernel
 
 box_size = 200.
 nc = 128
-nsteps= 10
+nsteps= 20
 B=1
 pm_nc_factor = B
 ia = -1 #Scale factor to fit for
 niters = 20
-fpath = './fits/L%04d_N%04d_T%02d_B%d/'
+fpath = './fits/L%04d_N%04d_T%02d_B%d/'%(box_size, nc, nsteps, B)
 os.makedirs(fpath, exist_ok=True)
 
 # Create some initial conditions
