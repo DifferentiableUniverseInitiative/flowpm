@@ -7,7 +7,7 @@ import numpy as np
 import tensorflow as tf
 from flowpm.tfbackground import f1, E, f2, Gf, gf, gf2, D1, D2, D1f
 from flowpm.utils import white_noise, c2r3d, r2c3d, cic_paint, cic_readout
-from flowpm.kernels import fftk, laplace_kernel, gradient_kernel, longrange_kernel,  PGD_kernel
+from flowpm.kernels import fftk, laplace_kernel, gradient_kernel, longrange_kernel #,  PGD_kernel
 
 __all__ = ['linear_field', 'lpt_init', 'nbody']
 
@@ -219,6 +219,39 @@ def apply_longrange(x,
     return f
 
 
+
+def PGD_kernel(kvec,kl,ks):
+  """
+  Computes a long range kernel
+
+  Parameters:
+  -----------
+  kvec: array
+    Array of k values in Fourier space
+
+  kl: float
+    Long range scale parameter
+    
+  ks: float
+    Short range scale parameter
+
+  Returns:
+  --------
+  v: array
+    kernel
+  """
+
+  kk = sum(ki**2 for ki in kvec)
+  kl2 = kl**2
+  ks4 = ks**4
+  mask = (kk == 0).nonzero()
+  kk[mask] = 1
+  v = tf.exp(-kl2 / kk) * tf.exp(-kk**2 / ks4) 
+  imask = (~(kk == 0)).astype(int)
+  v *= imask
+  return v
+
+
 def apply_PGD(x,
                     delta_k,
                     alpha,
@@ -261,7 +294,7 @@ def apply_PGD(x,
     norm = nc[0] * nc[1] * nc[2]
     
     lap = tf.cast(laplace_kernel(kvec), tf.complex64)
-    PGD_range = PGD_kernel(kvec,kl,ks)
+    PGD_range = tf.cast(PGD_kernel(kvec,kl,ks), tf.complex64)
     kweight = lap * PGD_range
     pot_k = tf.multiply(delta_k, kweight)
     

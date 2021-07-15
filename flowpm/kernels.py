@@ -102,35 +102,35 @@ def longrange_kernel(kvec, r_split):
 
 
 
-
-def PGD_kernel(kvec,kl,ks):
-  """
-  Computes a long range kernel
-
-  Parameters:
-  -----------
-  kvec: array
-    Array of k values in Fourier space
-
-  kl: float
-    Long range scale parameter
-    
-  ks: float
-    Short range scale parameter
-
-  Returns:
-  --------
-  v: array
-    kernel
-  """
-
-  kk = sum(ki**2 for ki in kvec)
-  kl2 = kl**2
-  ks4 = ks**4
-  mask = (kk == 0).nonzero()
-  kk[mask] = 1
-  v = np.exp(-kl2 / kk) * np.exp(-kk**2 / ks4) 
-  imask = (~(kk == 0)).astype(int)
-  v *= imask
-  return v
-
+##
+##def PGD_kernel(kvec,kl,ks):
+##  """
+##  Computes a long range kernel
+##
+##  Parameters:
+##  -----------
+##  kvec: array
+##    Array of k values in Fourier space
+##
+##  kl: float
+##    Long range scale parameter
+##    
+##  ks: float
+##    Short range scale parameter
+##
+##  Returns:
+##  --------
+##  v: array
+##    kernel
+##  """
+##
+##  kk = sum(ki**2 for ki in kvec)
+##  kl2 = kl**2
+##  ks4 = ks**4
+##  mask = (kk == 0).nonzero()
+##  kk[mask] = 1
+##  v = tf.exp(-kl2 / kk) * tf.exp(-kk**2 / ks4) 
+##  imask = (~(kk == 0)).astype(int)
+##  v *= imask
+##  return v
+##
