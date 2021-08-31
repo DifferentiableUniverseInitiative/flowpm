@@ -1,3 +1,10 @@
+from mpi4py import MPI
+import os
+# Pin only one GPU per horovod process
+comm = MPI.COMM_WORLD
+os.environ["CUDA_VISIBLE_DEVICES"] = "%d" % (comm.rank
+                                            )  # This is specific to my machine
+
 import numpy as np
 import os
 import math
@@ -5,6 +12,7 @@ import tensorflow.compat.v1 as tf
 
 tf.disable_v2_behavior()
 import mesh_tensorflow as mtf
+from mesh_tensorflow.hvd_simd_mesh_impl import HvdSimdMeshImpl
 
 import sys
 #sys.path.pop(6)
@@ -21,14 +29,10 @@ from matplotlib import pyplot as plt
 
 cosmology = Planck15
 
-tf.flags.DEFINE_integer("gpus_per_node", 8, "Number of GPU on each node")
-tf.flags.DEFINE_integer("gpus_per_task", 2, "Number of GPU in each task")
-tf.flags.DEFINE_integer("tasks_per_node", 1, "Number of task in each node")
-
 tf.flags.DEFINE_integer("nc", 64, "Size of the cube")
 tf.flags.DEFINE_integer("batch_size", 1, "Batch Size")
 tf.flags.DEFINE_float("box_size", 200, "Batch Size")
-tf.flags.DEFINE_integer("nx", 1, "# blocks along x")
+tf.flags.DEFINE_integer("nx", 2, "# blocks along x")
 tf.flags.DEFINE_integer("ny", 1, "# blocks along y")
 tf.flags.DEFINE_integer("dsample", 2, "downsampling factor")
 tf.flags.DEFINE_integer("hsize", 16, "halo size")
@@ -74,6 +78,10 @@ def lpt_prototype(mesh,
 
   #
 
+  ffx_dim = mtf.Dimension("fnx", nc)
+  ffy_dim = mtf.Dimension("fny", nc)
+  ffz_dim = mtf.Dimension("fnz", nc)
+
   fx_dim = mtf.Dimension("nx", nc)
   fy_dim = mtf.Dimension("ny", nc)
   fz_dim = mtf.Dimension("nz", nc)
@@ -116,7 +124,7 @@ def lpt_prototype(mesh,
 
   state = mtfpm.lpt_init_single(
       field,
-      a0,
+      a,
       kv_lr,
       halo_size,
       lr_shape,
@@ -124,11 +132,11 @@ def lpt_prototype(mesh,
       part_shape[1:],
       antialias=True,
   )
-
+  print('TOTO', state)
   # Here we can run our nbody
-  #final_state = state
-  final_state = mtfpm.nbody_single(state, stages, lr_shape, hr_shape, kv_lr,
-                                   halo_size)
+  final_state = state
+  # final_state = mtfpm.nbody_single(state, stages, lr_shape, hr_shape,
+  #                                  kv_lr, halo_size)
 
   # paint the field
   final_field = mtf.zeros(mesh, shape=hr_shape)
@@ -154,6 +162,7 @@ def lpt_prototype(mesh,
       name='my_dumb_reshape',
       splittable_dims=part_shape[:-1] + hr_shape[:4])
 
+  final_field = mtf.reshape(final_field, [batch_dim, ffx_dim, ffy_dim, ffz_dim])
   return final_field
 
   ##
@@ -166,24 +175,9 @@ def main(_):
                   ("ny", "col"), ("ty_lr", "row"), ("tz_lr", "col"),
                   ("nx_block", "row"), ("ny_block", "col")]
 
-  mesh_hosts = ["localhost:%d" % (8222 + j) for j in range(FLAGS.nx * FLAGS.ny)]
-
-  # Create a cluster from the mesh hosts.
-  cluster = tf.train.ClusterSpec({
-      "mesh": mesh_hosts,
-      "master": ["localhost:8488"]
-  })
-
-  # Create a server for local mesh members
-  server = tf.train.Server(cluster, job_name="master", task_index=0)
-
-  mesh_devices = [
-      '/job:mesh/task:%d' % i for i in range(cluster.num_tasks("mesh"))
-  ]
-  print("List of devices", mesh_devices)
-  mesh_impl = mtf.placement_mesh_impl.PlacementMeshImpl(mesh_shape,
-                                                        layout_rules,
-                                                        mesh_devices)
+  mesh_impl = HvdSimdMeshImpl(
+      mtf.convert_to_shape(mesh_shape),
+      mtf.convert_to_layout_rules(layout_rules))
 
   # Build the model
 
@@ -209,11 +203,11 @@ def main(_):
       FLAGS.box_size,  # Physical size of the cube
       ipklin,  # Initial power spectrum
       batch_size=FLAGS.batch_size)
-
-  #state = lpt_init(initial_conditions, a0=a0, order=1)
-  #final_state = state
-  #final_state = nbody(state, stages, nc)
-  tfinal_field = initial_conditions  #cic_paint(tf.zeros_like(initial_conditions), final_state[0])
+  cosmo = flowpm.cosmology.Planck15()
+  state = lpt_init(cosmo, initial_conditions, a, order=1)
+  final_state = state
+  #final_state = nbody(cosmo, state, stages, nc)
+  tfinal_field = cic_paint(tf.zeros_like(initial_conditions), final_state[0])
 
   # Compute necessary Fourier kernels
   kvec = flowpm.kernels.fftk((nc, nc, nc), symmetric=False)
@@ -237,36 +231,35 @@ def main(_):
   # Retrieve output of computation
   result = lowering.export_to_tf_tensor(mesh_final_field)
 
-  with tf.Session(
-      server.target,
-      config=tf.ConfigProto(
-          allow_soft_placement=True, log_device_placement=False)) as sess:
+  with tf.Session() as sess:
     a, b, c = sess.run([initial_conditions, tfinal_field, result])
-  np.save('init', a)
-  np.save('reference_final', b)
-  np.save('mesh_pyramid', c)
 
-  plt.figure(figsize=(15, 3))
-  plt.subplot(141)
-  plt.imshow(a[0].sum(axis=2))
-  plt.title('Initial Conditions')
+  if comm.rank == 0:
+    np.save('init', a)
+    np.save('reference_final', b)
+    np.save('mesh_pyramid', c)
 
-  plt.subplot(142)
-  plt.imshow(b[0].sum(axis=2))
-  plt.title('TensorFlow (single GPU)')
-  plt.colorbar()
+    plt.figure(figsize=(15, 3))
+    plt.subplot(141)
+    plt.imshow(a[0].sum(axis=2))
+    plt.title('Initial Conditions')
 
-  plt.subplot(143)
-  plt.imshow(c[0].sum(axis=2))
-  plt.title('Mesh TensorFlow Single')
-  plt.colorbar()
+    plt.subplot(142)
+    plt.imshow(b[0].sum(axis=2))
+    plt.title('TensorFlow (single GPU)')
+    plt.colorbar()
 
-  plt.subplot(144)
-  plt.imshow((b[0] - c[0]).sum(axis=2))
-  plt.title('Residuals')
-  plt.colorbar()
+    plt.subplot(143)
+    plt.imshow(c[0].sum(axis=2))
+    plt.title('Mesh TensorFlow Single')
+    plt.colorbar()
 
-  plt.savefig("comparison-single.png")
+    plt.subplot(144)
+    plt.imshow((b[0] - c[0]).sum(axis=2))
+    plt.title('Residuals')
+    plt.colorbar()
+
+    plt.savefig("comparison-single.png")
 
   exit(0)
 

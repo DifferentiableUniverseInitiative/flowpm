@@ -87,7 +87,7 @@ def lpt1(dlin_k, pos, kvec=None, name="LTP1"):
     dlin_k = tf.convert_to_tensor(dlin_k, name="lineark")
     pos = tf.convert_to_tensor(pos, name="pos")
 
-    shape = dlin_k.get_shape()
+    shape = dlin_k.get_shape().as_list()
     batch_size, nc = shape[0], shape[1:]
     if kvec is None:
       kvec = fftk(nc, symmetric=False)
@@ -167,7 +167,7 @@ def lpt_init(cosmo, linear, a, order=2, kvec=None, name="LPTInit"):
     linear = tf.convert_to_tensor(linear, name="linear")
 
     assert order in (1, 2)
-    shape = linear.get_shape()
+    shape = linear.get_shape().as_list()
     batch_size, nc = shape[0], shape[1:]
 
     dtype = np.float32
