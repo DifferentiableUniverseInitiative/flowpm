@@ -71,28 +71,29 @@ def power_spectrum(field, kmin=5, dk=0.5, boxsize=False):
 
   def fn(x):
     #calculating powerspectra
-    real = tf.reshape(tf.math.real(x), [-1 ])
-    imag = tf.reshape(tf.math.imag(x), [-1 ])
+    real = tf.reshape(tf.math.real(x), [-1])
+    imag = tf.reshape(tf.math.imag(x), [-1])
 
     Psum = tf.dtypes.cast(
-        tf.math.bincount(dig, 
-        weights=(W.flatten() * imag), minlength=xsum.size),
+        tf.math.bincount(
+            dig, weights=(W.flatten() * imag), minlength=xsum.size),
         dtype=tf.complex64) * 1j
     Psum += tf.dtypes.cast(
-        tf.math.bincount(dig,
-        weights=(W.flatten() * real), minlength=xsum.size),
+        tf.math.bincount(
+            dig, weights=(W.flatten() * real), minlength=xsum.size),
         dtype=tf.complex64)
-    return tf.dtypes.cast((Psum / Nsum)[1:-1] * boxsize.prod(), dtype=tf.float32)
+    return tf.dtypes.cast(
+        (Psum / Nsum)[1:-1] * boxsize.prod(), dtype=tf.float32)
 
   power = tf.map_fn(
-            fn,
-            pk,
-            dtype=None,
-            parallel_iterations=None,
-            back_prop=True,
-            swap_memory=False,
-            infer_shape=True,
-            name=None)
+      fn,
+      pk,
+      dtype=None,
+      parallel_iterations=None,
+      back_prop=True,
+      swap_memory=False,
+      infer_shape=True,
+      name=None)
 
   #normalization for powerspectra
   norm = tf.dtypes.cast(tf.reduce_prod(shape[1:]), dtype=tf.float32)**2

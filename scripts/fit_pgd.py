@@ -18,7 +18,8 @@ import astropy.units as u
 
 flags.DEFINE_string("filename", "results_fit_PGD.pkl", "Output filename")
 flags.DEFINE_integer("niter", 51, "Number of iterations of the first PGD fit")
-flags.DEFINE_integer("niter_refine", 11, "Number of iterations of subsequent PGD fit")
+flags.DEFINE_integer("niter_refine", 11,
+                     "Number of iterations of subsequent PGD fit")
 flags.DEFINE_float("learning_rate", 0.1, "ADAM learning rate for the PGD optim")
 flags.DEFINE_integer("batch_size", 8, "Number of random draws")
 
@@ -26,7 +27,8 @@ flags.DEFINE_float("alpha0", 0.3, "Initial guess for alpha at z=0")
 flags.DEFINE_float("kl0", 0.3, "Initial guess for kl at z=0")
 flags.DEFINE_float("ks0", 10, "Initial guess for ks at z=0")
 
-flags.DEFINE_boolean("fix_scales", False, "Whether to fix the scales after the initial fit at z=0")
+flags.DEFINE_boolean("fix_scales", False,
+                     "Whether to fix the scales after the initial fit at z=0")
 
 flags.DEFINE_float("a_init", 0.1, "Initial scale factor")
 flags.DEFINE_integer("nsteps", 40, "Number of steps in the N-body simulation")
@@ -49,7 +51,7 @@ def pgd_loss(alpha, scales, state, target_pk, return_pk=False):
 
   # Step I: Apply PGD to the state vector
   pdgized_state = state[0] + tfpm.PGD_correction(
-      state, pgdparams, nc=[FLAGS.nc]*3, pm_nc_factor=FLAGS.B)
+      state, pgdparams, nc=[FLAGS.nc] * 3, pm_nc_factor=FLAGS.B)
 
   # Step II: Painting
   field = cic_paint(tf.zeros([batch_size] + [FLAGS.nc] * 3), pdgized_state)
@@ -66,7 +68,7 @@ def pgd_loss(alpha, scales, state, target_pk, return_pk=False):
   # Step IV: compute loss
   weight = 1 - k / (np.pi * FLAGS.nc / FLAGS.box_size)
   weight = tf.convert_to_tensor(weight / weight.sum(), dtype=tf.float32)
-  rescale_factor = 1.0 # pk[0]/target_pk[0] # To account for variance on large scale
+  rescale_factor = 1.0  # pk[0]/target_pk[0] # To account for variance on large scale
   loss = tf.reduce_sum((weight * (1 - pk / target_pk / rescale_factor))**2)
   if return_pk:
     return loss, pk
@@ -82,7 +84,8 @@ def main(_):
   nbdykit_cosmo = nbdykit_cosmo.match(sigma8=cosmology.sigma8.numpy())
 
   # Compute the k vectora that will be needed in the PGD fit
-  k, _ = flowpm.power_spectrum(tf.zeros([1] + [FLAGS.nc] * 3),
+  k, _ = flowpm.power_spectrum(
+      tf.zeros([1] + [FLAGS.nc] * 3),
       boxsize=np.array([FLAGS.box_size] * 3),
       kmin=np.pi / FLAGS.box_size,
       dk=2 * np.pi / FLAGS.box_size)
@@ -116,8 +119,7 @@ def main(_):
   print('Simulation done')
 
   # Initialize PGD params
-  alpha = tf.Variable([FLAGS.alpha0],
-                          dtype=tf.float32)
+  alpha = tf.Variable([FLAGS.alpha0], dtype=tf.float32)
   scales = tf.Variable([FLAGS.kl0, FLAGS.ks0], dtype=tf.float32)
   pgdparams = tf.concat([alpha, scales], 0)
   optimizer = tf.keras.optimizers.Adam(learning_rate=FLAGS.learning_rate)
@@ -129,9 +131,10 @@ def main(_):
     # Let's compute the target power spectrum at that scale factor
     target_pk = HalofitPower(nbdykit_cosmo, 1. / a - 1.)(k)
 
-    for i in range(FLAGS.niter if j ==0 else FLAGS.niter_refine):
-      optimizer.minimize(partial(pgd_loss, alpha, scales, state, target_pk), 
-                [alpha] if (FLAGS.fix_scales and j > 0) else [alpha, scales])
+    for i in range(FLAGS.niter if j == 0 else FLAGS.niter_refine):
+      optimizer.minimize(
+          partial(pgd_loss, alpha, scales, state, target_pk), [alpha] if
+          (FLAGS.fix_scales and j > 0) else [alpha, scales])
 
       if i % 10 == 0:
         loss, pk = pgd_loss(alpha, scales, state, target_pk, return_pk=True)
@@ -143,10 +146,10 @@ def main(_):
     print("Fitted params (alpha, kl, ks)", params[-1])
 
     plt.loglog(k, target_pk, "k")
-    plt.loglog(k, pk0 , ':', label='starting')
-    plt.loglog(k, pk , '--', label='after n steps')
+    plt.loglog(k, pk0, ':', label='starting')
+    plt.loglog(k, pk, '--', label='after n steps')
     plt.grid(which='both')
-    plt.savefig('PGD_fit_%0.2f.png'%a)
+    plt.savefig('PGD_fit_%0.2f.png' % a)
     plt.close()
 
   pickle.dump(
