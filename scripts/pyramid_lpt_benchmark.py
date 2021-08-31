@@ -75,8 +75,7 @@ def lpt_prototype(mesh,
   halo_size = FLAGS.hsize
 
   if halo_size >= 0.5 * min(nc // n_block_x, nc // n_block_y, nc // n_block_z):
-    new_size = int(0.5 *
-                   min(nc // n_block_x, nc // n_block_y, nc // n_block_z))
+    new_size = int(0.5 * min(nc // n_block_x, nc // n_block_y, nc // n_block_z))
     print('WARNING: REDUCING HALO SIZE from %d to %d' % (halo_size, new_size))
     halo_size = new_size
 
@@ -119,32 +118,29 @@ def lpt_prototype(mesh,
 
   # Compute necessary Fourier kernels
   kvec = flowpm.kernels.fftk((nc, nc, nc), symmetric=False)
-  kx = mtf.import_tf_tensor(mesh,
-                            kvec[0].squeeze().astype('float32'),
-                            shape=[tfx_dim])
-  ky = mtf.import_tf_tensor(mesh,
-                            kvec[1].squeeze().astype('float32'),
-                            shape=[tfy_dim])
-  kz = mtf.import_tf_tensor(mesh,
-                            kvec[2].squeeze().astype('float32'),
-                            shape=[tfz_dim])
+  kx = mtf.import_tf_tensor(
+      mesh, kvec[0].squeeze().astype('float32'), shape=[tfx_dim])
+  ky = mtf.import_tf_tensor(
+      mesh, kvec[1].squeeze().astype('float32'), shape=[tfy_dim])
+  kz = mtf.import_tf_tensor(
+      mesh, kvec[2].squeeze().astype('float32'), shape=[tfz_dim])
   kv = [ky, kz, kx]
 
   # kvec for low resolution grid
   kvec_lr = flowpm.kernels.fftk([lnc, lnc, lnc], symmetric=False)
 
-  kx_lr = mtf.import_tf_tensor(mesh,
-                               kvec_lr[0].squeeze().astype('float32') /
-                               2**downsampling_factor,
-                               shape=[tx_dim])
-  ky_lr = mtf.import_tf_tensor(mesh,
-                               kvec_lr[1].squeeze().astype('float32') /
-                               2**downsampling_factor,
-                               shape=[ty_dim])
-  kz_lr = mtf.import_tf_tensor(mesh,
-                               kvec_lr[2].squeeze().astype('float32') /
-                               2**downsampling_factor,
-                               shape=[tz_dim])
+  kx_lr = mtf.import_tf_tensor(
+      mesh,
+      kvec_lr[0].squeeze().astype('float32') / 2**downsampling_factor,
+      shape=[tx_dim])
+  ky_lr = mtf.import_tf_tensor(
+      mesh,
+      kvec_lr[1].squeeze().astype('float32') / 2**downsampling_factor,
+      shape=[ty_dim])
+  kz_lr = mtf.import_tf_tensor(
+      mesh,
+      kvec_lr[2].squeeze().astype('float32') / 2**downsampling_factor,
+      shape=[tz_dim])
   kv_lr = [ky_lr, kz_lr, kx_lr]
 
   # kvec for high resolution blocks
@@ -160,15 +156,12 @@ def lpt_prototype(mesh,
   ],
                                 symmetric=False)
 
-  kx_hr = mtf.import_tf_tensor(mesh,
-                               kvec_hr[0].squeeze().astype('float32'),
-                               shape=[padded_sx_dim])
-  ky_hr = mtf.import_tf_tensor(mesh,
-                               kvec_hr[1].squeeze().astype('float32'),
-                               shape=[padded_sy_dim])
-  kz_hr = mtf.import_tf_tensor(mesh,
-                               kvec_hr[2].squeeze().astype('float32'),
-                               shape=[padded_sz_dim])
+  kx_hr = mtf.import_tf_tensor(
+      mesh, kvec_hr[0].squeeze().astype('float32'), shape=[padded_sx_dim])
+  ky_hr = mtf.import_tf_tensor(
+      mesh, kvec_hr[1].squeeze().astype('float32'), shape=[padded_sy_dim])
+  kz_hr = mtf.import_tf_tensor(
+      mesh, kvec_hr[2].squeeze().astype('float32'), shape=[padded_sz_dim])
   kv_hr = [ky_hr, kz_hr, kx_hr]
 
   shape = [batch_dim, fx_dim, fy_dim, fz_dim]
@@ -181,13 +174,13 @@ def lpt_prototype(mesh,
   initc = mtfpm.linear_field(mesh, shape, bs, nc, pk, kv)
 
   # Reshaping array into high resolution mesh
-  field = mtf.slicewise(lambda x: tf.expand_dims(
-      tf.expand_dims(tf.expand_dims(x, axis=1), axis=1), axis=1), [initc],
-                        output_dtype=tf.float32,
-                        output_shape=hr_shape,
-                        name='my_reshape',
-                        splittable_dims=lr_shape[:-1] + hr_shape[1:4] +
-                        part_shape[1:3])
+  field = mtf.slicewise(
+      lambda x: tf.expand_dims(
+          tf.expand_dims(tf.expand_dims(x, axis=1), axis=1), axis=1), [initc],
+      output_dtype=tf.float32,
+      output_shape=hr_shape,
+      name='my_reshape',
+      splittable_dims=lr_shape[:-1] + hr_shape[1:4] + part_shape[1:3])
 
   for block_size_dim in hr_shape[-3:]:
     field = mtf.pad(field, [halo_size, halo_size], block_size_dim.name)
@@ -207,11 +200,12 @@ def lpt_prototype(mesh,
                     block_size_dim.size // 2**downsampling_factor,
                     block_size_dim.name)
   # Hack usisng  custom reshape because mesh is pretty dumb
-  low = mtf.slicewise(lambda x: x[:, 0, 0, 0], [low],
-                      output_dtype=tf.float32,
-                      output_shape=lr_shape,
-                      name='my_dumb_reshape',
-                      splittable_dims=lr_shape[:-1] + hr_shape[:4])
+  low = mtf.slicewise(
+      lambda x: x[:, 0, 0, 0], [low],
+      output_dtype=tf.float32,
+      output_shape=lr_shape,
+      name='my_dumb_reshape',
+      splittable_dims=lr_shape[:-1] + hr_shape[:4])
 
   state = mtfpm.lpt_init(
       low,
@@ -247,11 +241,12 @@ def lpt_prototype(mesh,
 
   #final_field = mtf.reshape(final_field,  [batch_dim, fx_dim, fy_dim, fz_dim])
   # Hack usisng  custom reshape because mesh is pretty dumb
-  final_field = mtf.slicewise(lambda x: x[:, 0, 0, 0], [final_field],
-                              output_dtype=tf.float32,
-                              output_shape=[batch_dim, fx_dim, fy_dim, fz_dim],
-                              name='my_dumb_reshape',
-                              splittable_dims=part_shape[:-1] + hr_shape[:4])
+  final_field = mtf.slicewise(
+      lambda x: x[:, 0, 0, 0], [final_field],
+      output_dtype=tf.float32,
+      output_shape=[batch_dim, fx_dim, fy_dim, fz_dim],
+      name='my_dumb_reshape',
+      splittable_dims=part_shape[:-1] + hr_shape[:4])
 
   return initc, final_field
 
@@ -267,9 +262,8 @@ def main(_):
   #layout_rules = mtf.convert_to_layout_rules(FLAGS.layout)
   #mesh_shape = [("row", FLAGS.nx), ("col", FLAGS.ny)]
   layout_rules = [("nx_lr", "row"), ("ny_lr", "col"), ("nx", "row"),
-                  ("ny", "col"), ("ty", "row"), ("tz", "col"),
-                  ("ty_lr", "row"), ("tz_lr", "col"), ("nx_block", "row"),
-                  ("ny_block", "col")]
+                  ("ny", "col"), ("ty", "row"), ("tz", "col"), ("ty_lr", "row"),
+                  ("tz_lr", "col"), ("nx_block", "row"), ("ny_block", "col")]
 
   # Resolve the cluster from SLURM environment
   cluster = tf.distribute.cluster_resolver.SlurmClusterResolver(
@@ -296,8 +290,9 @@ def main(_):
   ]
   print("List of devices", mesh_devices)
 
-  mesh_impl = mtf.placement_mesh_impl.PlacementMeshImpl(
-      mesh_shape, layout_rules, mesh_devices)
+  mesh_impl = mtf.placement_mesh_impl.PlacementMeshImpl(mesh_shape,
+                                                        layout_rules,
+                                                        mesh_devices)
 
   # Build the model
   # Create computational graphs and some initializations
@@ -314,9 +309,10 @@ def main(_):
   initc = lowering.export_to_tf_tensor(initial_conditions)
   result = lowering.export_to_tf_tensor(mesh_final_field)
 
-  with tf.Session(server.target,
-                  config=tf.ConfigProto(allow_soft_placement=True,
-                                        log_device_placement=False)) as sess:
+  with tf.Session(
+      server.target,
+      config=tf.ConfigProto(
+          allow_soft_placement=True, log_device_placement=False)) as sess:
     a, c = sess.run([initc, result])
 
   plt.figure(figsize=(9, 3))

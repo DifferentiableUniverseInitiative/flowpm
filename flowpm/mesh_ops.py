@@ -10,6 +10,7 @@ import numpy as np
 
 class IndicesOperation(mtf.Operation):
   """Distributed equivalent of np.indices"""
+
   def __init__(self, mesh, shape, dtype, name=None):
     super(IndicesOperation, self).__init__([], mesh, name=name or "indices")
     self._mesh = mesh
@@ -28,9 +29,9 @@ class IndicesOperation(mtf.Operation):
 
     def _tf_fn():
       tf_indices = [tf.range(dim) for dim in sshape]
-      return tf.cast(tf.stack(tf.meshgrid(*tf_indices, indexing='ij'),
-                              axis=-1),
-                     dtype=self._dtype)
+      return tf.cast(
+          tf.stack(tf.meshgrid(*tf_indices, indexing='ij'), axis=-1),
+          dtype=self._dtype)
 
     value = mesh_impl.slicewise(_tf_fn)
     lowering.set_tensor_lowering(self.outputs[0], value)
@@ -89,6 +90,7 @@ class FFT3DOperation(mtf.Operation):
   This returns a transposed FFT however, to save a few all2all
   communications.
   """
+
   def __init__(self, tensor_in, k_dims, name=None):
     super(FFT3DOperation, self).__init__([tensor_in], name=name or "FFT3D")
     self._k_dims = k_dims
@@ -146,6 +148,7 @@ class iFFT3DOperation(mtf.Operation):
   This assumes a transposed FFT as input however, to save a few all2all
   communications.
   """
+
   def __init__(self, tensor_in, dims, name=None):
     super(iFFT3DOperation, self).__init__([tensor_in], name=name or "iFFT3D")
     self._dims = dims
@@ -178,8 +181,7 @@ class iFFT3DOperation(mtf.Operation):
       # Before transposing the array, making sure the new last dimension will
       # be contiguous
       if split_axes[0] is not None:
-        slices = mesh_impl.alltoall(slices, split_axes[0], naxes - 1,
-                                    naxes - 3)
+        slices = mesh_impl.alltoall(slices, split_axes[0], naxes - 1, naxes - 3)
         split_axes[-1] = split_axes[0]
         split_axes[0] = None
       perm = np.arange(len(x.shape))

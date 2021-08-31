@@ -64,9 +64,8 @@ def test_angular_diameter_distance():
 
   angular_diameter_distance_tf = ang_diameter_distance(cosmo_tf, a)
 
-  assert_allclose(angular_diameter_distance_tf,
-                  angular_diameter_distance_astr,
-                  rtol=1e-2)
+  assert_allclose(
+      angular_diameter_distance_tf, angular_diameter_distance_astr, rtol=1e-2)
 
 
 # =============================================================================

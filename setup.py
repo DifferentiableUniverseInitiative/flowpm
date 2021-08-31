@@ -6,30 +6,31 @@ from io import open
 with open('README.md', encoding="utf-8") as f:
   long_description = f.read()
 
-setup(name='flowpm',
-      description='Particle Mesh Simulation in TensorFlow',
-      long_description=long_description,
-      long_description_content_type='text/markdown',
-      url='https://github.com/DifferentiableUniverseInitiative/flowpm',
-      author='Chirag Modi, FlowPM developers',
-      author_email='modichirag@berkeley.edu',
-      license='MIT',
-      packages=find_packages(),
-      install_requires=[
-          'astropy', 'scipy', 'mesh-tensorflow', 'tensorflow_probability',
-          'tensorflow_addons'
-      ],
-      tests_require=['fastpm', 'lenstools'],
-      extras_require={
-          'testing': ['fastpm', 'lenstools'],
-      },
-      use_scm_version=True,
-      setup_requires=['setuptools_scm'],
-      classifiers=[
-          'Development Status :: 3 - Alpha', 'Intended Audience :: Developers',
-          'Intended Audience :: Science/Research',
-          'License :: OSI Approved :: MIT License',
-          'Topic :: Scientific/Engineering :: Artificial Intelligence',
-          'Topic :: Scientific/Engineering :: Physics'
-      ],
-      keywords='cosmology machine learning')
+setup(
+    name='flowpm',
+    description='Particle Mesh Simulation in TensorFlow',
+    long_description=long_description,
+    long_description_content_type='text/markdown',
+    url='https://github.com/DifferentiableUniverseInitiative/flowpm',
+    author='Chirag Modi, FlowPM developers',
+    author_email='modichirag@berkeley.edu',
+    license='MIT',
+    packages=find_packages(),
+    install_requires=[
+        'astropy', 'scipy', 'mesh-tensorflow', 'tensorflow_probability',
+        'tensorflow_addons'
+    ],
+    tests_require=['fastpm', 'lenstools'],
+    extras_require={
+        'testing': ['fastpm', 'lenstools'],
+    },
+    use_scm_version=True,
+    setup_requires=['setuptools_scm'],
+    classifiers=[
+        'Development Status :: 3 - Alpha', 'Intended Audience :: Developers',
+        'Intended Audience :: Science/Research',
+        'License :: OSI Approved :: MIT License',
+        'Topic :: Scientific/Engineering :: Artificial Intelligence',
+        'Topic :: Scientific/Engineering :: Physics'
+    ],
+    keywords='cosmology machine learning')

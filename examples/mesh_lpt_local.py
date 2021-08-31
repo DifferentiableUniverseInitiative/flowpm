@@ -99,15 +99,12 @@ def lpt_prototype(mesh,
 
   # kvec for low resolution grid
   kvec_lr = flowpm.kernels.fftk([nc, nc, nc], symmetric=False)
-  kx_lr = mtf.import_tf_tensor(mesh,
-                               kvec_lr[0].squeeze().astype('float32'),
-                               shape=[tx_dim])
-  ky_lr = mtf.import_tf_tensor(mesh,
-                               kvec_lr[1].squeeze().astype('float32'),
-                               shape=[ty_dim])
-  kz_lr = mtf.import_tf_tensor(mesh,
-                               kvec_lr[2].squeeze().astype('float32'),
-                               shape=[tz_dim])
+  kx_lr = mtf.import_tf_tensor(
+      mesh, kvec_lr[0].squeeze().astype('float32'), shape=[tx_dim])
+  ky_lr = mtf.import_tf_tensor(
+      mesh, kvec_lr[1].squeeze().astype('float32'), shape=[ty_dim])
+  kz_lr = mtf.import_tf_tensor(
+      mesh, kvec_lr[2].squeeze().astype('float32'), shape=[tz_dim])
   kv_lr = [ky_lr, kz_lr, kx_lr]
 
   lr_shape = [batch_dim, fx_dim, fy_dim, fz_dim]
@@ -152,11 +149,12 @@ def lpt_prototype(mesh,
 
   #final_field = mtf.reshape(final_field,  [batch_dim, fx_dim, fy_dim, fz_dim])
   # Hack usisng  custom reshape because mesh is pretty dumb
-  final_field = mtf.slicewise(lambda x: x[:, 0, 0, 0], [final_field],
-                              output_dtype=tf.float32,
-                              output_shape=[batch_dim, fx_dim, fy_dim, fz_dim],
-                              name='my_dumb_reshape',
-                              splittable_dims=part_shape[:-1] + hr_shape[:4])
+  final_field = mtf.slicewise(
+      lambda x: x[:, 0, 0, 0], [final_field],
+      output_dtype=tf.float32,
+      output_shape=[batch_dim, fx_dim, fy_dim, fz_dim],
+      name='my_dumb_reshape',
+      splittable_dims=part_shape[:-1] + hr_shape[:4])
 
   return final_field
 
@@ -185,8 +183,9 @@ def main(_):
       '/job:mesh/task:%d' % i for i in range(cluster.num_tasks("mesh"))
   ]
   print("List of devices", mesh_devices)
-  mesh_impl = mtf.placement_mesh_impl.PlacementMeshImpl(
-      mesh_shape, layout_rules, mesh_devices)
+  mesh_impl = mtf.placement_mesh_impl.PlacementMeshImpl(mesh_shape,
+                                                        layout_rules,
+                                                        mesh_devices)
 
   # Build the model
 
@@ -227,21 +226,23 @@ def main(_):
   grad_z = gradient_kernel(kvec, 2)
   derivs = [lap, grad_x, grad_y, grad_z]
 
-  mesh_final_field = lpt_prototype(mesh,
-                                   initial_conditions,
-                                   derivs,
-                                   bs=FLAGS.box_size,
-                                   nc=FLAGS.nc,
-                                   batch_size=FLAGS.batch_size)
+  mesh_final_field = lpt_prototype(
+      mesh,
+      initial_conditions,
+      derivs,
+      bs=FLAGS.box_size,
+      nc=FLAGS.nc,
+      batch_size=FLAGS.batch_size)
   # Lower mesh computation
   lowering = mtf.Lowering(graph, {mesh: mesh_impl})
 
   # Retrieve output of computation
   result = lowering.export_to_tf_tensor(mesh_final_field)
 
-  with tf.Session(server.target,
-                  config=tf.ConfigProto(allow_soft_placement=True,
-                                        log_device_placement=False)) as sess:
+  with tf.Session(
+      server.target,
+      config=tf.ConfigProto(
+          allow_soft_placement=True, log_device_placement=False)) as sess:
     a, b, c = sess.run([initial_conditions, tfinal_field, result])
   np.save('init', a)
   np.save('reference_final', b)

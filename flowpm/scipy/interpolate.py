@@ -28,14 +28,14 @@ def interp_tf(x, xp, fp):
   xp = tf.convert_to_tensor(xp, dtype=tf.float32)
   fp = tf.convert_to_tensor(fp, dtype=tf.float32)
   # First we find the nearest neighbour
-  ind = tf.math.argmin((tf.expand_dims(x, 1) - tf.expand_dims(xp, 0))**2,
-                       axis=-1)
+  ind = tf.math.argmin(
+      (tf.expand_dims(x, 1) - tf.expand_dims(xp, 0))**2, axis=-1)
   # Perform linear interpolation
   ind = tf.clip_by_value(ind, 1, len(xp) - 2)
   xi = tf.gather(xp, ind)
   # Figure out if we are on the right or the left of nearest
-  s = tf.cast(tf.math.sign(tf.clip_by_value(x, xp[-2], xp[1]) - xi),
-              dtype=tf.int64)
+  s = tf.cast(
+      tf.math.sign(tf.clip_by_value(x, xp[-2], xp[1]) - xi), dtype=tf.int64)
   fp0 = tf.gather(fp, ind)
   fp1 = tf.gather(fp, ind + tf.cast(tf.sign(s), dtype=tf.int64)) - fp0
   xp0 = tf.gather(xp, ind)

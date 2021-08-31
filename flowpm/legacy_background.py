@@ -18,6 +18,7 @@ class Perturbation:
         Formulas are derived from Yin Li's notes on 2LPT.
 
     """
+
   def __init__(self, a, a_normalize=1.0):
 
     if a is None:
@@ -230,6 +231,7 @@ class MatterDominated(Perturbation):
         a list of time steps where the factors are exact.
         other a values are interpolated.
     """
+
   def __init__(self,
                Omega0_m,
                Omega0_lambda=None,
@@ -287,6 +289,7 @@ class RadiationDominated(Perturbation):
         a list of time steps where the factors are exact.
         other a values are interpolated.
     """
+
   def __init__(self, cosmo, a=None, a_normalize=1.0):
     #        assert cosmo.Ogamma0 == 0
     #        assert cosmo.Onu0 == 0
@@ -328,5 +331,4 @@ class RadiationDominated(Perturbation):
 
   def Om(self, a):
     z = 1. / a - 1
-    return self._cosmo.Omega_b(z) + self._cosmo.Omega_cdm(
-        z)  # non-relativistic
+    return self._cosmo.Omega_b(z) + self._cosmo.Omega_cdm(z)  # non-relativistic

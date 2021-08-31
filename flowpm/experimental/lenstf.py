@@ -89,12 +89,12 @@ def z_chi(d, cosmo, name='z_chi'):
     # redshift as a function of comsoving distance for underlying cosmology
     z_int = np.logspace(-12, np.log10(1500), 40000)
     chis = cosmo.comoving_distance(z_int)  #Mpc/h
-    z = tfp.math.interp_regular_1d_grid(d,
-                                        1e-12,
-                                        1.5e3,
-                                        tf.convert_to_tensor(chis,
-                                                             dtype='float'),
-                                        name='interpolation')
+    z = tfp.math.interp_regular_1d_grid(
+        d,
+        1e-12,
+        1.5e3,
+        tf.convert_to_tensor(chis, dtype='float'),
+        name='interpolation')
     return z
 
 
@@ -116,6 +116,7 @@ def wlen(d, ds, cosmo, boxsize, boxsize2D, mesh2D, name='efficiency_kernel'):
         nbar *
         A))  #particles/Volume*angular pixel area* distance^2 -> 1/L units
     w = tf.divide(
-        tf.multiply(tf.multiply(tf.subtract(ds, d), tf.divide(d, ds)),
-                    (1. + z)), columndens)  #distance
+        tf.multiply(
+            tf.multiply(tf.subtract(ds, d), tf.divide(d, ds)), (1. + z)),
+        columndens)  #distance
     return w

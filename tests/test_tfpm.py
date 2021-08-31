@@ -189,9 +189,8 @@ def test_rectangular_nody():
   a0 = 0.1
   cosmo = flowpm.cosmology.Planck15()
 
-  pm = ParticleMesh(BoxSize=[bs, bs, 3 * bs],
-                    Nmesh=[nc, nc, 3 * nc],
-                    dtype='f4')
+  pm = ParticleMesh(
+      BoxSize=[bs, bs, 3 * bs], Nmesh=[nc, nc, 3 * nc], dtype='f4')
   grid = pm.generate_uniform_particle_grid(shift=0).astype(np.float32)
   solver = Solver(pm, ref_cosmo, B=1)
   stages = np.linspace(0.1, 1.0, 10, endpoint=True)
