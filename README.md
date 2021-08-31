@@ -37,43 +37,23 @@ final_field = flowpm.cic_paint(tf.zeros_like(initial_conditions), final_state[0]
 
 ## Mesh TensorFlow implementation
 
-FlowPM provides a Mesh TensorFlow implementation of FastPM, for running distributed
-simulations across very large supercomputers.
+FlowPM provides a [Mesh TensorFlow](https://github.com/tensorflow/mesh) implementation of FastPM, 
+for running distributed simulations across very large supercomputers. 
 
-Here are the instructions for installing and running on Cori-GPU. More info about
-this machine here: https://docs-dev.nersc.gov/cgpu/
+### Instructions for GPU clusters
 
-0) Login to a cori-gpu node to prepare the environment:
-```
-$ module add esslurm
-$ salloc -C gpu -N 1 -t 30 -c 10 --gres=gpu:1 -A m1759
-```
+We rely on a customized Mesh TensorFlow backend based on [Horovod](https://github.com/horovod/horovod) to
+distribute computations on GPU clusters through the high performance [NCCL library](https://developer.nvidia.com/nccl).
 
-1) First install dependencies
-```
-$ module purge && module load gcc/7.3.0 python3 cuda/10.1.243
-$ pip install --user tensorflow==2.1
-$ pip install --user mesh-tensorflow
-```
-**NOTE: we are installing our own tensorflow 2.1 version until a module is available at NERSC**
-
-3) Install the Mesh TensorFlow branch of FlowPM
-```
-$ git clone https://github.com/DifferentiableUniverseInitiative/flowpm.git
-$ cd flowpm
-$ git checkout mesh
-$ pip install --user -e .
+To install the necessary dependencies, you first need to be in an environment providing:
+  - TensorFlow 2.1 or above
+  - NCCL 2.8 or above
+You can then install Horovod and Mesh TensorFlow with: 
+```bash
+$ pip install git+https://github.com/horovod/horovod.git
+$ pip install git+https://github.com/DifferentiableUniverseInitiative/mesh
 ```
 
-4) To run the demo comparing the distributed computation to single GPU:
-```
-$ cd examples
-$ sbatch lpt_job.sh
-```
-
-This will generate a plot `comparison.png` showing from a set of initial
-conditions, the result of a single LPT step on single GPU TensorFlow vs Mesh
-TensorFlow.
 
 ### TPU setup
 
