@@ -24,18 +24,22 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
 
-      - name: Set up Python 
-        uses: actions/setup-python@v1
+      - uses: conda-incubator/setup-miniconda@v2
         with:
-          python-version: 3.8
+          python-version: 3.7
+          channels: defaults, conda-forge
+          channel-priority: strict
 
-      - name: Install dependencies
+      - name: configure conda and install code
+        shell: bash -l {0}
         run: |
-          apt-get install python3-mpi4py
-          python -m pip install --upgrade pip
-          pip install astropy==4.3.1 tensorflow==2.5.0 tensorflow-probability==0.13.0 Cython
-          pip install .[testing]
+          conda config --set always_yes yes
+          conda install --quiet pip setuptools runtests nbodykit
 
-      - name: Test with pytest
+          pip install tensorflow==2.5.0 tensorflow-probability==0.13.0
+          pip install -e .[testing]
+
+      - name: Run the tests
+        shell: bash -l {0}
         run: |
-          pytest
+          pytest 
