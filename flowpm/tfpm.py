@@ -7,11 +7,9 @@ import numpy as np
 import tensorflow as tf
 from flowpm.tfbackground import f1, E, f2, Gf, gf, gf2, D1, D2, D1f
 from flowpm.utils import white_noise, c2r3d, r2c3d, cic_paint, cic_readout
-from flowpm.kernels import fftk, laplace_kernel, gradient_kernel, longrange_kernel #,  PGD_kernel
-
+from flowpm.kernels import fftk, laplace_kernel, gradient_kernel, longrange_kernel  #,  PGD_kernel
 
 from flowpm.pk import pk as pkl
-
 
 __all__ = ['linear_field', 'lpt_init', 'nbody']
 
@@ -223,8 +221,7 @@ def apply_longrange(x,
     return f
 
 
-
-def PGD_kernel(kvec,kl,ks):
+def PGD_kernel(kvec, kl, ks):
   """
   Computes a long range kernel
 
@@ -250,19 +247,13 @@ def PGD_kernel(kvec,kl,ks):
   ks4 = ks**4
   mask = (kk == 0).nonzero()
   kk[mask] = 1
-  v = tf.exp(-kl2 / kk) * tf.exp(-kk**2 / ks4) 
+  v = tf.exp(-kl2 / kk) * tf.exp(-kk**2 / ks4)
   imask = (~(kk == 0)).astype(int)
   v *= imask
   return v
 
 
-def apply_PGD(x,
-                    delta_k,
-                    alpha,
-                    kl,
-                    ks,
-                    kvec=None,
-                    name="ApplyLongrange"):
+def apply_PGD(x, delta_k, alpha, kl, ks, kvec=None, name="ApplyLongrange"):
   """
   Estimate the short range force on the particles given a state.
 
@@ -296,12 +287,12 @@ def apply_PGD(x,
 
     ndim = 3
     norm = nc[0] * nc[1] * nc[2]
-    
+
     lap = tf.cast(laplace_kernel(kvec), tf.complex64)
-    PGD_range = tf.cast(PGD_kernel(kvec,kl,ks), tf.complex64)
+    PGD_range = tf.cast(PGD_kernel(kvec, kl, ks), tf.complex64)
     kweight = lap * PGD_range
     pot_k = tf.multiply(delta_k, kweight)
-    
+
     f = []
     for d in range(ndim):
       force_dc = tf.multiply(pot_k, gradient_kernel(kvec, d))
@@ -411,15 +402,14 @@ def force(cosmo,
     return state
 
 
-def PGD_correction(
-        state,
-        pgdparams, 
-        nc,
-        pm_nc_factor=1,
-        kvec=None,
-        dtype=tf.float32,
-        name="Force",
-        **kwargs):
+def PGD_correction(state,
+                   pgdparams,
+                   nc,
+                   pm_nc_factor=1,
+                   kvec=None,
+                   dtype=tf.float32,
+                   name="Force",
+                   **kwargs):
   """
   Estimate the short range force on the particles given a state.
 
@@ -459,70 +449,72 @@ def PGD_correction(
     delta_k = r2c3d(rho, norm=ncf[0] * ncf[1] * ncf[2])
 
     alpha, kl, ks = tf.split(pgdparams, 3)
-    update = apply_PGD(tf.multiply(state[0], pm_nc_factor),
-                             delta_k,
-                             alpha,
-                              kl,
-                              ks,
-                               )
+    update = apply_PGD(
+        tf.multiply(state[0], pm_nc_factor),
+        delta_k,
+        alpha,
+        kl,
+        ks,
+    )
     update = tf.expand_dims(update, axis=0) / pm_nc_factor
     return update
 
 
 def pgd(state, pgdparams, nc, box_size, pm_nc_factor=1):
 
-    print('pgd graph')
+  print('pgd graph')
 
-    shape = state.get_shape()
-    batch_size = shape[1]
-    ncf = [n * pm_nc_factor for n in nc]
+  shape = state.get_shape()
+  batch_size = shape[1]
+  ncf = [n * pm_nc_factor for n in nc]
 
-    dx = PGD_correction(state, pgdparams, nc, pm_nc_factor=pm_nc_factor)
-    new_state = state[0]+dx
+  dx = PGD_correction(state, pgdparams, nc, pm_nc_factor=pm_nc_factor)
+  new_state = state[0] + dx
 
-    final_field = tf.zeros([batch_size] + ncf)
-    final_field = cic_paint(final_field, new_state)
-    #final_field = decic(final_field)
-    final_field = tf.reshape(final_field, nc)
-    k, power_spectrum = pkl(final_field,shape=final_field.shape,boxsize=np.array([box_size, box_size,
-                                            box_size]),kmin=np.pi/box_size,dk=2*np.pi/box_size)
+  final_field = tf.zeros([batch_size] + ncf)
+  final_field = cic_paint(final_field, new_state)
+  #final_field = decic(final_field)
+  final_field = tf.reshape(final_field, nc)
+  k, power_spectrum = pkl(
+      final_field,
+      shape=final_field.shape,
+      boxsize=np.array([box_size, box_size, box_size]),
+      kmin=np.pi / box_size,
+      dk=2 * np.pi / box_size)
 
-    return k, power_spectrum, dx
+  return k, power_spectrum, dx
 
 
 def fit_pgd(params, state, psref, nc, box_size, niters=20):
 
-    weight = 1.
+  weight = 1.
 
-    def get_grads(params):
-        with tf.GradientTape() as tape:
-            tape.watch(params)
-            k, ps, _ = pgd(state, params, nc, box_size)
-    #         loss = tf.reduce_sum(ps)
-            #psref = tf.constant(np.array(psref))
-            loss = tf.reduce_sum((weight*(1 - ps/psref))**2)
-        grad = tape.gradient(loss, params)
-        return loss, grad
+  def get_grads(params):
+    with tf.GradientTape() as tape:
+      tape.watch(params)
+      k, ps, _ = pgd(state, params, nc, box_size)
+      #         loss = tf.reduce_sum(ps)
+      #psref = tf.constant(np.array(psref))
+      loss = tf.reduce_sum((weight * (1 - ps / psref))**2)
+    grad = tape.gradient(loss, params)
+    return loss, grad
 
+  opt = tf.keras.optimizers.Adam(learning_rate=0.1)
+  losses, pparams = [], []
 
+  for i in range(niters):
+    loss, grads = get_grads(params)
+    opt.apply_gradients(zip([grads], [params]))
+    print(i, loss, params)
+    losses.append(loss)
+    #pparams.append(params.numpy().copy())
 
-    opt = tf.keras.optimizers.Adam(learning_rate=0.1)
-    losses, pparams = [], []
-
-    for i in range(niters):
-      loss, grads = get_grads(params)
-      opt.apply_gradients(zip([grads], [params]))
-      print(i, loss, params)
-      losses.append(loss)
-      #pparams.append(params.numpy().copy())
-
-    k, ps, dx = pgd(state, params, nc, box_size)
-    indices = tf.constant([[0]])
-    shape = state.shape
-    update = tf.scatter_nd(indices, dx, shape)
-    state = tf.add(state, update)
-    return params, ps, state 
-
+  k, ps, dx = pgd(state, params, nc, box_size)
+  indices = tf.constant([[0]])
+  shape = state.shape
+  update = tf.scatter_nd(indices, dx, shape)
+  state = tf.add(state, update)
+  return params, ps, state
 
 
 def nbody(cosmo,
@@ -600,16 +592,13 @@ def nbody(cosmo,
       return state
 
 
-
-
-
 def nbody_pgd(cosmo,
               state,
               stages,
               nc,
               box_size,
-              psref, 
-              pgdparams, 
+              psref,
+              pgdparams,
               pm_nc_factor=1,
               niters=20,
               return_intermediate_states=False,
@@ -656,7 +645,6 @@ def nbody_pgd(cosmo,
 
     print('Init params : ', pgdparams)
 
-
     pparams = []
     #pparams.append(tf.identity(pgdparams))
     dmstate = []
@@ -674,10 +662,11 @@ def nbody_pgd(cosmo,
       # Drift step
       state = drift(cosmo, state, x, p, a1)
       x = a1
-      
+
       #PGD Step
       dmstate.append(tf.identity(state[0]))
-      params, ps, state = fit_pgd(pgdparams, state, psref[x], nc, box_size, niters=niters)
+      params, ps, state = fit_pgd(
+          pgdparams, state, psref[x], nc, box_size, niters=niters)
       pparams.append(tf.identity(pgdparams))
       print('Back')
 
