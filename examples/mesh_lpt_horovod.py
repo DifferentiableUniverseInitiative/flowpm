@@ -2,12 +2,14 @@ from mpi4py import MPI
 import os
 # Pin only one GPU per horovod process
 comm = MPI.COMM_WORLD
-os.environ["CUDA_VISIBLE_DEVICES"]="%d"%(comm.rank) # This is specific to my machine
+os.environ["CUDA_VISIBLE_DEVICES"] = "%d" % (comm.rank
+                                            )  # This is specific to my machine
 
 import numpy as np
 import os
 import math
 import tensorflow.compat.v1 as tf
+
 tf.disable_v2_behavior()
 import mesh_tensorflow as mtf
 from mesh_tensorflow.hvd_simd_mesh_impl import HvdSimdMeshImpl
@@ -24,6 +26,7 @@ from astropy.cosmology import Planck15
 from flowpm import linear_field, lpt_init, nbody, cic_paint
 from scipy.interpolate import InterpolatedUnivariateSpline as iuspline
 from matplotlib import pyplot as plt
+
 cosmology = Planck15
 
 tf.flags.DEFINE_integer("nc", 64, "Size of the cube")
@@ -103,15 +106,12 @@ def lpt_prototype(mesh,
 
   # kvec for low resolution grid
   kvec_lr = flowpm.kernels.fftk([nc, nc, nc], symmetric=False)
-  kx_lr = mtf.import_tf_tensor(mesh,
-                               kvec_lr[0].squeeze().astype('float32'),
-                               shape=[tx_dim])
-  ky_lr = mtf.import_tf_tensor(mesh,
-                               kvec_lr[1].squeeze().astype('float32'),
-                               shape=[ty_dim])
-  kz_lr = mtf.import_tf_tensor(mesh,
-                               kvec_lr[2].squeeze().astype('float32'),
-                               shape=[tz_dim])
+  kx_lr = mtf.import_tf_tensor(
+      mesh, kvec_lr[0].squeeze().astype('float32'), shape=[tx_dim])
+  ky_lr = mtf.import_tf_tensor(
+      mesh, kvec_lr[1].squeeze().astype('float32'), shape=[ty_dim])
+  kz_lr = mtf.import_tf_tensor(
+      mesh, kvec_lr[2].squeeze().astype('float32'), shape=[tz_dim])
   kv_lr = [ky_lr, kz_lr, kx_lr]
 
   lr_shape = [batch_dim, fx_dim, fy_dim, fz_dim]
@@ -155,13 +155,14 @@ def lpt_prototype(mesh,
 
   #final_field = mtf.reshape(final_field,  [batch_dim, fx_dim, fy_dim, fz_dim])
   # Hack usisng  custom reshape because mesh is pretty dumb
-  final_field = mtf.slicewise(lambda x: x[:, 0, 0, 0], [final_field],
-                              output_dtype=tf.float32,
-                              output_shape=[batch_dim, fx_dim, fy_dim, fz_dim],
-                              name='my_dumb_reshape',
-                              splittable_dims=part_shape[:-1] + hr_shape[:4])
+  final_field = mtf.slicewise(
+      lambda x: x[:, 0, 0, 0], [final_field],
+      output_dtype=tf.float32,
+      output_shape=[batch_dim, fx_dim, fy_dim, fz_dim],
+      name='my_dumb_reshape',
+      splittable_dims=part_shape[:-1] + hr_shape[:4])
 
-  final_field = mtf.reshape(final_field,  [batch_dim, ffx_dim, ffy_dim, ffz_dim])
+  final_field = mtf.reshape(final_field, [batch_dim, ffx_dim, ffy_dim, ffz_dim])
   return final_field
 
   ##
@@ -174,9 +175,9 @@ def main(_):
                   ("ny", "col"), ("ty_lr", "row"), ("tz_lr", "col"),
                   ("nx_block", "row"), ("ny_block", "col")]
 
-
-  mesh_impl =HvdSimdMeshImpl(mtf.convert_to_shape(mesh_shape), 
-                            mtf.convert_to_layout_rules(layout_rules))
+  mesh_impl = HvdSimdMeshImpl(
+      mtf.convert_to_shape(mesh_shape),
+      mtf.convert_to_layout_rules(layout_rules))
 
   # Build the model
 
@@ -217,12 +218,13 @@ def main(_):
   grad_z = gradient_kernel(kvec, 2)
   derivs = [lap, grad_x, grad_y, grad_z]
 
-  mesh_final_field = lpt_prototype(mesh,
-                                   initial_conditions,
-                                   derivs,
-                                   bs=FLAGS.box_size,
-                                   nc=FLAGS.nc,
-                                   batch_size=FLAGS.batch_size)
+  mesh_final_field = lpt_prototype(
+      mesh,
+      initial_conditions,
+      derivs,
+      bs=FLAGS.box_size,
+      nc=FLAGS.nc,
+      batch_size=FLAGS.batch_size)
   # Lower mesh computation
   lowering = mtf.Lowering(graph, {mesh: mesh_impl})
 
@@ -231,7 +233,7 @@ def main(_):
 
   with tf.Session() as sess:
     a, b, c = sess.run([initial_conditions, tfinal_field, result])
-  
+
   if comm.rank == 0:
     np.save('init', a)
     np.save('reference_final', b)

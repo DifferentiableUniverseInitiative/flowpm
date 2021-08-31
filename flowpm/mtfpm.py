@@ -58,11 +58,8 @@ def linear_field(mesh,
   k_dims = [k_dims[2], k_dims[0], k_dims[1]]
 
   # Generates the random field
-  field = mtf.random_normal(mesh,
-                            shape=shape,
-                            mean=0,
-                            stddev=nc**1.5,
-                            dtype=tf.float32)
+  field = mtf.random_normal(
+      mesh, shape=shape, mean=0, stddev=nc**1.5, dtype=tf.float32)
 
   # Apply power spectrum on both grids
   cfield = mesh_utils.r2c3d(field, k_dims)
@@ -94,9 +91,8 @@ def lpt_init(lr_field,
   k_dims_hr = [k_dims_hr[2], k_dims_hr[0], k_dims_hr[1]]
 
   # Create particles on the high resolution grid
-  mstate = mesh_ops.mtf_indices(hr_field.mesh,
-                                shape=part_shape,
-                                dtype=tf.float32)
+  mstate = mesh_ops.mtf_indices(
+      hr_field.mesh, shape=part_shape, dtype=tf.float32)
   X = mtf.einsum([mtf.ones(hr_field.mesh, [batch_dim]), mstate],
                  output_shape=[batch_dim] + mstate.shape[:])
 
@@ -115,17 +111,17 @@ def lpt_init(lr_field,
   displacement = []
   for f, g in zip(grad_kfield_lr, grad_kfield_hr):
     f = mesh_utils.c2r3d(f, lr_shape[-3:])
-    f = mtf.slicewise(lambda x: tf.expand_dims(
-        tf.expand_dims(tf.expand_dims(x, axis=1), axis=1), axis=1), [f],
-                      output_dtype=tf.float32,
-                      output_shape=mtf.Shape(hr_shape[0:4] + [
-                          mtf.Dimension('sx_block', lnc // hr_shape[1].size),
-                          mtf.Dimension('sy_block', lnc // hr_shape[2].size),
-                          mtf.Dimension('sz_block', lnc // hr_shape[3].size)
-                      ]),
-                      name='my_reshape',
-                      splittable_dims=lr_shape[:-1] + hr_shape[1:4] +
-                      part_shape[1:3])
+    f = mtf.slicewise(
+        lambda x: tf.expand_dims(
+            tf.expand_dims(tf.expand_dims(x, axis=1), axis=1), axis=1), [f],
+        output_dtype=tf.float32,
+        output_shape=mtf.Shape(hr_shape[0:4] + [
+            mtf.Dimension('sx_block', lnc // hr_shape[1].size),
+            mtf.Dimension('sy_block', lnc // hr_shape[2].size),
+            mtf.Dimension('sz_block', lnc // hr_shape[3].size)
+        ]),
+        name='my_reshape',
+        splittable_dims=lr_shape[:-1] + hr_shape[1:4] + part_shape[1:3])
     for block_size_dim in hr_shape[-3:]:
       f = mtf.pad(f, [
           halo_size // 2**downsampling_factor,
@@ -143,8 +139,7 @@ def lpt_init(lr_field,
     # And now we remove the large scales
     g = mtf.reshape(g, g.shape + [mtf.Dimension('h_dim', 1)])
     _low = mesh_utils.downsample(g, downsampling_factor, antialias=antialias)
-    g = g - mtf.reshape(mesh_utils.upsample(_low, downsampling_factor),
-                        g.shape)
+    g = g - mtf.reshape(mesh_utils.upsample(_low, downsampling_factor), g.shape)
     g = mtf.reshape(g, high_shape)
 
     d = mesh_utils.cic_readout(f + g, X, halo_size)
@@ -259,22 +254,19 @@ def force(state,
                     block_size_dim.name)
 
   # Hack usisng  custom reshape because mesh is pretty dumb
-  lr_field = mtf.slicewise(lambda x: x[:, 0, 0, 0], [low],
-                           output_dtype=tf.float32,
-                           output_shape=lr_shape,
-                           name='my_dumb_reshape',
-                           splittable_dims=lr_shape[:-1] + hr_shape[:4])
+  lr_field = mtf.slicewise(
+      lambda x: x[:, 0, 0, 0], [low],
+      output_dtype=tf.float32,
+      output_shape=lr_shape,
+      name='my_dumb_reshape',
+      splittable_dims=lr_shape[:-1] + hr_shape[:4])
 
   lr_kfield = mesh_utils.r2c3d(lr_field, k_dims_lr)
   hr_kfield = mesh_utils.r2c3d(hr_field, k_dims_hr)
 
-  kfield_lr = mesh_kernels.apply_longrange_kernel(lr_kfield,
-                                                  kvec_lr,
-                                                  r_split=0)
+  kfield_lr = mesh_kernels.apply_longrange_kernel(lr_kfield, kvec_lr, r_split=0)
   kfield_lr = mesh_kernels.apply_gradient_laplace_kernel(lr_kfield, kvec_lr)
-  kfield_hr = mesh_kernels.apply_longrange_kernel(hr_kfield,
-                                                  kvec_hr,
-                                                  r_split=0)
+  kfield_hr = mesh_kernels.apply_longrange_kernel(hr_kfield, kvec_hr, r_split=0)
   kfield_hr = mesh_kernels.apply_gradient_laplace_kernel(kfield_hr, kvec_hr)
 
   # Reorder the low res FFTs which where transposed# y,z,x
@@ -284,17 +276,17 @@ def force(state,
   displacement = []
   for f, g in zip(kfield_lr, kfield_hr):
     f = mesh_utils.c2r3d(f, lr_shape[-3:])
-    f = mtf.slicewise(lambda x: tf.expand_dims(
-        tf.expand_dims(tf.expand_dims(x, axis=1), axis=1), axis=1), [f],
-                      output_dtype=tf.float32,
-                      output_shape=mtf.Shape(hr_shape[0:4] + [
-                          mtf.Dimension('sx_block', lnc // hr_shape[1].size),
-                          mtf.Dimension('sy_block', lnc // hr_shape[2].size),
-                          mtf.Dimension('sz_block', lnc // hr_shape[3].size)
-                      ]),
-                      name='my_reshape',
-                      splittable_dims=lr_shape[:-1] + hr_shape[1:4] +
-                      part_shape[1:3])
+    f = mtf.slicewise(
+        lambda x: tf.expand_dims(
+            tf.expand_dims(tf.expand_dims(x, axis=1), axis=1), axis=1), [f],
+        output_dtype=tf.float32,
+        output_shape=mtf.Shape(hr_shape[0:4] + [
+            mtf.Dimension('sx_block', lnc // hr_shape[1].size),
+            mtf.Dimension('sy_block', lnc // hr_shape[2].size),
+            mtf.Dimension('sz_block', lnc // hr_shape[3].size)
+        ]),
+        name='my_reshape',
+        splittable_dims=lr_shape[:-1] + hr_shape[1:4] + part_shape[1:3])
     for block_size_dim in hr_shape[-3:]:
       f = mtf.pad(f, [
           halo_size // 2**downsampling_factor,
@@ -312,8 +304,7 @@ def force(state,
     # And now we remove the large scales
     g = mtf.reshape(g, g.shape + [mtf.Dimension('h_dim', 1)])
     _low = mesh_utils.downsample(g, downsampling_factor, antialias=antialias)
-    g = g - mtf.reshape(mesh_utils.upsample(_low, downsampling_factor),
-                        g.shape)
+    g = g - mtf.reshape(mesh_utils.upsample(_low, downsampling_factor), g.shape)
     g = mtf.reshape(g, high_shape)
 
     d = mesh_utils.cic_readout(f + g, X, halo_size)
@@ -367,15 +358,16 @@ def nbody(state,
   ai = stages[0]
 
   # first force calculation for jump starting
-  state = force(state,
-                lr_shape,
-                hr_shape,
-                kvec_lr,
-                kvec_hr,
-                halo_size,
-                pm_nc_factor=pm_nc_factor,
-                cosmology=cosmology,
-                downsampling_factor=downsampling_factor)
+  state = force(
+      state,
+      lr_shape,
+      hr_shape,
+      kvec_lr,
+      kvec_hr,
+      halo_size,
+      pm_nc_factor=pm_nc_factor,
+      cosmology=cosmology,
+      downsampling_factor=downsampling_factor)
 
   x, p, f = ai, ai, ai
   # Loop through the stages
@@ -393,15 +385,16 @@ def nbody(state,
     x = a1
 
     # Force
-    state = force(state,
-                  lr_shape,
-                  hr_shape,
-                  kvec_lr,
-                  kvec_hr,
-                  halo_size,
-                  pm_nc_factor=pm_nc_factor,
-                  cosmology=cosmology,
-                  downsampling_factor=downsampling_factor)
+    state = force(
+        state,
+        lr_shape,
+        hr_shape,
+        kvec_lr,
+        kvec_hr,
+        halo_size,
+        pm_nc_factor=pm_nc_factor,
+        cosmology=cosmology,
+        downsampling_factor=downsampling_factor)
     f = a1
 
     # Kick again
@@ -427,9 +420,8 @@ def lpt_init_single(lr_field,
   lnc = lr_shape[-1].size
 
   # Create particles on the high resolution grid
-  mstate = mesh_ops.mtf_indices(lr_field.mesh,
-                                shape=part_shape,
-                                dtype=tf.float32)
+  mstate = mesh_ops.mtf_indices(
+      lr_field.mesh, shape=part_shape, dtype=tf.float32)
   X = mtf.einsum([mtf.ones(lr_field.mesh, [batch_dim]), mstate],
                  output_shape=[batch_dim] + mstate.shape[:])
 
@@ -447,17 +439,17 @@ def lpt_init_single(lr_field,
   displacement = []
   for f in grad_kfield_lr:
     f = mesh_utils.c2r3d(f, lr_shape[-3:])
-    f = mtf.slicewise(lambda x: tf.expand_dims(
-        tf.expand_dims(tf.expand_dims(x, axis=1), axis=1), axis=1), [f],
-                      output_dtype=tf.float32,
-                      output_shape=mtf.Shape(hr_shape[0:4] + [
-                          mtf.Dimension('sx_block', lnc // hr_shape[1].size),
-                          mtf.Dimension('sy_block', lnc // hr_shape[2].size),
-                          mtf.Dimension('sz_block', lnc // hr_shape[3].size)
-                      ]),
-                      name='my_reshape',
-                      splittable_dims=lr_shape[:-1] + hr_shape[1:4] +
-                      part_shape[1:3])
+    f = mtf.slicewise(
+        lambda x: tf.expand_dims(
+            tf.expand_dims(tf.expand_dims(x, axis=1), axis=1), axis=1), [f],
+        output_dtype=tf.float32,
+        output_shape=mtf.Shape(hr_shape[0:4] + [
+            mtf.Dimension('sx_block', lnc // hr_shape[1].size),
+            mtf.Dimension('sy_block', lnc // hr_shape[2].size),
+            mtf.Dimension('sz_block', lnc // hr_shape[3].size)
+        ]),
+        name='my_reshape',
+        splittable_dims=lr_shape[:-1] + hr_shape[1:4] + part_shape[1:3])
 
     for block_size_dim in hr_shape[-3:]:
       f = mtf.pad(f, [halo_size, halo_size], block_size_dim.name)
@@ -524,11 +516,12 @@ def force_single(state,
                       block_size_dim.name)
 
   # Hack usisng  custom reshape because mesh is pretty dumb
-  lr_field = mtf.slicewise(lambda x: x[:, 0, 0, 0], [field],
-                           output_dtype=tf.float32,
-                           output_shape=lr_shape,
-                           name='my_dumb_reshape',
-                           splittable_dims=lr_shape[:-1] + hr_shape[:4])
+  lr_field = mtf.slicewise(
+      lambda x: x[:, 0, 0, 0], [field],
+      output_dtype=tf.float32,
+      output_shape=lr_shape,
+      name='my_dumb_reshape',
+      splittable_dims=lr_shape[:-1] + hr_shape[:4])
 
   k_dims_lr = [d.shape[0] for d in kvec_lr]
   k_dims_lr = [k_dims_lr[2], k_dims_lr[0], k_dims_lr[1]]
@@ -542,17 +535,17 @@ def force_single(state,
   displacement = []
   for f in kfield_lr:
     f = mesh_utils.c2r3d(f, lr_shape[-3:])
-    f = mtf.slicewise(lambda x: tf.expand_dims(
-        tf.expand_dims(tf.expand_dims(x, axis=1), axis=1), axis=1), [f],
-                      output_dtype=tf.float32,
-                      output_shape=mtf.Shape(hr_shape[0:4] + [
-                          mtf.Dimension('sx_block', lnc // hr_shape[1].size),
-                          mtf.Dimension('sy_block', lnc // hr_shape[2].size),
-                          mtf.Dimension('sz_block', lnc // hr_shape[3].size)
-                      ]),
-                      name='my_reshape',
-                      splittable_dims=lr_shape[:-1] + hr_shape[1:4] +
-                      part_shape[1:3])
+    f = mtf.slicewise(
+        lambda x: tf.expand_dims(
+            tf.expand_dims(tf.expand_dims(x, axis=1), axis=1), axis=1), [f],
+        output_dtype=tf.float32,
+        output_shape=mtf.Shape(hr_shape[0:4] + [
+            mtf.Dimension('sx_block', lnc // hr_shape[1].size),
+            mtf.Dimension('sy_block', lnc // hr_shape[2].size),
+            mtf.Dimension('sz_block', lnc // hr_shape[3].size)
+        ]),
+        name='my_reshape',
+        splittable_dims=lr_shape[:-1] + hr_shape[1:4] + part_shape[1:3])
 
     for block_size_dim in hr_shape[-3:]:
       f = mtf.pad(f, [halo_size, halo_size], block_size_dim.name)
@@ -607,13 +600,14 @@ def nbody_single(state,
   ai = stages[0]
 
   # first force calculation for jump starting
-  state = force_single(state,
-                       lr_shape,
-                       hr_shape,
-                       kvec_lr,
-                       halo_size,
-                       pm_nc_factor=pm_nc_factor,
-                       cosmology=cosmology)
+  state = force_single(
+      state,
+      lr_shape,
+      hr_shape,
+      kvec_lr,
+      halo_size,
+      pm_nc_factor=pm_nc_factor,
+      cosmology=cosmology)
 
   x, p, f = ai, ai, ai
   # Loop through the stages
@@ -631,13 +625,14 @@ def nbody_single(state,
     x = a1
 
     # Force
-    state = force_single(state,
-                         lr_shape,
-                         hr_shape,
-                         kvec_lr,
-                         halo_size,
-                         pm_nc_factor=pm_nc_factor,
-                         cosmology=cosmology)
+    state = force_single(
+        state,
+        lr_shape,
+        hr_shape,
+        kvec_lr,
+        halo_size,
+        pm_nc_factor=pm_nc_factor,
+        cosmology=cosmology)
     f = a1
 
     # Kick again

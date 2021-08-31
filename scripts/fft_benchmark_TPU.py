@@ -65,8 +65,7 @@ def benchmark_model(mesh):
   field = mtf.random_uniform(mesh, [batch_dim, x_dim, y_dim, z_dim])
 
   # Apply FFT
-  fft_field = mpm.fft3d(mtf.cast(field, tf.complex64),
-                        [tx_dim, ty_dim, tz_dim])
+  fft_field = mpm.fft3d(mtf.cast(field, tf.complex64), [tx_dim, ty_dim, tz_dim])
 
   # Inverse FFT
   rfield = mtf.cast(mpm.ifft3d(fft_field, [x_dim, y_dim, z_dim]), tf.float32)
@@ -88,7 +87,7 @@ def model_fn(features, labels, mode, params):
   num_hosts = ctx.num_hosts
   host_placement_fn = ctx.tpu_host_placement_function
   device_list = [host_placement_fn(host_id=t) for t in range(num_hosts)]
-  tf.logging.info('device_list = %s' % device_list, )
+  tf.logging.info('device_list = %s' % device_list,)
 
   mesh_devices = [''] * mesh_shape.size
   mesh_impl = mtf.simd_mesh_impl.SimdMeshImpl(mesh_shape, layout_rules,
@@ -125,23 +124,24 @@ def main(_):
       save_checkpoints_secs=None,  # Disable the default saver
       log_step_count_steps=100,
       save_summary_steps=100,
-      tpu_config=tpu_config.TPUConfig(num_shards=mesh_shape.size,
-                                      iterations_per_loop=100,
-                                      num_cores_per_replica=1,
-                                      per_host_input_for_training=tpu_config.
-                                      InputPipelineConfig.BROADCAST))
+      tpu_config=tpu_config.TPUConfig(
+          num_shards=mesh_shape.size,
+          iterations_per_loop=100,
+          num_cores_per_replica=1,
+          per_host_input_for_training=tpu_config.InputPipelineConfig.BROADCAST))
 
-  model = tpu_estimator.TPUEstimator(use_tpu=True,
-                                     model_fn=model_fn,
-                                     config=run_config,
-                                     train_batch_size=FLAGS.batch_size,
-                                     eval_batch_size=FLAGS.batch_size)
+  model = tpu_estimator.TPUEstimator(
+      use_tpu=True,
+      model_fn=model_fn,
+      config=run_config,
+      train_batch_size=FLAGS.batch_size,
+      eval_batch_size=FLAGS.batch_size)
 
   def dummy_input_fn(params):
     """Dummy input function """
-    return tf.zeros(shape=[params['batch_size']],
-                    dtype=tf.float32), tf.zeros(shape=[params['batch_size']],
-                                                dtype=tf.float32)
+    return tf.zeros(
+        shape=[params['batch_size']], dtype=tf.float32), tf.zeros(
+            shape=[params['batch_size']], dtype=tf.float32)
 
   # Run evaluate loop for ever, we will be connecting to this process using a profiler
   model.evaluate(input_fn=dummy_input_fn, steps=100000)

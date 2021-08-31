@@ -2,6 +2,7 @@ import numpy as np
 import os
 import math
 import tensorflow.compat.v1 as tf
+
 tf.disable_v2_behavior()
 import mesh_tensorflow as mtf
 
@@ -18,6 +19,7 @@ from flowpm.tfpm import PerturbationGrowth
 from flowpm import linear_field, lpt_init, nbody, cic_paint
 from scipy.interpolate import InterpolatedUnivariateSpline as iuspline
 from matplotlib import pyplot as plt
+
 cosmology = Planck15
 
 tf.flags.DEFINE_integer("gpus_per_node", 8, "Number of GPU on each node")
@@ -103,18 +105,18 @@ def lpt_prototype(mesh,
   # kvec for low resolution grid
   kvec_lr = flowpm.kernels.fftk([lnc, lnc, lnc], symmetric=False)
 
-  kx_lr = mtf.import_tf_tensor(mesh,
-                               kvec_lr[0].squeeze().astype('float32') /
-                               2**downsampling_factor,
-                               shape=[tx_dim])
-  ky_lr = mtf.import_tf_tensor(mesh,
-                               kvec_lr[1].squeeze().astype('float32') /
-                               2**downsampling_factor,
-                               shape=[ty_dim])
-  kz_lr = mtf.import_tf_tensor(mesh,
-                               kvec_lr[2].squeeze().astype('float32') /
-                               2**downsampling_factor,
-                               shape=[tz_dim])
+  kx_lr = mtf.import_tf_tensor(
+      mesh,
+      kvec_lr[0].squeeze().astype('float32') / 2**downsampling_factor,
+      shape=[tx_dim])
+  ky_lr = mtf.import_tf_tensor(
+      mesh,
+      kvec_lr[1].squeeze().astype('float32') / 2**downsampling_factor,
+      shape=[ty_dim])
+  kz_lr = mtf.import_tf_tensor(
+      mesh,
+      kvec_lr[2].squeeze().astype('float32') / 2**downsampling_factor,
+      shape=[tz_dim])
   kv_lr = [ky_lr, kz_lr, kx_lr]
 
   # kvec for high resolution blocks
@@ -130,15 +132,12 @@ def lpt_prototype(mesh,
   ],
                                 symmetric=False)
 
-  kx_hr = mtf.import_tf_tensor(mesh,
-                               kvec_hr[0].squeeze().astype('float32'),
-                               shape=[padded_sx_dim])
-  ky_hr = mtf.import_tf_tensor(mesh,
-                               kvec_hr[1].squeeze().astype('float32'),
-                               shape=[padded_sy_dim])
-  kz_hr = mtf.import_tf_tensor(mesh,
-                               kvec_hr[2].squeeze().astype('float32'),
-                               shape=[padded_sz_dim])
+  kx_hr = mtf.import_tf_tensor(
+      mesh, kvec_hr[0].squeeze().astype('float32'), shape=[padded_sx_dim])
+  ky_hr = mtf.import_tf_tensor(
+      mesh, kvec_hr[1].squeeze().astype('float32'), shape=[padded_sy_dim])
+  kz_hr = mtf.import_tf_tensor(
+      mesh, kvec_hr[2].squeeze().astype('float32'), shape=[padded_sz_dim])
   kv_hr = [kx_hr, ky_hr, kz_hr]
 
   lr_shape = [batch_dim, x_dim, y_dim, z_dim]
@@ -171,11 +170,12 @@ def lpt_prototype(mesh,
                     block_size_dim.size // 2**downsampling_factor,
                     block_size_dim.name)
   # Hack usisng  custom reshape because mesh is pretty dumb
-  low = mtf.slicewise(lambda x: x[:, 0, 0, 0], [low],
-                      output_dtype=tf.float32,
-                      output_shape=lr_shape,
-                      name='my_dumb_reshape',
-                      splittable_dims=lr_shape[:-1] + hr_shape[:4])
+  low = mtf.slicewise(
+      lambda x: x[:, 0, 0, 0], [low],
+      output_dtype=tf.float32,
+      output_shape=lr_shape,
+      name='my_dumb_reshape',
+      splittable_dims=lr_shape[:-1] + hr_shape[:4])
 
   # Hack to handle reshape acrosss multiple dimensions
   #low = mtf.reshape(low, [batch_dim, x_dim, low.shape[2], low.shape[5], z_dim])
@@ -216,11 +216,12 @@ def lpt_prototype(mesh,
 
   #final_field = mtf.reshape(final_field,  [batch_dim, fx_dim, fy_dim, fz_dim])
   # Hack usisng  custom reshape because mesh is pretty dumb
-  final_field = mtf.slicewise(lambda x: x[:, 0, 0, 0], [final_field],
-                              output_dtype=tf.float32,
-                              output_shape=[batch_dim, fx_dim, fy_dim, fz_dim],
-                              name='my_dumb_reshape',
-                              splittable_dims=part_shape[:-1] + hr_shape[:4])
+  final_field = mtf.slicewise(
+      lambda x: x[:, 0, 0, 0], [final_field],
+      output_dtype=tf.float32,
+      output_shape=[batch_dim, fx_dim, fy_dim, fz_dim],
+      name='my_dumb_reshape',
+      splittable_dims=part_shape[:-1] + hr_shape[:4])
 
   return final_field
 
@@ -249,8 +250,9 @@ def main(_):
       '/job:mesh/task:%d' % i for i in range(cluster.num_tasks("mesh"))
   ]
   print("List of devices", mesh_devices)
-  mesh_impl = mtf.placement_mesh_impl.PlacementMeshImpl(
-      mesh_shape, layout_rules, mesh_devices)
+  mesh_impl = mtf.placement_mesh_impl.PlacementMeshImpl(mesh_shape,
+                                                        layout_rules,
+                                                        mesh_devices)
 
   # Build the model
 
@@ -290,21 +292,23 @@ def main(_):
   grad_z = gradient_kernel(kvec, 2)
   derivs = [lap, grad_x, grad_y, grad_z]
 
-  mesh_final_field = lpt_prototype(mesh,
-                                   initial_conditions,
-                                   derivs,
-                                   bs=FLAGS.box_size,
-                                   nc=FLAGS.nc,
-                                   batch_size=FLAGS.batch_size)
+  mesh_final_field = lpt_prototype(
+      mesh,
+      initial_conditions,
+      derivs,
+      bs=FLAGS.box_size,
+      nc=FLAGS.nc,
+      batch_size=FLAGS.batch_size)
   # Lower mesh computation
   lowering = mtf.Lowering(graph, {mesh: mesh_impl})
 
   # Retrieve output of computation
   result = lowering.export_to_tf_tensor(mesh_final_field)
 
-  with tf.Session(server.target,
-                  config=tf.ConfigProto(allow_soft_placement=True,
-                                        log_device_placement=False)) as sess:
+  with tf.Session(
+      server.target,
+      config=tf.ConfigProto(
+          allow_soft_placement=True, log_device_placement=False)) as sess:
     a, b, c = sess.run([initial_conditions, tfinal_field, result])
   np.save('init', a)
   np.save('reference_final', b)

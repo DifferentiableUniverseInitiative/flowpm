@@ -1,9 +1,11 @@
 from mpi4py import MPI
+
 comm = MPI.COMM_WORLD
 
 import numpy as np
 import time
 import tensorflow.compat.v1 as tf
+
 tf.disable_v2_behavior()
 import mesh_tensorflow as mtf
 from mesh_tensorflow.hvd_simd_mesh_impl import HvdSimdMeshImpl
@@ -15,7 +17,7 @@ from astropy.cosmology import Planck15
 ##
 
 cosmology = Planck15
-tf.random.set_random_seed(200*comm.Get_rank())
+tf.random.set_random_seed(200 * comm.Get_rank())
 
 tf.flags.DEFINE_integer("nc", 128, "Size of the cube")
 tf.flags.DEFINE_integer("batch_size", 1, "Batch Size")
@@ -34,8 +36,10 @@ tf.flags.DEFINE_integer("ny", 1, "# blocks along y")
 
 FLAGS = tf.flags.FLAGS
 
+
 def nbody_fn(mesh,
-             klin, plin,
+             klin,
+             plin,
              nc=FLAGS.nc,
              bs=FLAGS.box_size,
              batch_size=FLAGS.batch_size,
@@ -89,32 +93,29 @@ def nbody_fn(mesh,
 
   # Compute necessary Fourier kernels
   kvec = flowpm.kernels.fftk((nc, nc, nc), symmetric=False)
-  kx = mtf.import_tf_tensor(mesh,
-                            kvec[0].squeeze().astype('float32'),
-                            shape=[tfx_dim])
-  ky = mtf.import_tf_tensor(mesh,
-                            kvec[1].squeeze().astype('float32'),
-                            shape=[tfy_dim])
-  kz = mtf.import_tf_tensor(mesh,
-                            kvec[2].squeeze().astype('float32'),
-                            shape=[tfz_dim])
+  kx = mtf.import_tf_tensor(
+      mesh, kvec[0].squeeze().astype('float32'), shape=[tfx_dim])
+  ky = mtf.import_tf_tensor(
+      mesh, kvec[1].squeeze().astype('float32'), shape=[tfy_dim])
+  kz = mtf.import_tf_tensor(
+      mesh, kvec[2].squeeze().astype('float32'), shape=[tfz_dim])
   kv = [ky, kz, kx]
 
   # kvec for low resolution grid
   kvec_lr = flowpm.kernels.fftk([lnc, lnc, lnc], symmetric=False)
 
-  kx_lr = mtf.import_tf_tensor(mesh,
-                               kvec_lr[0].squeeze().astype('float32') /
-                               2**downsampling_factor,
-                               shape=[tx_dim])
-  ky_lr = mtf.import_tf_tensor(mesh,
-                               kvec_lr[1].squeeze().astype('float32') /
-                               2**downsampling_factor,
-                               shape=[ty_dim])
-  kz_lr = mtf.import_tf_tensor(mesh,
-                               kvec_lr[2].squeeze().astype('float32') /
-                               2**downsampling_factor,
-                               shape=[tz_dim])
+  kx_lr = mtf.import_tf_tensor(
+      mesh,
+      kvec_lr[0].squeeze().astype('float32') / 2**downsampling_factor,
+      shape=[tx_dim])
+  ky_lr = mtf.import_tf_tensor(
+      mesh,
+      kvec_lr[1].squeeze().astype('float32') / 2**downsampling_factor,
+      shape=[ty_dim])
+  kz_lr = mtf.import_tf_tensor(
+      mesh,
+      kvec_lr[2].squeeze().astype('float32') / 2**downsampling_factor,
+      shape=[tz_dim])
   kv_lr = [ky_lr, kz_lr, kx_lr]
 
   # kvec for high resolution blocks
@@ -130,15 +131,12 @@ def nbody_fn(mesh,
   ],
                                 symmetric=False)
 
-  kx_hr = mtf.import_tf_tensor(mesh,
-                               kvec_hr[0].squeeze().astype('float32'),
-                               shape=[padded_sx_dim])
-  ky_hr = mtf.import_tf_tensor(mesh,
-                               kvec_hr[1].squeeze().astype('float32'),
-                               shape=[padded_sy_dim])
-  kz_hr = mtf.import_tf_tensor(mesh,
-                               kvec_hr[2].squeeze().astype('float32'),
-                               shape=[padded_sz_dim])
+  kx_hr = mtf.import_tf_tensor(
+      mesh, kvec_hr[0].squeeze().astype('float32'), shape=[padded_sx_dim])
+  ky_hr = mtf.import_tf_tensor(
+      mesh, kvec_hr[1].squeeze().astype('float32'), shape=[padded_sy_dim])
+  kz_hr = mtf.import_tf_tensor(
+      mesh, kvec_hr[2].squeeze().astype('float32'), shape=[padded_sz_dim])
   kv_hr = [ky_hr, kz_hr, kx_hr]
 
   shape = [batch_dim, fx_dim, fy_dim, fz_dim]
@@ -150,13 +148,13 @@ def nbody_fn(mesh,
   initc = mtfpm.linear_field(mesh, shape, bs, nc, pk, kv)
 
   # Reshaping array into high resolution mesh
-  field = mtf.slicewise(lambda x: tf.expand_dims(
-      tf.expand_dims(tf.expand_dims(x, axis=1), axis=1), axis=1), [initc],
-                        output_dtype=tf.float32,
-                        output_shape=hr_shape,
-                        name='my_reshape',
-                        splittable_dims=lr_shape[:-1] + hr_shape[1:4] +
-                        part_shape[1:3])
+  field = mtf.slicewise(
+      lambda x: tf.expand_dims(
+          tf.expand_dims(tf.expand_dims(x, axis=1), axis=1), axis=1), [initc],
+      output_dtype=tf.float32,
+      output_shape=hr_shape,
+      name='my_reshape',
+      splittable_dims=lr_shape[:-1] + hr_shape[1:4] + part_shape[1:3])
 
   for block_size_dim in hr_shape[-3:]:
     field = mtf.pad(field, [halo_size, halo_size], block_size_dim.name)
@@ -176,34 +174,36 @@ def nbody_fn(mesh,
                     block_size_dim.size // 2**downsampling_factor,
                     block_size_dim.name)
   # Hack usisng  custom reshape because mesh is pretty dumb
-  low = mtf.slicewise(lambda x: x[:, 0, 0, 0], [low],
-                      output_dtype=tf.float32,
-                      output_shape=lr_shape,
-                      name='my_dumb_reshape',
-                      splittable_dims=lr_shape[:-1] + hr_shape[:4])
+  low = mtf.slicewise(
+      lambda x: x[:, 0, 0, 0], [low],
+      output_dtype=tf.float32,
+      output_shape=lr_shape,
+      name='my_dumb_reshape',
+      splittable_dims=lr_shape[:-1] + hr_shape[:4])
 
   state = mtfpm.lpt_init(
-        low,
-        high,
-        0.1,
-        kv_lr,
-        kv_hr,
-        halo_size,
-        hr_shape,
-        lr_shape,
-        part_shape[1:],
-        downsampling_factor=downsampling_factor,
-        antialias=True,
-    )
+      low,
+      high,
+      0.1,
+      kv_lr,
+      kv_hr,
+      halo_size,
+      hr_shape,
+      lr_shape,
+      part_shape[1:],
+      downsampling_factor=downsampling_factor,
+      antialias=True,
+  )
 
-  final_state = mtfpm.nbody(state,
-                                stages,
-                                lr_shape,
-                                hr_shape,
-                                kv_lr,
-                                kv_hr,
-                                halo_size,
-                                downsampling_factor=downsampling_factor)
+  final_state = mtfpm.nbody(
+      state,
+      stages,
+      lr_shape,
+      hr_shape,
+      kv_lr,
+      kv_hr,
+      halo_size,
+      downsampling_factor=downsampling_factor)
 
   # paint the field
   final_field = mtf.zeros(mesh, shape=hr_shape)
@@ -220,11 +220,12 @@ def nbody_fn(mesh,
     final_field = mtf.slice(final_field, halo_size, block_size_dim.size,
                             block_size_dim.name)
 
-  final_field = mtf.slicewise(lambda x: x[:, 0, 0, 0], [final_field],
-                              output_dtype=tf.float32,
-                              output_shape=[batch_dim, fx_dim, fy_dim, fz_dim],
-                              name='my_dumb_reshape',
-                              splittable_dims=part_shape[:-1] + hr_shape[:4])
+  final_field = mtf.slicewise(
+      lambda x: x[:, 0, 0, 0], [final_field],
+      output_dtype=tf.float32,
+      output_shape=[batch_dim, fx_dim, fy_dim, fz_dim],
+      name='my_dumb_reshape',
+      splittable_dims=part_shape[:-1] + hr_shape[:4])
 
   return initc, final_field
 
@@ -234,11 +235,11 @@ def main(_):
   # Creating layout and mesh implementation
   mesh_shape = [("row", FLAGS.nx), ("col", FLAGS.ny)]
   layout_rules = [("nx_lr", "row"), ("ny_lr", "col"), ("nx", "row"),
-                  ("ny", "col"), ("ty", "row"), ("tz", "col"),
-                  ("ty_lr", "row"), ("tz_lr", "col"), ("nx_block", "row"),
-                  ("ny_block", "col")]
-  mesh_impl = HvdSimdMeshImpl(mtf.convert_to_shape(mesh_shape), 
-                              mtf.convert_to_layout_rules(layout_rules))
+                  ("ny", "col"), ("ty", "row"), ("tz", "col"), ("ty_lr", "row"),
+                  ("tz_lr", "col"), ("nx_block", "row"), ("ny_block", "col")]
+  mesh_impl = HvdSimdMeshImpl(
+      mtf.convert_to_shape(mesh_shape),
+      mtf.convert_to_layout_rules(layout_rules))
 
   # Create the graph and mesh
   graph = mtf.Graph()
@@ -247,17 +248,17 @@ def main(_):
   ## Load initial power spectrum
   klin = np.loadtxt('../flowpm/data/Planck15_a1p00.txt').T[0]
   plin = np.loadtxt('../flowpm/data/Planck15_a1p00.txt').T[1]
-  
+
   # Defines the computational graph for the nbody
   initial_conditions, final_field = nbody_fn(mesh, klin, plin)
 
   # Lower mesh computation
   lowering = mtf.Lowering(graph, {mesh: mesh_impl})
-  
+
   # Retrieve fields as tf tensors
   tf_initc = lowering.export_to_tf_tensor(initial_conditions)
   tf_final = lowering.export_to_tf_tensor(final_field)
-  
+
   with tf.Session() as sess:
     start = time.time()
     init_conds, final = sess.run([tf_initc, tf_final])
@@ -265,8 +266,8 @@ def main(_):
     print('\n Time for the mesh run : %f \n' % (end - start))
 
   # Export these fields
-  np.save('simulation_output_%d.npy'%comm.Get_rank(), final)
-  np.save('simulation_input_%d.npy'%comm.Get_rank(), init_conds)
+  np.save('simulation_output_%d.npy' % comm.Get_rank(), final)
+  np.save('simulation_input_%d.npy' % comm.Get_rank(), init_conds)
 
   exit(0)
 

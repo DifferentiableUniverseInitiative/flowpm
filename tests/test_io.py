@@ -43,8 +43,7 @@ def test_save_state():
     header = bf['Header']
     assert_allclose(np.array(header.attrs['NC']), np.array(nc))
     assert_allclose(np.array(header.attrs['BoxSize']), np.array(boxsize))
-    assert_allclose(np.array(header.attrs['OmegaCDM']),
-                    np.array(cosmo.Omega_c))
+    assert_allclose(np.array(header.attrs['OmegaCDM']), np.array(cosmo.Omega_c))
     assert_allclose(np.array(header.attrs['OmegaB']), np.array(cosmo.Omega_b))
     assert_allclose(np.array(header.attrs['OmegaK']), np.array(cosmo.Omega_k))
     assert_allclose(np.array(header.attrs['h']), np.array(cosmo.h))

@@ -8,6 +8,7 @@ import tensorflow as tf
 from flowpm.tfbackground import f1, E, f2, Gf, gf, gf2, D1, D2, D1f
 from flowpm.utils import white_noise, c2r3d, r2c3d, cic_paint, cic_readout
 from flowpm.kernels import fftk, laplace_kernel, gradient_kernel, longrange_kernel
+
 __all__ = ['linear_field', 'lpt_init', 'nbody']
 
 
@@ -63,8 +64,8 @@ def linear_field(nc,
     pkmesh = pk(kmesh)
 
     whitec = white_noise(nc, batch_size=batch_size, seed=seed, type='complex')
-    lineark = tf.multiply(
-        whitec, (pkmesh / (boxsize[0] * boxsize[1] * boxsize[2]))**0.5)
+    lineark = tf.multiply(whitec, (pkmesh /
+                                   (boxsize[0] * boxsize[1] * boxsize[2]))**0.5)
     linear = c2r3d(lineark, norm=nc[0] * nc[1] * nc[2], name=name, dtype=dtype)
     return linear
 
@@ -319,10 +320,8 @@ def force(cosmo,
                       1. / nbar)  # I am not sure why this is not needed here
     delta_k = r2c3d(rho, norm=ncf[0] * ncf[1] * ncf[2])
     fac = tf.cast(1.5 * cosmo.Omega_m, dtype=dtype)
-    update = apply_longrange(tf.multiply(state[0], pm_nc_factor),
-                             delta_k,
-                             split=0,
-                             factor=fac)
+    update = apply_longrange(
+        tf.multiply(state[0], pm_nc_factor), delta_k, split=0, factor=fac)
 
     update = tf.expand_dims(update, axis=0)
 

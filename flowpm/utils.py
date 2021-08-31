@@ -41,8 +41,8 @@ def cic_paint(mesh, part, weight=None, name="CiCPaint"):
     part = tf.expand_dims(part, 2)
     floor = tf.floor(part)
     connection = tf.expand_dims(
-        tf.constant([[[0, 0, 0], [1., 0, 0], [0., 1, 0], [0., 0, 1],
-                      [1., 1, 0], [1., 0, 1], [0., 1, 1], [1., 1, 1]]]), 0)
+        tf.constant([[[0, 0, 0], [1., 0, 0], [0., 1, 0], [0., 0, 1], [1., 1, 0],
+                      [1., 0, 1], [0., 1, 1], [1., 1, 1]]]), 0)
 
     neighboor_coords = floor + connection
     kernel = 1. - tf.abs(part - neighboor_coords)
@@ -59,13 +59,12 @@ def cic_paint(mesh, part, weight=None, name="CiCPaint"):
     # Adding batch dimension to the neighboor coordinates
     batch_idx = tf.range(0, batch_size)
     batch_idx = tf.reshape(batch_idx, (batch_size, 1, 1, 1))
-    b = tf.tile(batch_idx,
-                [1] + list(neighboor_coords.get_shape()[1:-1]) + [1])
+    b = tf.tile(batch_idx, [1] + list(neighboor_coords.get_shape()[1:-1]) + [1])
     neighboor_coords = tf.concat([b, neighboor_coords], axis=-1)
 
-    update = tf.scatter_nd(tf.reshape(neighboor_coords, (-1, 8, 4)),
-                           tf.reshape(kernel, (-1, 8)),
-                           [batch_size, nx, ny, nz])
+    update = tf.scatter_nd(
+        tf.reshape(neighboor_coords, (-1, 8, 4)), tf.reshape(kernel, (-1, 8)),
+        [batch_size, nx, ny, nz])
     mesh = mesh + update
     return mesh
 
@@ -104,8 +103,8 @@ def cic_readout(mesh, part, name="CiCReadout"):
     part = tf.expand_dims(part, 2)
     floor = tf.floor(part)
     connection = tf.expand_dims(
-        tf.constant([[[0, 0, 0], [1., 0, 0], [0., 1, 0], [0., 0, 1],
-                      [1., 1, 0], [1., 0, 1], [0., 1, 1], [1., 1, 1]]]), 0)
+        tf.constant([[[0, 0, 0], [1., 0, 0], [0., 1, 0], [0., 0, 1], [1., 1, 0],
+                      [1., 0, 1], [0., 1, 1], [1., 1, 1]]]), 0)
 
     neighboor_coords = tf.add(floor, connection)
     kernel = 1. - tf.abs(part - neighboor_coords)
@@ -146,9 +145,8 @@ def r2c3d(rfield, norm=None, dtype=tf.complex64, name="R2C3D"):
       norm = tf.cast(tf.reduce_prod(rfield.get_shape()[1:]), dtype)
     else:
       norm = tf.cast(norm, dtype)
-    cfield = tf.multiply(tf.signal.fft3d(tf.cast(rfield, dtype)),
-                         1 / norm,
-                         name=name)
+    cfield = tf.multiply(
+        tf.signal.fft3d(tf.cast(rfield, dtype)), 1 / norm, name=name)
     return cfield
 
 
@@ -178,17 +176,12 @@ def c2r3d(cfield, norm=None, dtype=tf.float32, name="C2R3D"):
       norm = tf.cast(tf.reduce_prod(cfield.get_shape()[1:]), dtype)
     else:
       norm = tf.cast(norm, dtype)
-    rfield = tf.multiply(tf.cast(tf.signal.ifft3d(cfield), dtype),
-                         norm,
-                         name=name)
+    rfield = tf.multiply(
+        tf.cast(tf.signal.ifft3d(cfield), dtype), norm, name=name)
     return rfield
 
 
-def white_noise(nc,
-                batch_size=1,
-                seed=None,
-                type='complex',
-                name="WhiteNoise"):
+def white_noise(nc, batch_size=1, seed=None, type='complex', name="WhiteNoise"):
   """
   Samples a 3D cube of white noise of desired size
   """
@@ -197,10 +190,11 @@ def white_noise(nc,
     if isinstance(nc, int):
       nc = [nc, nc, nc]
 
-    white = tf.random.normal(shape=[batch_size] + nc,
-                             mean=0.,
-                             stddev=(nc[0] * nc[1] * nc[2])**0.5,
-                             seed=seed)
+    white = tf.random.normal(
+        shape=[batch_size] + nc,
+        mean=0.,
+        stddev=(nc[0] * nc[1] * nc[2])**0.5,
+        seed=seed)
     if type == 'real':
       return white
     elif type == 'complex':

@@ -36,11 +36,8 @@ def linear_field(mesh,
     return kfield
 
   # Generates the random field
-  random_field = mtf.random_normal(mesh,
-                                   shape=hr_shape,
-                                   mean=0,
-                                   stddev=nc**1.5,
-                                   dtype=tf.float32)
+  random_field = mtf.random_normal(
+      mesh, shape=hr_shape, mean=0, stddev=nc**1.5, dtype=tf.float32)
   field = random_field
   # Apply padding and perform halo exchange with neighbors
   # TODO: Figure out how to deal with the tensor size limitations
@@ -53,13 +50,10 @@ def linear_field(mesh,
   field = mtf.reshape(field, field.shape + [mtf.Dimension('h_dim', 1)])
   if post_filtering:
     high = field
-    low = mesh_utils.downsample(field,
-                                downsampling_factor,
-                                antialias=antialias)
+    low = mesh_utils.downsample(field, downsampling_factor, antialias=antialias)
   else:
-    low, high = mesh_utils.split_scales(field,
-                                        downsampling_factor,
-                                        antialias=antialias)
+    low, high = mesh_utils.split_scales(
+        field, downsampling_factor, antialias=antialias)
   low = mtf.reshape(low, low.shape[:-1])
   high = mtf.reshape(high, high.shape[:-1])
 
@@ -71,19 +65,19 @@ def linear_field(mesh,
 
   low_hr_shape = low.shape
   # Reshape hack
-  low = mtf.slicewise(lambda x: x[:, 0, 0, 0], [low],
-                      output_dtype=tf.float32,
-                      output_shape=lr_shape,
-                      name='my_dumb_reshape',
-                      splittable_dims=lr_shape[:-1] + hr_shape[:4])
+  low = mtf.slicewise(
+      lambda x: x[:, 0, 0, 0], [low],
+      output_dtype=tf.float32,
+      output_shape=lr_shape,
+      name='my_dumb_reshape',
+      splittable_dims=lr_shape[:-1] + hr_shape[:4])
   #low = mtf.reshape(low, lr_shape)
 
   # Apply power spectrum on both grids
   klow = mesh_utils.r2c3d(low)
   khigh = mesh_utils.r2c3d(high)
   klow = mtf.cwise(_cwise_fn, [klow, pk] + kvec_lr, output_dtype=tf.complex64)
-  khigh = mtf.cwise(_cwise_fn, [khigh, pk] + kvec_hr,
-                    output_dtype=tf.complex64)
+  khigh = mtf.cwise(_cwise_fn, [khigh, pk] + kvec_hr, output_dtype=tf.complex64)
   low = mesh_utils.c2r3d(klow)
   high = mesh_utils.c2r3d(khigh)
 

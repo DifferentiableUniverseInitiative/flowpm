@@ -7,6 +7,7 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow.compat.v1 as tf
+
 tf.disable_v2_behavior()
 from tensorflow.python.lib.io import file_io
 import mesh_tensorflow as mtf
@@ -135,27 +136,21 @@ def nbody_model(mesh):
 
   # Compute necessary Fourier kernels
   kvec = flowpm.kernels.fftk((nc, nc, nc), symmetric=False)
-  kx = mtf.import_tf_tensor(mesh,
-                            kvec[0].squeeze().astype('float32'),
-                            shape=[tfx_dim])
-  ky = mtf.import_tf_tensor(mesh,
-                            kvec[1].squeeze().astype('float32'),
-                            shape=[tfy_dim])
-  kz = mtf.import_tf_tensor(mesh,
-                            kvec[2].squeeze().astype('float32'),
-                            shape=[tfz_dim])
+  kx = mtf.import_tf_tensor(
+      mesh, kvec[0].squeeze().astype('float32'), shape=[tfx_dim])
+  ky = mtf.import_tf_tensor(
+      mesh, kvec[1].squeeze().astype('float32'), shape=[tfy_dim])
+  kz = mtf.import_tf_tensor(
+      mesh, kvec[2].squeeze().astype('float32'), shape=[tfz_dim])
   kv = [ky, kz, kx]
 
   kvec_lr = flowpm.kernels.fftk([nc, nc, nc], symmetric=False)
-  kx_lr = mtf.import_tf_tensor(mesh,
-                               kvec_lr[0].squeeze().astype('float32'),
-                               shape=[tx_dim])
-  ky_lr = mtf.import_tf_tensor(mesh,
-                               kvec_lr[1].squeeze().astype('float32'),
-                               shape=[ty_dim])
-  kz_lr = mtf.import_tf_tensor(mesh,
-                               kvec_lr[2].squeeze().astype('float32'),
-                               shape=[tz_dim])
+  kx_lr = mtf.import_tf_tensor(
+      mesh, kvec_lr[0].squeeze().astype('float32'), shape=[tx_dim])
+  ky_lr = mtf.import_tf_tensor(
+      mesh, kvec_lr[1].squeeze().astype('float32'), shape=[ty_dim])
+  kz_lr = mtf.import_tf_tensor(
+      mesh, kvec_lr[2].squeeze().astype('float32'), shape=[tz_dim])
   kv_lr = [ky_lr, kz_lr, kx_lr]
 
   # kvec for high resolution blocks
@@ -200,11 +195,12 @@ def nbody_model(mesh):
 
   #final_field = mtf.reshape(final_field,  [batch_dim, fx_dim, fy_dim, fz_dim])
   # Hack usisng  custom reshape because mesh is pretty dumb
-  final_field = mtf.slicewise(lambda x: x[:, 0, 0, 0], [final_field],
-                              output_dtype=tf.float32,
-                              output_shape=[batch_dim, fx_dim, fy_dim, fz_dim],
-                              name='my_dumb_reshape',
-                              splittable_dims=part_shape[:-1] + hr_shape[:4])
+  final_field = mtf.slicewise(
+      lambda x: x[:, 0, 0, 0], [final_field],
+      output_dtype=tf.float32,
+      output_shape=[batch_dim, fx_dim, fy_dim, fz_dim],
+      name='my_dumb_reshape',
+      splittable_dims=part_shape[:-1] + hr_shape[:4])
 
   return final_field
 
@@ -221,7 +217,7 @@ def model_fn(features, labels, mode, params):
   num_hosts = ctx.num_hosts
   host_placement_fn = ctx.tpu_host_placement_function
   device_list = [host_placement_fn(host_id=t) for t in range(num_hosts)]
-  tf.logging.info('device_list = %s' % device_list, )
+  tf.logging.info('device_list = %s' % device_list,)
 
   mesh_devices = [''] * mesh_shape.size
   mesh_impl = mtf.simd_mesh_impl.SimdMeshImpl(mesh_shape, layout_rules,
@@ -248,8 +244,7 @@ def model_fn(features, labels, mode, params):
   tf_field = tf.to_float(lowering.export_to_tf_tensor(field_slice))
 
   with mtf.utils.outside_all_rewrites():
-    return tpu_estimator.TPUEstimatorSpec(mode,
-                                          predictions={'field': tf_field})
+    return tpu_estimator.TPUEstimatorSpec(mode, predictions={'field': tf_field})
 
 
 def main(_):
@@ -268,18 +263,19 @@ def main(_):
       save_checkpoints_secs=None,  # Disable the default saver
       log_step_count_steps=100,
       save_summary_steps=100,
-      tpu_config=tpu_config.TPUConfig(num_shards=mesh_shape.size,
-                                      iterations_per_loop=100,
-                                      num_cores_per_replica=1,
-                                      per_host_input_for_training=tpu_config.
-                                      InputPipelineConfig.BROADCAST))
+      tpu_config=tpu_config.TPUConfig(
+          num_shards=mesh_shape.size,
+          iterations_per_loop=100,
+          num_cores_per_replica=1,
+          per_host_input_for_training=tpu_config.InputPipelineConfig.BROADCAST))
 
-  model = tpu_estimator.TPUEstimator(use_tpu=True,
-                                     model_fn=model_fn,
-                                     config=run_config,
-                                     predict_batch_size=1,
-                                     train_batch_size=FLAGS.batch_size,
-                                     eval_batch_size=FLAGS.batch_size)
+  model = tpu_estimator.TPUEstimator(
+      use_tpu=True,
+      model_fn=model_fn,
+      config=run_config,
+      predict_batch_size=1,
+      train_batch_size=FLAGS.batch_size,
+      eval_batch_size=FLAGS.batch_size)
 
   def dummy_input_fn(params):
     dset = tf.data.Dataset.from_tensor_slices(
@@ -289,8 +285,8 @@ def main(_):
   # Run evaluate loop for ever, we will be connecting to this process using a profiler
   for i, f in enumerate(model.predict(input_fn=dummy_input_fn)):
     print(i)
-    np.save(file_io.FileIO(FLAGS.output_dir + '/field_%d.npy' % i, 'w'),
-            f['field'])
+    np.save(
+        file_io.FileIO(FLAGS.output_dir + '/field_%d.npy' % i, 'w'), f['field'])
 
 
 if __name__ == "__main__":

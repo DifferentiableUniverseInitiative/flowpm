@@ -1,14 +1,15 @@
 from mpi4py import MPI
+
 comm = MPI.COMM_WORLD
 
 import time
 import numpy as np
 import tensorflow.compat.v1 as tf
+
 tf.disable_v2_behavior()
 
 import mesh_tensorflow as mtf
 from mesh_tensorflow.hvd_simd_mesh_impl import HvdSimdMeshImpl
-
 
 import flowpm
 import flowpm.mesh_ops as mpm
@@ -17,6 +18,7 @@ import flowpm.mesh_utils as mesh_utils
 
 from astropy.cosmology import Planck15
 from matplotlib import pyplot as plt
+
 cosmology = Planck15
 
 tf.flags.DEFINE_integer("nc", 128, "Size of the cube")
@@ -49,7 +51,7 @@ def lpt_prototype(mesh,
   """
   klin = np.loadtxt('../flowpm/data/Planck15_a1p00.txt').T[0]
   plin = np.loadtxt('../flowpm/data/Planck15_a1p00.txt').T[1]
-  
+
   stages = np.linspace(a0, a, nsteps, endpoint=True)
 
   # Define the named dimensions
@@ -60,8 +62,7 @@ def lpt_prototype(mesh,
   halo_size = FLAGS.hsize
 
   if halo_size >= 0.5 * min(nc // n_block_x, nc // n_block_y, nc // n_block_z):
-    new_size = int(0.5 *
-                   min(nc // n_block_x, nc // n_block_y, nc // n_block_z))
+    new_size = int(0.5 * min(nc // n_block_x, nc // n_block_y, nc // n_block_z))
     print('WARNING: REDUCING HALO SIZE from %d to %d' % (halo_size, new_size))
     halo_size = new_size
 
@@ -97,28 +98,22 @@ def lpt_prototype(mesh,
 
   # Compute necessary Fourier kernels
   kvec = flowpm.kernels.fftk((nc, nc, nc), symmetric=False)
-  kx = mtf.import_tf_tensor(mesh,
-                            kvec[0].squeeze().astype('float32'),
-                            shape=[tfx_dim])
-  ky = mtf.import_tf_tensor(mesh,
-                            kvec[1].squeeze().astype('float32'),
-                            shape=[tfy_dim])
-  kz = mtf.import_tf_tensor(mesh,
-                            kvec[2].squeeze().astype('float32'),
-                            shape=[tfz_dim])
+  kx = mtf.import_tf_tensor(
+      mesh, kvec[0].squeeze().astype('float32'), shape=[tfx_dim])
+  ky = mtf.import_tf_tensor(
+      mesh, kvec[1].squeeze().astype('float32'), shape=[tfy_dim])
+  kz = mtf.import_tf_tensor(
+      mesh, kvec[2].squeeze().astype('float32'), shape=[tfz_dim])
   kv = [ky, kz, kx]
 
   # kvec for low resolution grid
   kvec_lr = flowpm.kernels.fftk([nc, nc, nc], symmetric=False)
-  kx_lr = mtf.import_tf_tensor(mesh,
-                               kvec_lr[0].squeeze().astype('float32'),
-                               shape=[tx_dim])
-  ky_lr = mtf.import_tf_tensor(mesh,
-                               kvec_lr[1].squeeze().astype('float32'),
-                               shape=[ty_dim])
-  kz_lr = mtf.import_tf_tensor(mesh,
-                               kvec_lr[2].squeeze().astype('float32'),
-                               shape=[tz_dim])
+  kx_lr = mtf.import_tf_tensor(
+      mesh, kvec_lr[0].squeeze().astype('float32'), shape=[tx_dim])
+  ky_lr = mtf.import_tf_tensor(
+      mesh, kvec_lr[1].squeeze().astype('float32'), shape=[ty_dim])
+  kz_lr = mtf.import_tf_tensor(
+      mesh, kvec_lr[2].squeeze().astype('float32'), shape=[tz_dim])
   kv_lr = [ky_lr, kz_lr, kx_lr]
 
   shape = [batch_dim, fx_dim, fy_dim, fz_dim]
@@ -141,7 +136,8 @@ def lpt_prototype(mesh,
   )
 
   # Here we can run our nbody
-  final_state = mtfpm.nbody_single(state, stages, lr_shape, hr_shape, kv_lr, halo_size)
+  final_state = mtfpm.nbody_single(state, stages, lr_shape, hr_shape, kv_lr,
+                                   halo_size)
 
   # paint the field
   final_field = mtf.zeros(mesh, shape=hr_shape)
@@ -150,7 +146,7 @@ def lpt_prototype(mesh,
                           block_size_dim.name)
 
   final_field = mesh_utils.cic_paint(final_field, final_state0, halo_size)
-  
+
   # Halo exchange
   for blocks_dim, block_size_dim in zip(hr_shape[1:4], final_field.shape[-3:]):
     final_field = mpm.halo_reduce(final_field, blocks_dim, block_size_dim,
@@ -161,14 +157,15 @@ def lpt_prototype(mesh,
                             block_size_dim.name)
 
   # Hack usisng  custom reshape because mesh is pretty dumb
-  final_field = mtf.slicewise(lambda x: x[:, 0, 0, 0], [final_field],
-                              output_dtype=tf.float32,
-                              output_shape=[batch_dim, fx_dim, fy_dim, fz_dim],
-                              name='my_dumb_reshape',
-                              splittable_dims=part_shape[:-1] + hr_shape[:4])
+  final_field = mtf.slicewise(
+      lambda x: x[:, 0, 0, 0], [final_field],
+      output_dtype=tf.float32,
+      output_shape=[batch_dim, fx_dim, fy_dim, fz_dim],
+      name='my_dumb_reshape',
+      splittable_dims=part_shape[:-1] + hr_shape[:4])
 
   ret_initc = mtf.reshape(initc, [batch_dim, ffx_dim, ffy_dim, ffz_dim])
-  ret_fifn  = mtf.reshape(final_field, [batch_dim, ffx_dim, ffy_dim, ffz_dim])
+  ret_fifn = mtf.reshape(final_field, [batch_dim, ffx_dim, ffy_dim, ffz_dim])
   return ret_initc, ret_fifn
 
 
@@ -176,14 +173,13 @@ def main(_):
 
   #layout_rules = mtf.convert_to_layout_rules(FLAGS.layout)
   mesh_shape = [("row", FLAGS.nx), ("col", FLAGS.ny)]
-  layout_rules = [("nx_lr", "row"), ("ny_lr", "col"), 
-                  ("nx", "row"), ("ny", "col"), 
-                  ("ty", "row"), ("tz", "col"),
-                  ("ty_lr", "row"), ("tz_lr", "col"), 
-                  ("nx_block", "row"), ("ny_block", "col")]
+  layout_rules = [("nx_lr", "row"), ("ny_lr", "col"), ("nx", "row"),
+                  ("ny", "col"), ("ty", "row"), ("tz", "col"), ("ty_lr", "row"),
+                  ("tz_lr", "col"), ("nx_block", "row"), ("ny_block", "col")]
 
-  mesh_impl = HvdSimdMeshImpl(mtf.convert_to_shape(mesh_shape), 
-                              mtf.convert_to_layout_rules(layout_rules))
+  mesh_impl = HvdSimdMeshImpl(
+      mtf.convert_to_shape(mesh_shape),
+      mtf.convert_to_layout_rules(layout_rules))
 
   # Build the model
   # Create computational graphs and some initializations
@@ -207,7 +203,7 @@ def main(_):
     ttime = (end - start)
     print('Time for ', mesh_shape, ' is : ', ttime)
 
-  if comm.rank == 0:  
+  if comm.rank == 0:
     plt.figure(figsize=(9, 3))
     plt.subplot(121)
     plt.imshow(a[0].sum(axis=2))
@@ -218,9 +214,9 @@ def main(_):
     plt.title('Mesh TensorFlow')
     plt.colorbar()
     plt.savefig("mesh_nbody_%d-row:%d-col:%d.png" %
-              (FLAGS.nc, FLAGS.nx, FLAGS.ny))
+                (FLAGS.nc, FLAGS.nx, FLAGS.ny))
     plt.close()
-  
+
   exit(0)
 
 

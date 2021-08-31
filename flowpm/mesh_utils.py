@@ -40,8 +40,8 @@ def _cic_indexing(mesh, part, weight=None, name=None):
     part = tf.expand_dims(part, 2)
     floor = tf.floor(part)
     connection = tf.expand_dims(
-        tf.constant([[[0, 0, 0], [1., 0, 0], [0., 1, 0], [0., 0, 1],
-                      [1., 1, 0], [1., 0, 1], [0., 1, 1], [1., 1, 1]]]), 0)
+        tf.constant([[[0, 0, 0], [1., 0, 0], [0., 1, 0], [0., 0, 1], [1., 1, 0],
+                      [1., 0, 1], [0., 1, 1], [1., 1, 1]]]), 0)
     neighboor_coords = floor + connection
     kernel = 1. - tf.abs(part - neighboor_coords)
     kernel = kernel[..., 0] * kernel[..., 1] * kernel[..., 2]
@@ -52,9 +52,8 @@ def _cic_indexing(mesh, part, weight=None, name=None):
     # Adding batch dimension to the neighboor coordinates
     batch_idx = tf.range(0, batch_size)
     batch_idx = tf.reshape(batch_idx, (batch_size, 1, 1, 1))
-    b = tf.tile(batch_idx,
-                [1] + list(neighboor_coords.get_shape()[1:-1]) + [1])
-    b=tf.cast(b,tf.float32)
+    b = tf.tile(batch_idx, [1] + list(neighboor_coords.get_shape()[1:-1]) + [1])
+    b = tf.cast(b, tf.float32)
     neighboor_coords = tf.concat([b, neighboor_coords], axis=-1)
     return tf.reshape(neighboor_coords, part_shape[:-1] + [8, 4]), tf.reshape(
         kernel, part_shape[:-1] + [8])
@@ -78,9 +77,9 @@ def _cic_paint(mesh, neighboor_coords, kernel, shift, name=None):
 
     # TODO: Assert shift shape
     neighboor_coords = tf.reshape(neighboor_coords, (-1, 8, 4))
-    neighboor_coords = neighboor_coords + tf.reshape(tf.constant(shift, dtype=tf.float32),
-                                                     [1, 1, 4])
-    neighboor_coords = tf.cast(neighboor_coords, tf.int32) 
+    neighboor_coords = neighboor_coords + tf.reshape(
+        tf.constant(shift, dtype=tf.float32), [1, 1, 4])
+    neighboor_coords = tf.cast(neighboor_coords, tf.int32)
     update = tf.scatter_nd(neighboor_coords, tf.reshape(kernel, (-1, 8)),
                            [batch_size, nx, ny, nz])
 
@@ -108,8 +107,8 @@ def _cic_readout(mesh, neighboor_coords, kernel, shift, name=None):
 
     # TODO: Assert shift shape
     neighboor_coords = tf.reshape(neighboor_coords, (-1, 8, 4))
-    neighboor_coords = neighboor_coords + tf.reshape(tf.constant(shift, dtype=tf.float32),
-                                                     [1, 1, 4])
+    neighboor_coords = neighboor_coords + tf.reshape(
+        tf.constant(shift, dtype=tf.float32), [1, 1, 4])
     neighboor_coords = tf.cast(neighboor_coords, tf.int32)
     meshvals = tf.gather_nd(mesh, neighboor_coords)
 
@@ -155,12 +154,13 @@ def cic_paint(mesh, part, halo_size, weight=None, name=None):
           mtf.Shape(part.shape.dims[:-1] + [nk])
       ],
       splittable_dims=mesh.shape[:-3] + part.shape[1:-1])
-  mesh = mtf.slicewise(lambda x, y, z: _cic_paint(
-      x, y, z, shift=[0, halo_size, halo_size, halo_size]),
-                       [mesh, indices, values],
-                       output_dtype=tf.float32,
-                       output_shape=mesh.shape,
-                       splittable_dims=mesh.shape[:-3] + part.shape[1:-1])
+  mesh = mtf.slicewise(
+      lambda x, y, z: _cic_paint(
+          x, y, z, shift=[0, halo_size, halo_size, halo_size]),
+      [mesh, indices, values],
+      output_dtype=tf.float32,
+      output_shape=mesh.shape,
+      splittable_dims=mesh.shape[:-3] + part.shape[1:-1])
   return mesh
 
 
@@ -175,12 +175,13 @@ def cic_readout(mesh, part, halo_size, name=None):
           mtf.Shape(part.shape.dims[:-1] + [nk])
       ],
       splittable_dims=mesh.shape[:-3] + part.shape[1:-1])
-  value = mtf.slicewise(lambda x, y, z: _cic_readout(
-      x, y, z, shift=[0, halo_size, halo_size, halo_size]),
-                        [mesh, indices, values],
-                        output_dtype=tf.float32,
-                        output_shape=part.shape[:-1],
-                        splittable_dims=mesh.shape[:-3] + part.shape[1:-1])
+  value = mtf.slicewise(
+      lambda x, y, z: _cic_readout(
+          x, y, z, shift=[0, halo_size, halo_size, halo_size]),
+      [mesh, indices, values],
+      output_dtype=tf.float32,
+      output_shape=part.shape[:-1],
+      splittable_dims=mesh.shape[:-3] + part.shape[1:-1])
   return value
 
 
@@ -193,25 +194,15 @@ def downsample(field, downsampling_factor=2, antialias=True):
   """
   low = field
   for i in range(downsampling_factor):
-    kernel = mesh_kernels.get_bspline_kernel(low,
-                                             mtf.Dimension(
-                                                 'down_%d' % i,
-                                                 low.shape[-1].size),
-                                             order=6)
-    low = mtf.Conv3dOperation(low,
-                              kernel,
-                              strides=(1, 2, 2, 2, 1),
-                              padding='SAME').outputs[0]
+    kernel = mesh_kernels.get_bspline_kernel(
+        low, mtf.Dimension('down_%d' % i, low.shape[-1].size), order=6)
+    low = mtf.Conv3dOperation(
+        low, kernel, strides=(1, 2, 2, 2, 1), padding='SAME').outputs[0]
   if antialias:
-    kernel = mesh_kernels.get_bspline_kernel(low,
-                                             mtf.Dimension(
-                                                 'dogwn_%d' % i,
-                                                 low.shape[-1].size),
-                                             order=2)
-    low = mtf.Conv3dOperation(low,
-                              kernel,
-                              strides=(1, 1, 1, 1, 1),
-                              padding='SAME').outputs[0]
+    kernel = mesh_kernels.get_bspline_kernel(
+        low, mtf.Dimension('dogwn_%d' % i, low.shape[-1].size), order=2)
+    low = mtf.Conv3dOperation(
+        low, kernel, strides=(1, 1, 1, 1, 1), padding='SAME').outputs[0]
   return low
 
 
@@ -223,16 +214,14 @@ def upsample(low, downsampling_factor=2):
   and a details component.
   """
   for i in range(downsampling_factor):
-    kernel = mesh_kernels.get_bspline_kernel(low,
-                                             mtf.Dimension(
-                                                 'out_%d' % i,
-                                                 low.shape[-1].size),
-                                             transpose=True,
-                                             order=6)
-    low = mtf.Conv3dTransposeOperation(low,
-                                       kernel * 2.0**3,
-                                       strides=(1, 2, 2, 2, 1),
-                                       padding='SAME').outputs[0]
+    kernel = mesh_kernels.get_bspline_kernel(
+        low,
+        mtf.Dimension('out_%d' % i, low.shape[-1].size),
+        transpose=True,
+        order=6)
+    low = mtf.Conv3dTransposeOperation(
+        low, kernel * 2.0**3, strides=(1, 2, 2, 2, 1),
+        padding='SAME').outputs[0]
   return low
 
 
@@ -250,18 +239,18 @@ def split_scales(field, downsampling_factor=2., antialias=True):
 
 
 def slicewise_r2c3d(rfield):
-  cfield = mtf.slicewise(lambda x: tf.signal.fft3d(tf.cast(x, tf.complex64)),
-                         [rfield],
-                         output_dtype=tf.complex64,
-                         splittable_dims=rfield.shape[:-3])
+  cfield = mtf.slicewise(
+      lambda x: tf.signal.fft3d(tf.cast(x, tf.complex64)), [rfield],
+      output_dtype=tf.complex64,
+      splittable_dims=rfield.shape[:-3])
   return cfield
 
 
 def slicewise_c2r3d(cfield):
-  rfield = mtf.slicewise(lambda x: tf.cast(tf.signal.ifft3d(x), tf.float32),
-                         [cfield],
-                         output_dtype=tf.float32,
-                         splittable_dims=cfield.shape[:-3])
+  rfield = mtf.slicewise(
+      lambda x: tf.cast(tf.signal.ifft3d(x), tf.float32), [cfield],
+      output_dtype=tf.float32,
+      splittable_dims=cfield.shape[:-3])
   return rfield
 
 

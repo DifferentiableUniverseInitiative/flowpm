@@ -99,8 +99,9 @@ def main(_):
   # Build the model
   fft_err = benchmark_model(mesh)
 
-  mesh_impl = mtf.placement_mesh_impl.PlacementMeshImpl(
-      mesh_shape, layout_rules, mesh_devices)
+  mesh_impl = mtf.placement_mesh_impl.PlacementMeshImpl(mesh_shape,
+                                                        layout_rules,
+                                                        mesh_devices)
 
   lowering = mtf.Lowering(graph, {mesh: mesh_impl})
 
