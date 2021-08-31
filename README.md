@@ -51,9 +51,8 @@ To install the necessary dependencies, you first need to be in an environment pr
 You can then install Horovod and Mesh TensorFlow with: 
 ```bash
 $ pip install git+https://github.com/horovod/horovod.git
-$ pip install git+https://github.com/DifferentiableUniverseInitiative/mesh
+$ pip install git+https://github.com/DifferentiableUniverseInitiative/mesh@hvd_max
 ```
-
 
 ### TPU setup
 
