@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 import numpy as np
 import numpy
 
@@ -39,7 +36,7 @@ def _initialize_pk(shape, boxsize, kmin, dk):
   return dig, Nsum, xsum, W, k, kedges
 
 
-def pk(field, kmin=5, dk=0.5, shape=False, boxsize=False):
+def power_spectrum(field, kmin=5, dk=0.5, shape=False, boxsize=False):
   """
     Calculate the powerspectra given real space field
     
