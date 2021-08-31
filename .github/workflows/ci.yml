@@ -39,7 +39,7 @@ jobs:
             pip \
             setuptools
 
-          pip install tensorflow==2.5.0 tensorflow-probability==0.13.0 Cython
+          pip install astropy==4.3.1 tensorflow==2.5.0 tensorflow-probability==0.13.0 Cython
           pip install -e .[testing]
 
       - name: Run the tests
