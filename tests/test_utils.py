@@ -20,9 +20,10 @@ def test_cic_paint():
   # Painting with pmesg
   pmmesh = pm.paint(pos, mass=wts)
 
-  mesh = cic_paint(tf.zeros((1, nc, nc, nc), dtype=tf.float32),
-                   (pos * nc / bs).reshape((1, nparticle, 3)),
-                   weight=wts.reshape(1, nparticle))
+  mesh = cic_paint(
+      tf.zeros((1, nc, nc, nc), dtype=tf.float32), (pos * nc / bs).reshape(
+          (1, nparticle, 3)),
+      weight=wts.reshape(1, nparticle))
   tfmesh = mesh.numpy()
 
   assert_allclose(pmmesh, tfmesh[0], atol=1e-06)

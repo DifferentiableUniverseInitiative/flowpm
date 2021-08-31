@@ -112,28 +112,22 @@ def nbody_prototype(mesh,
 
   # Compute necessary Fourier kernels
   kvec = flowpm.kernels.fftk((nc, nc, nc), symmetric=False)
-  kx = mtf.import_tf_tensor(mesh,
-                            kvec[0].squeeze().astype('float32'),
-                            shape=[tfx_dim])
-  ky = mtf.import_tf_tensor(mesh,
-                            kvec[1].squeeze().astype('float32'),
-                            shape=[tfy_dim])
-  kz = mtf.import_tf_tensor(mesh,
-                            kvec[2].squeeze().astype('float32'),
-                            shape=[tfz_dim])
+  kx = mtf.import_tf_tensor(
+      mesh, kvec[0].squeeze().astype('float32'), shape=[tfx_dim])
+  ky = mtf.import_tf_tensor(
+      mesh, kvec[1].squeeze().astype('float32'), shape=[tfy_dim])
+  kz = mtf.import_tf_tensor(
+      mesh, kvec[2].squeeze().astype('float32'), shape=[tfz_dim])
   kv = [ky, kz, kx]
 
   # kvec for low resolution grid
   kvec_lr = flowpm.kernels.fftk([nc, nc, nc], symmetric=False)
-  kx_lr = mtf.import_tf_tensor(mesh,
-                               kvec_lr[0].squeeze().astype('float32'),
-                               shape=[tx_dim])
-  ky_lr = mtf.import_tf_tensor(mesh,
-                               kvec_lr[1].squeeze().astype('float32'),
-                               shape=[ty_dim])
-  kz_lr = mtf.import_tf_tensor(mesh,
-                               kvec_lr[2].squeeze().astype('float32'),
-                               shape=[tz_dim])
+  kx_lr = mtf.import_tf_tensor(
+      mesh, kvec_lr[0].squeeze().astype('float32'), shape=[tx_dim])
+  ky_lr = mtf.import_tf_tensor(
+      mesh, kvec_lr[1].squeeze().astype('float32'), shape=[ty_dim])
+  kz_lr = mtf.import_tf_tensor(
+      mesh, kvec_lr[2].squeeze().astype('float32'), shape=[tz_dim])
   kv_lr = [ky_lr, kz_lr, kx_lr]
 
   shape = [batch_dim, fx_dim, fy_dim, fz_dim]
@@ -192,11 +186,12 @@ def nbody_prototype(mesh,
     final_field = mtf.slice(final_field, halo_size, block_size_dim.size,
                             block_size_dim.name)
 
-  final_field = mtf.slicewise(lambda x: x[:, 0, 0, 0], [final_field],
-                              output_dtype=dtype,
-                              output_shape=[batch_dim, fx_dim, fy_dim, fz_dim],
-                              name='my_dumb_reshape',
-                              splittable_dims=part_shape[:-1] + hr_shape[:4])
+  final_field = mtf.slicewise(
+      lambda x: x[:, 0, 0, 0], [final_field],
+      output_dtype=dtype,
+      output_shape=[batch_dim, fx_dim, fy_dim, fz_dim],
+      name='my_dumb_reshape',
+      splittable_dims=part_shape[:-1] + hr_shape[:4])
 
   return initc, final_field, input_field
 
@@ -216,9 +211,8 @@ def main(_):
   #layout_rules = mtf.convert_to_layout_rules(FLAGS.layout)
   #mesh_shape = [("row", FLAGS.nx), ("col", FLAGS.ny)]
   layout_rules = [("nx_lr", "row"), ("ny_lr", "col"), ("nx", "row"),
-                  ("ny", "col"), ("ty", "row"), ("tz", "col"),
-                  ("ty_lr", "row"), ("tz_lr", "col"), ("nx_block", "row"),
-                  ("ny_block", "col")]
+                  ("ny", "col"), ("ty", "row"), ("tz", "col"), ("ty_lr", "row"),
+                  ("tz_lr", "col"), ("nx_block", "row"), ("ny_block", "col")]
 
   # Resolve the cluster from SLURM environment
   cluster = tf.distribute.cluster_resolver.SlurmClusterResolver(
@@ -244,8 +238,8 @@ def main(_):
   ]
   print("List of devices", devices)
 
-  mesh_impl = mtf.placement_mesh_impl.PlacementMeshImpl(
-      mesh_shape, layout_rules, devices)
+  mesh_impl = mtf.placement_mesh_impl.PlacementMeshImpl(mesh_shape,
+                                                        layout_rules, devices)
 
   ##Begin here
   klin = np.loadtxt('../flowpm/data/Planck15_a1p00.txt').T[0]
@@ -255,11 +249,8 @@ def main(_):
   #If initc, run normal flowpm to generate data
   tf.reset_default_graph()
   if infield:
-    tfic = linear_field(FLAGS.nc,
-                        FLAGS.box_size,
-                        ipklin,
-                        batch_size=1,
-                        seed=100)
+    tfic = linear_field(
+        FLAGS.nc, FLAGS.box_size, ipklin, batch_size=1, seed=100)
     if FLAGS.nbody:
       state = lpt_init(tfic, a0=0.1, order=1)
       final_state = nbody(state, stages, FLAGS.nc)

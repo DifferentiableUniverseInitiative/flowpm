@@ -49,8 +49,8 @@ def save_state(cosmo, state, a, nc, boxsize, filename, attrs={}):
           pass
     # Factor to convert speed and position back to Mpc/h
     scaling_factor = 1. / tf.convert_to_tensor(nc, dtype=tf.float32)
-    scaling_factor = scaling_factor * tf.convert_to_tensor(boxsize,
-                                                           dtype=tf.float32)
+    scaling_factor = scaling_factor * tf.convert_to_tensor(
+        boxsize, dtype=tf.float32)
     scaling_factor = tf.reshape(scaling_factor, [1, 3])
     # Export each batch entry as its own block
     for i in range(state.shape[1]):

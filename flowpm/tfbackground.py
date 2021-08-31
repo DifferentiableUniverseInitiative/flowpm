@@ -337,11 +337,8 @@ def _distance_computation_func(a, rtol=1e-3, **kwcosmo):
   solver = tfp.math.ode.BDF(rtol=rtol)
 
   #  # Run the ODE
-  chitab = solver.solve(dchioverdlna,
-                        tf.math.log(a)[0],
-                        0.0,
-                        tf.math.log(a),
-                        constants=kwcosmo)
+  chitab = solver.solve(
+      dchioverdlna, tf.math.log(a)[0], 0.0, tf.math.log(a), constants=kwcosmo)
   chitab = chitab.states[-1] - chitab.states
 
   return chitab
@@ -383,8 +380,8 @@ def rad_comoving_distance(cosmo, a, log10_amin=-3, steps=256, rtol=1e-3):
         \chi(a) =  R_H \int_a^1 \frac{da^\prime}{{a^\prime}^2 E(a^\prime)}
     """
   if "background.radial_comoving_distance" not in cosmo._workspace.keys():
-    atab = tf.convert_to_tensor(np.logspace(log10_amin, 0.0, steps),
-                                dtype=tf.float32)
+    atab = tf.convert_to_tensor(
+        np.logspace(log10_amin, 0.0, steps), dtype=tf.float32)
 
     chitab = _distance_computation_func(atab, rtol=rtol, **cosmo.to_dict())
 
@@ -394,10 +391,10 @@ def rad_comoving_distance(cosmo, a, log10_amin=-3, steps=256, rtol=1e-3):
     cache = cosmo._workspace["background.radial_comoving_distance"]
   # Return the results as an interpolation of the table)
   lna = tf.math.log(a)
-  inter = tfp.math.interp_regular_1d_grid(tf.cast(lna, dtype=tf.float32),
-                                          tf.math.log(cache["a"])[0],
-                                          tf.math.log(cache["a"])[-1],
-                                          cache["chi"])
+  inter = tfp.math.interp_regular_1d_grid(
+      tf.cast(lna, dtype=tf.float32),
+      tf.math.log(cache["a"])[0],
+      tf.math.log(cache["a"])[-1], cache["chi"])
   return tf.clip_by_value(inter, 0.0, 1000000)
 
 
@@ -576,11 +573,8 @@ def odesolve_func(a, rtol=1e-4, **kwcosmo):
   solver = tfp.math.ode.BDF(rtol=rtol)
 
   # Run the ODE
-  results = solver.solve(growth_ode,
-                         a[0],
-                         y0,
-                         solution_times=a,
-                         constants=kwcosmo)
+  results = solver.solve(
+      growth_ode, a[0], y0, solution_times=a, constants=kwcosmo)
 
   # While we are at it, compute second order derivatives growth
   second_order_results = growth_ode(results.times, results.states, **kwcosmo)
@@ -619,8 +613,8 @@ def maybe_compute_ODE(cosmo, log10_amin=-2, steps=256):
     assert cache['a'].shape[0] == steps
   else:
     # Otherwise, we compute it now, and save the results for later
-    a = tf.convert_to_tensor(np.logspace(log10_amin, 0., steps),
-                             dtype=tf.float32)
+    a = tf.convert_to_tensor(
+        np.logspace(log10_amin, 0., steps), dtype=tf.float32)
     cache = odesolve_func(a, **cosmo.to_dict())
     cosmo._workspace['cache_ODE'] = cache
   return cache

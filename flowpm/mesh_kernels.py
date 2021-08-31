@@ -8,11 +8,7 @@ import mesh_tensorflow as mtf
 import tensorflow.compat.v1 as tf
 
 
-def get_bspline_kernel(x,
-                       channels,
-                       transpose=False,
-                       dtype=tf.float32,
-                       order=4):
+def get_bspline_kernel(x, channels, transpose=False, dtype=tf.float32, order=4):
   """Creates a 5x5x5 b-spline kernel.
   Args:
     num_channels: The number of channels of the image to filter.
@@ -112,6 +108,7 @@ def apply_laplace_kernel(kfield, kvec):
   """
   Apply the Laplace kernel
   """
+
   def _cwise_fn(kfield, kx, ky, kz):
     kx = tf.reshape(kx, [1, -1, 1, 1])
     ky = tf.reshape(ky, [1, 1, -1, 1])

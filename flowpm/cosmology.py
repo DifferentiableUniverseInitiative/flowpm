@@ -6,6 +6,7 @@ class Cosmology:
   """ Cosmology object, stores primary and derived cosmological parameters.
 
   """
+
   def __init__(self, Omega_c, Omega_b, h, n_s, sigma8, Omega_k, w0, wa):
     """
     Args:
@@ -54,9 +55,8 @@ class Cosmology:
             " \n" + "    Omega_b:  " + str(self.Omega_b) + " \n" +
             "    Omega_c:  " + str(self.Omega_c) + " \n" + "    Omega_k:  " +
             str(self.Omega_k) + " \n" + "    w0:       " + str(self.w0) +
-            " \n" + "    wa:       " + str(self.wa) + " \n" +
-            "    n:        " + str(self.n_s) + " \n" + "    sigma8:   " +
-            str(self.sigma8))
+            " \n" + "    wa:       " + str(self.wa) + " \n" + "    n:        " +
+            str(self.n_s) + " \n" + "    sigma8:   " + str(self.sigma8))
 
   def __repr__(self):
     return self.__str__()
