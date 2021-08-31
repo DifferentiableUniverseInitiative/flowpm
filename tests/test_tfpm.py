@@ -127,7 +127,7 @@ def test_lpt2():
   assert_allclose(source, tfread[0], atol=1e-5)
 
 
-def test_nody():
+def test_nbody():
   """ Checking end to end nbody
   """
   a0 = 0.1
@@ -153,6 +153,34 @@ def test_nody():
   tfread = pmutils.cic_paint(tf.zeros_like(tlinear), state[0]).numpy()
 
   assert_allclose(final_cube, tfread[0], atol=1.2)
+
+
+def test_nbody_B2():
+  """ Checking end to end nbody
+  """
+  a0 = 0.1
+  cosmo = flowpm.cosmology.Planck15()
+
+  pm = ParticleMesh(BoxSize=bs, Nmesh=[nc, nc, nc], dtype='f4')
+  grid = pm.generate_uniform_particle_grid(shift=0).astype(np.float32)
+  solver = Solver(pm, ref_cosmo, B=2)
+  stages = np.linspace(0.1, 1.0, 10, endpoint=True)
+
+  # Generate initial state with fastpm
+  whitec = pm.generate_whitenoise(100, mode='complex', unitary=False)
+  lineark = whitec.apply(lambda k, v: ref_cosmo.get_pklin(
+      sum(ki**2 for ki in k)**0.5, 0)**0.5 * v / v.BoxSize.prod()**0.5)
+  statelpt = solver.lpt(lineark, grid, a0, order=1)
+  finalstate = solver.nbody(statelpt, leapfrog(stages))
+  final_cube = pm.paint(finalstate.X)
+
+  # Same thing with flowpm
+  tlinear = tf.expand_dims(np.array(lineark.c2r()), 0)
+  state = tfpm.lpt_init(cosmo, tlinear, a0, order=1)
+  state = tfpm.nbody(cosmo, state, stages, nc, pm_nc_factor=2)
+  tfread = pmutils.cic_paint(tf.zeros_like(tlinear), state[0]).numpy()
+
+  assert_allclose(final_cube, tfread[0], atol=5e-3)
 
 
 def test_rectangular_nody():

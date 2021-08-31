@@ -323,7 +323,7 @@ def force(cosmo,
     update = apply_longrange(
         tf.multiply(state[0], pm_nc_factor), delta_k, split=0, factor=fac)
 
-    update = tf.expand_dims(update, axis=0)
+    update = tf.expand_dims(update, axis=0) / pm_nc_factor
 
     indices = tf.constant([[2]])
     shape = state.shape
@@ -336,7 +336,13 @@ def force(cosmo,
     return state
 
 
-def nbody(cosmo, state, stages, nc, pm_nc_factor=1, name="NBody"):
+def nbody(cosmo,
+          state,
+          stages,
+          nc,
+          pm_nc_factor=1,
+          return_intermediate_states=False,
+          name="NBody"):
   """
   Integrate the evolution of the state across the givent stages
 
@@ -357,10 +363,14 @@ def nbody(cosmo, state, stages, nc, pm_nc_factor=1, name="NBody"):
   pm_nc_factor: int
     Upsampling factor for computing
 
+  return_intermediate_states: boolean
+    If true, the frunction will return each intermediate states,
+    not only the last one.
+
   Returns
   -------
-  state: tensor (3, batch_size, npart, 3)
-    Integrated state to final condition
+  state: tensor (3, batch_size, npart, 3), or list of states
+    Integrated state to final condition, or list of intermediate steps
   """
   with tf.name_scope(name):
     state = tf.convert_to_tensor(state, name="state")
@@ -378,6 +388,7 @@ def nbody(cosmo, state, stages, nc, pm_nc_factor=1, name="NBody"):
     state = force(cosmo, state, nc, pm_nc_factor=pm_nc_factor)
 
     x, p, f = ai, ai, ai
+    intermediate_states = []
     # Loop through the stages
     for i in range(len(stages) - 1):
       a0 = stages[i]
@@ -399,5 +410,9 @@ def nbody(cosmo, state, stages, nc, pm_nc_factor=1, name="NBody"):
       # Kick again
       state = kick(cosmo, state, p, f, a1)
       p = a1
+      intermediate_states.append((a1, state))
 
-    return state
+    if return_intermediate_states:
+      return intermediate_states
+    else:
+      return state
