@@ -31,8 +31,9 @@ jobs:
 
       - name: Install dependencies
         run: |
+          apt install python3-mpi4py
           python -m pip install --upgrade pip
-          pip install astropy==4.3.1 tensorflow==2.5.0 tensorflow-probability==0.13.0 Cython mpi4py
+          pip install astropy==4.3.1 tensorflow==2.5.0 tensorflow-probability==0.13.0 Cython
           pip install .[testing]
 
       - name: Test with pytest
