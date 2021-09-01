@@ -7,9 +7,7 @@ import numpy as np
 import tensorflow as tf
 from flowpm.tfbackground import f1, E, f2, Gf, gf, gf2, D1, D2, D1f
 from flowpm.utils import white_noise, c2r3d, r2c3d, cic_paint, cic_readout
-from flowpm.kernels import fftk, laplace_kernel, gradient_kernel, longrange_kernel  #,  PGD_kernel
-
-from flowpm.pk import pk as pkl
+from flowpm.kernels import fftk, laplace_kernel, gradient_kernel, longrange_kernel, PGD_kernel
 
 __all__ = ['linear_field', 'lpt_init', 'nbody']
 
@@ -221,39 +219,7 @@ def apply_longrange(x,
     return f
 
 
-def PGD_kernel(kvec, kl, ks):
-  """
-  Computes a long range kernel
-
-  Parameters:
-  -----------
-  kvec: array
-    Array of k values in Fourier space
-
-  kl: float
-    Long range scale parameter
-    
-  ks: float
-    Short range scale parameter
-
-  Returns:
-  --------
-  v: array
-    kernel
-  """
-
-  kk = sum(ki**2 for ki in kvec)
-  kl2 = kl**2
-  ks4 = ks**4
-  mask = (kk == 0).nonzero()
-  kk[mask] = 1
-  v = tf.exp(-kl2 / kk) * tf.exp(-kk**2 / ks4)
-  imask = (~(kk == 0)).astype(int)
-  v *= imask
-  return v
-
-
-def apply_PGD(x, delta_k, alpha, kl, ks, kvec=None, name="ApplyLongrange"):
+def apply_PGD(x, delta_k, alpha, kl, ks, kvec=None, name="ApplyPGD"):
   """
   Estimate the short range force on the particles given a state.
 
@@ -460,63 +426,6 @@ def PGD_correction(state,
     return update
 
 
-def pgd(state, pgdparams, nc, box_size, pm_nc_factor=1):
-
-  print('pgd graph')
-
-  shape = state.get_shape()
-  batch_size = shape[1]
-  ncf = [n * pm_nc_factor for n in nc]
-
-  dx = PGD_correction(state, pgdparams, nc, pm_nc_factor=pm_nc_factor)
-  new_state = state[0] + dx
-
-  final_field = tf.zeros([batch_size] + ncf)
-  final_field = cic_paint(final_field, new_state)
-  #final_field = decic(final_field)
-  final_field = tf.reshape(final_field, nc)
-  k, power_spectrum = pkl(
-      final_field,
-      shape=final_field.shape,
-      boxsize=np.array([box_size, box_size, box_size]),
-      kmin=np.pi / box_size,
-      dk=2 * np.pi / box_size)
-
-  return k, power_spectrum, dx
-
-
-def fit_pgd(params, state, psref, nc, box_size, niters=20):
-
-  weight = 1.
-
-  def get_grads(params):
-    with tf.GradientTape() as tape:
-      tape.watch(params)
-      k, ps, _ = pgd(state, params, nc, box_size)
-      #         loss = tf.reduce_sum(ps)
-      #psref = tf.constant(np.array(psref))
-      loss = tf.reduce_sum((weight * (1 - ps / psref))**2)
-    grad = tape.gradient(loss, params)
-    return loss, grad
-
-  opt = tf.keras.optimizers.Adam(learning_rate=0.1)
-  losses, pparams = [], []
-
-  for i in range(niters):
-    loss, grads = get_grads(params)
-    opt.apply_gradients(zip([grads], [params]))
-    print(i, loss, params)
-    losses.append(loss)
-    #pparams.append(params.numpy().copy())
-
-  k, ps, dx = pgd(state, params, nc, box_size)
-  indices = tf.constant([[0]])
-  shape = state.shape
-  update = tf.scatter_nd(indices, dx, shape)
-  state = tf.add(state, update)
-  return params, ps, state
-
-
 def nbody(cosmo,
           state,
           stages,
@@ -588,98 +497,5 @@ def nbody(cosmo,
 
     if return_intermediate_states:
       return intermediate_states
-    else:
-      return state
-
-
-def nbody_pgd(cosmo,
-              state,
-              stages,
-              nc,
-              box_size,
-              psref,
-              pgdparams,
-              pm_nc_factor=1,
-              niters=20,
-              return_intermediate_states=False,
-              name="NBody"):
-  """
-  Integrate the evolution of the state across the givent stages
-  Parameters:
-  -----------
-  cosmo: cosmology
-    Cosmological parameter object
-  state: tensor (3, batch_size, npart, 3)
-    Input state
-  stages: array
-    Array of scale factors
-  nc: int, or list of ints
-    Number of cells
-  pm_nc_factor: int
-    Upsampling factor for computing
-  return_intermediate_states: boolean
-    If true, the frunction will return each intermediate states,
-    not only the last one.
-  Returns
-  -------
-  state: tensor (3, batch_size, npart, 3), or list of states
-    Integrated state to final condition, or list of intermediate steps
-  """
-  with tf.name_scope(name):
-    state = tf.convert_to_tensor(state, name="state")
-
-    if isinstance(nc, int):
-      nc = [nc, nc, nc]
-
-    # Unrolling leapfrog integration to make tf Autograph happy
-    if len(stages) == 0:
-      return state
-
-    ai = stages[0]
-
-    # first force calculation for jump starting
-    state = force(cosmo, state, nc, pm_nc_factor=pm_nc_factor)
-
-    x, p, f = ai, ai, ai
-    intermediate_states = []
-
-    print('Init params : ', pgdparams)
-
-    pparams = []
-    #pparams.append(tf.identity(pgdparams))
-    dmstate = []
-    # Loop through the stages
-    for i in range(len(stages) - 1):
-      print('Nbody iteration ', i)
-      a0 = stages[i]
-      a1 = stages[i + 1]
-      ah = (a0 * a1)**0.5
-
-      # Kick step
-      state = kick(cosmo, state, p, f, ah)
-      p = ah
-
-      # Drift step
-      state = drift(cosmo, state, x, p, a1)
-      x = a1
-
-      #PGD Step
-      dmstate.append(tf.identity(state[0]))
-      params, ps, state = fit_pgd(
-          pgdparams, state, psref[x], nc, box_size, niters=niters)
-      pparams.append(tf.identity(pgdparams))
-      print('Back')
-
-      # Force
-      state = force(cosmo, state, nc, pm_nc_factor=pm_nc_factor)
-      f = a1
-
-      # Kick again
-      state = kick(cosmo, state, p, f, a1)
-      p = a1
-      intermediate_states.append((a1, state))
-
-    if return_intermediate_states:
-      return intermediate_states, dmstate, params
     else:
       return state
