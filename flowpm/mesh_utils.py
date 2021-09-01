@@ -49,12 +49,11 @@ def _cic_indexing(mesh, part, weight=None, name=None):
     if weight is not None:
       kernel = tf.multiply(tf.expand_dims(weight, axis=-1), kernel)
 
-    neighboor_coords = tf.cast(neighboor_coords, tf.int32)
-
     # Adding batch dimension to the neighboor coordinates
     batch_idx = tf.range(0, batch_size)
     batch_idx = tf.reshape(batch_idx, (batch_size, 1, 1, 1))
     b = tf.tile(batch_idx, [1] + list(neighboor_coords.get_shape()[1:-1]) + [1])
+    b = tf.cast(b, tf.float32)
     neighboor_coords = tf.concat([b, neighboor_coords], axis=-1)
     return tf.reshape(neighboor_coords, part_shape[:-1] + [8, 4]), tf.reshape(
         kernel, part_shape[:-1] + [8])
@@ -79,8 +78,8 @@ def _cic_paint(mesh, neighboor_coords, kernel, shift, name=None):
     # TODO: Assert shift shape
     neighboor_coords = tf.reshape(neighboor_coords, (-1, 8, 4))
     neighboor_coords = neighboor_coords + tf.reshape(
-        tf.constant(shift), [1, 1, 4])
-
+        tf.constant(shift, dtype=tf.float32), [1, 1, 4])
+    neighboor_coords = tf.cast(neighboor_coords, tf.int32)
     update = tf.scatter_nd(neighboor_coords, tf.reshape(kernel, (-1, 8)),
                            [batch_size, nx, ny, nz])
 
@@ -109,8 +108,8 @@ def _cic_readout(mesh, neighboor_coords, kernel, shift, name=None):
     # TODO: Assert shift shape
     neighboor_coords = tf.reshape(neighboor_coords, (-1, 8, 4))
     neighboor_coords = neighboor_coords + tf.reshape(
-        tf.constant(shift), [1, 1, 4])
-
+        tf.constant(shift, dtype=tf.float32), [1, 1, 4])
+    neighboor_coords = tf.cast(neighboor_coords, tf.int32)
     meshvals = tf.gather_nd(mesh, neighboor_coords)
 
     weightedvals = tf.multiply(meshvals, tf.reshape(kernel, (-1, 8)))
@@ -155,7 +154,6 @@ def cic_paint(mesh, part, halo_size, weight=None, name=None):
           mtf.Shape(part.shape.dims[:-1] + [nk])
       ],
       splittable_dims=mesh.shape[:-3] + part.shape[1:-1])
-
   mesh = mtf.slicewise(
       lambda x, y, z: _cic_paint(
           x, y, z, shift=[0, halo_size, halo_size, halo_size]),
@@ -169,7 +167,6 @@ def cic_paint(mesh, part, halo_size, weight=None, name=None):
 def cic_readout(mesh, part, halo_size, name=None):
   nk = mtf.Dimension("nk", 8)
   nl = mtf.Dimension("nl", 4)
-
   indices, values = mtf.slicewise(
       _cic_indexing, [mesh, part],
       output_dtype=[tf.float32, tf.float32],
@@ -178,7 +175,6 @@ def cic_readout(mesh, part, halo_size, name=None):
           mtf.Shape(part.shape.dims[:-1] + [nk])
       ],
       splittable_dims=mesh.shape[:-3] + part.shape[1:-1])
-
   value = mtf.slicewise(
       lambda x, y, z: _cic_readout(
           x, y, z, shift=[0, halo_size, halo_size, halo_size]),

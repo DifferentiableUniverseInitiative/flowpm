@@ -18,7 +18,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         'astropy', 'scipy', 'mesh-tensorflow', 'tensorflow_probability',
-        'tensorflow_addons'
+        'bigfile', 'tensorflow_addons'
     ],
     tests_require=['fastpm', 'lenstools'],
     extras_require={
