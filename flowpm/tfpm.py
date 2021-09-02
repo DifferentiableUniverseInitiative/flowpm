@@ -374,7 +374,7 @@ def PGD_correction(state,
                    pm_nc_factor=1,
                    kvec=None,
                    dtype=tf.float32,
-                   name="Force",
+                   name="PGD",
                    **kwargs):
   """
   Estimate the short range force on the particles given a state.
