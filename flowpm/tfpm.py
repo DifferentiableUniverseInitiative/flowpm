@@ -7,7 +7,7 @@ import numpy as np
 import tensorflow as tf
 from flowpm.tfbackground import f1, E, f2, Gf, gf, gf2, D1, D2, D1f
 from flowpm.utils import white_noise, c2r3d, r2c3d, cic_paint, cic_readout
-from flowpm.kernels import fftk, laplace_kernel, gradient_kernel, longrange_kernel
+from flowpm.kernels import fftk, laplace_kernel, gradient_kernel, longrange_kernel, PGD_kernel
 
 __all__ = ['linear_field', 'lpt_init', 'nbody']
 
@@ -27,25 +27,18 @@ def linear_field(nc,
   nc: int, or list of ints
     Number of cells in the field. If a list is provided, number of cells per
     dimension.
-
   boxsize: float, or list of floats
     Physical size of the cube, in Mpc/h.
-
   pk: interpolator
     Power spectrum to use for the field
-
   kvec: array
     k_vector corresponding to the cube, optional
-
   batch_size: int
     Size of batches
-
   seed: int
     Seed to initialize the gaussian random field
-
   dtype: tf.dtype
     Type of the sampled field, e.g. tf.float32 or tf.float64
-
   Returns
   ------
   linfield: tensor (batch_size, nc, nc, nc)
@@ -73,11 +66,9 @@ def linear_field(nc,
 def lpt1(dlin_k, pos, kvec=None, name="LTP1"):
   """ Run first order LPT on linear density field, returns displacements of particles
       reading out at q. The result has the same dtype as q.
-
   Parameters:
   -----------
   dlin_k: TODO: @modichirag add documentation
-
   Returns:
   --------
   displacement: tensor (batch_size, npart, 3)
@@ -106,11 +97,9 @@ def lpt1(dlin_k, pos, kvec=None, name="LTP1"):
 
 def lpt2_source(dlin_k, kvec=None, name="LPT2Source"):
   """ Generate the second order LPT source term.
-
   Parameters:
   -----------
   dlin_k: TODO: @modichirag add documentation
-
   Returns:
   --------
   source: tensor (batch_size, nc, nc, nc)
@@ -158,7 +147,6 @@ def lpt2_source(dlin_k, kvec=None, name="LPT2Source"):
 
 def lpt_init(cosmo, linear, a, order=2, kvec=None, name="LPTInit"):
   """ Estimate the initial LPT displacement given an input linear (real) field
-
   Parameters:
   -----------
   TODO: documentation
@@ -231,14 +219,63 @@ def apply_longrange(x,
     return f
 
 
+def apply_PGD(x, delta_k, alpha, kl, ks, kvec=None, name="ApplyPGD"):
+  """
+  Estimate the short range force on the particles given a state.
+
+  Parameters:
+  -----------
+  x: tensor
+    Input state tensor of shape (3, batch_size, npart, 3) 
+    
+  delta_k:
+     Density in the Fourier space   
+    
+  alpha: float
+    Free parameter. Factor of proportionality between the displacement and the Particle-mesh force.
+
+  kl: float
+    Long range scale parameter
+    
+  ks: float
+    Short range scale parameter
+  """
+  with tf.name_scope(name):
+    x = tf.convert_to_tensor(x, name="pos")
+    delta_k = tf.convert_to_tensor(delta_k, name="delta_k")
+
+    shape = delta_k.get_shape()
+    nc = shape[1:]
+
+    if kvec is None:
+      kvec = fftk(nc, symmetric=False)
+
+    ndim = 3
+    norm = nc[0] * nc[1] * nc[2]
+
+    lap = tf.cast(laplace_kernel(kvec), tf.complex64)
+    PGD_range = tf.cast(PGD_kernel(kvec, kl, ks), tf.complex64)
+    kweight = lap * PGD_range
+    pot_k = tf.multiply(delta_k, kweight)
+
+    f = []
+    for d in range(ndim):
+      force_dc = tf.multiply(pot_k, gradient_kernel(kvec, d))
+      forced = c2r3d(force_dc, norm=norm)
+      force = cic_readout(forced, x)
+      f.append(force)
+
+    f = tf.stack(f, axis=2)
+    f = tf.multiply(f, alpha)
+    return f
+
+
 def kick(cosmo, state, ai, ac, af, dtype=tf.float32, name="Kick", **kwargs):
   """Kick the particles given the state
-
   Parameters
   ----------
   state: tensor
     Input state tensor of shape (3, batch_size, npart, 3)
-
   ai, ac, af: float
   """
   with tf.name_scope(name):
@@ -257,12 +294,10 @@ def kick(cosmo, state, ai, ac, af, dtype=tf.float32, name="Kick", **kwargs):
 
 def drift(cosmo, state, ai, ac, af, dtype=tf.float32, name="Drift", **kwargs):
   """Drift the particles given the state
-
   Parameters
   ----------
   state: tensor
     Input state tensor of shape (3, batch_size, npart, 3)
-
   ai, ac, af: float
   """
   with tf.name_scope(name):
@@ -289,18 +324,14 @@ def force(cosmo,
           **kwargs):
   """
   Estimate force on the particles given a state.
-
   Parameters:
   -----------
   state: tensor
     Input state tensor of shape (3, batch_size, npart, 3)
-
   boxsize: float
     Size of the simulation volume (Mpc/h) TODO: check units
-
   cosmology: astropy.cosmology
     Cosmology object
-
   pm_nc_factor: int
     TODO: @modichirag please add doc
   """
@@ -336,6 +367,64 @@ def force(cosmo,
     return state
 
 
+def PGD_correction(state,
+                   pgdparams,
+                   nc,
+                   pm_nc_factor=1,
+                   kvec=None,
+                   dtype=tf.float32,
+                   name="PGD",
+                   **kwargs):
+  """
+  Estimate the short range force on the particles given a state.
+
+  Parameters:
+  -----------
+  state: tensor
+    Input state tensor of shape (3, batch_size, npart, 3)
+    
+  nc: int, or list of ints
+    Number of cells
+
+  alpha: float
+    Free parameter. Factor of proportionality between the displacement and the Particle-mesh force.
+
+  kl: float
+    Long range scale parameter
+    
+  ks: float
+    Short range scale parameter
+
+  pm_nc_factor: int
+    Resolution factor. Ratio of the size per side of the mesh and the number of particles per side
+  """
+  with tf.name_scope(name):
+    state = tf.convert_to_tensor(state, name="state")
+    shape = state.get_shape()
+    batch_size = shape[1]
+    ncf = [n * pm_nc_factor for n in nc]
+
+    rho = tf.zeros([batch_size] + ncf)
+    wts = tf.ones((batch_size, nc[0] * nc[1] * nc[2]))
+    nbar = nc[0] * nc[1] * nc[2] / (ncf[0] * ncf[1] * ncf[2])
+
+    rho = cic_paint(rho, tf.multiply(state[0], pm_nc_factor), wts)
+    rho = tf.multiply(rho,
+                      1. / nbar)  # I am not sure why this is not needed here
+    delta_k = r2c3d(rho, norm=ncf[0] * ncf[1] * ncf[2])
+
+    alpha, kl, ks = tf.split(pgdparams, 3)
+    update = apply_PGD(
+        tf.multiply(state[0], pm_nc_factor),
+        delta_k,
+        alpha,
+        kl,
+        ks,
+    )
+    update = tf.expand_dims(update, axis=0) / pm_nc_factor
+    return update
+
+
 def nbody(cosmo,
           state,
           stages,
@@ -345,28 +434,21 @@ def nbody(cosmo,
           name="NBody"):
   """
   Integrate the evolution of the state across the givent stages
-
   Parameters:
   -----------
   cosmo: cosmology
     Cosmological parameter object
-
   state: tensor (3, batch_size, npart, 3)
     Input state
-
   stages: array
     Array of scale factors
-
   nc: int, or list of ints
     Number of cells
-
   pm_nc_factor: int
     Upsampling factor for computing
-
   return_intermediate_states: boolean
     If true, the frunction will return each intermediate states,
     not only the last one.
-
   Returns
   -------
   state: tensor (3, batch_size, npart, 3), or list of states
