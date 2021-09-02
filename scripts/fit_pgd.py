@@ -29,6 +29,8 @@ flags.DEFINE_float("ks0", 10, "Initial guess for ks at z=0")
 
 flags.DEFINE_boolean("fix_scales", False,
                      "Whether to fix the scales after the initial fit at z=0")
+flags.DEFINE_boolean("custom_weight", True,
+                     "Whether to apply a custom scale weighting to the loss function, or no weighting.")
 
 flags.DEFINE_float("a_init", 0.1, "Initial scale factor")
 flags.DEFINE_integer("nsteps", 40, "Number of steps in the N-body simulation")
@@ -66,7 +68,10 @@ def pgd_loss(alpha, scales, state, target_pk, return_pk=False):
   pk = tf.reduce_mean(pk, axis=0)
 
   # Step IV: compute loss
-  weight = 1 - k / (np.pi * FLAGS.nc / FLAGS.box_size)
+  if FLAGS.custom_weight:
+    weight = 1 - k / (np.pi * FLAGS.nc / FLAGS.box_size)
+  else:
+    weight = np.ones_like(k)
   weight = tf.convert_to_tensor(weight / weight.sum(), dtype=tf.float32)
   rescale_factor = 1.0  # pk[0]/target_pk[0] # To account for variance on large scale
   loss = tf.reduce_sum((weight * (1 - pk / target_pk / rescale_factor))**2)
@@ -158,6 +163,9 @@ def main(_):
           'nsteps': FLAGS.nsteps,
           'params': params,
           'scale_factors': scale_factors,
+          'cosmology': cosmology.to_dict(),
+          'boxsize': FLAGS.box_size,
+          'nc': FLAGS.nc
       }, open(FLAGS.filename, "wb"))
 
 

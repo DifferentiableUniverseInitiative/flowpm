@@ -40,14 +40,14 @@ class Cosmology:
 
   def to_dict(self):
     return {
-        'Omega_c': self.Omega_c,
-        'Omega_b': self.Omega_b,
-        'h': self.h,
-        'n_s': self.n_s,
-        'sigma8': self.sigma8,
-        'Omega_k': self.Omega_k,
-        'w0': self.w0,
-        'wa': self.wa
+        'Omega_c': self.Omega_c.numpy(),
+        'Omega_b': self.Omega_b.numpy(),
+        'h': self.h.numpy(),
+        'n_s': self.n_s.numpy(),
+        'sigma8': self.sigma8.numpy(),
+        'Omega_k': self.Omega_k.numpy(),
+        'w0': self.w0.numpy(),
+        'wa': self.wa.numpy()
     }
 
   def __str__(self):
