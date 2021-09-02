@@ -45,7 +45,6 @@ def power_spectrum(field, kmin=5, dk=0.5, boxsize=False):
         field: real valued field 
         kmin: minimum k-value for binned powerspectra
         dk: differential in each kbin
-        shape: shape of field to calculate field (can be strangely shaped?)
         boxsize: length of each boxlength (can be strangly shaped?)
     
     Returns:
