@@ -29,8 +29,10 @@ flags.DEFINE_float("ks0", 10, "Initial guess for ks at z=0")
 
 flags.DEFINE_boolean("fix_scales", False,
                      "Whether to fix the scales after the initial fit at z=0")
-flags.DEFINE_boolean("custom_weight", True,
-                     "Whether to apply a custom scale weighting to the loss function, or no weighting.")
+flags.DEFINE_boolean(
+    "custom_weight", True,
+    "Whether to apply a custom scale weighting to the loss function, or no weighting."
+)
 
 flags.DEFINE_float("a_init", 0.1, "Initial scale factor")
 flags.DEFINE_integer("nsteps", 40, "Number of steps in the N-body simulation")
