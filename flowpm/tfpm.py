@@ -240,7 +240,6 @@ def apply_PGD(x, delta_k, alpha, kl, ks, kvec=None, name="ApplyPGD"):
   ks: float
     Short range scale parameter
   """
-  # use the four point kernel to suppresse artificial growth of noise like terms
   with tf.name_scope(name):
     x = tf.convert_to_tensor(x, name="pos")
     delta_k = tf.convert_to_tensor(delta_k, name="delta_k")
