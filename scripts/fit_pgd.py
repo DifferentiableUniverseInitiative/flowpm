@@ -6,7 +6,7 @@ import tensorflow as tf
 import pickle
 import flowpm
 from flowpm import tfpm
-from flowpm.utils import cic_paint
+from flowpm.utils import cic_paint, compensate_cic
 from flowpm.tfpower import linear_matter_power
 from functools import partial
 import flowpm.scipy.interpolate as interpolate
@@ -21,7 +21,7 @@ flags.DEFINE_integer("niter", 51, "Number of iterations of the first PGD fit")
 flags.DEFINE_integer("niter_refine", 11,
                      "Number of iterations of subsequent PGD fit")
 flags.DEFINE_float("learning_rate", 0.1, "ADAM learning rate for the PGD optim")
-flags.DEFINE_integer("batch_size", 8, "Number of random draws")
+flags.DEFINE_integer("batch_size", 5, "Number of random draws")
 
 flags.DEFINE_float("alpha0", 0.3, "Initial guess for alpha at z=0")
 flags.DEFINE_float("kl0", 0.3, "Initial guess for kl at z=0")
@@ -35,10 +35,10 @@ flags.DEFINE_boolean(
 )
 
 flags.DEFINE_float("a_init", 0.1, "Initial scale factor")
-flags.DEFINE_integer("nsteps", 40, "Number of steps in the N-body simulation")
-flags.DEFINE_float("box_size", 64.,
+flags.DEFINE_integer("nsteps", 20, "Number of steps in the N-body simulation")
+flags.DEFINE_float("box_size", 205.,
                    "Transverse comoving size of the simulation volume")
-flags.DEFINE_integer("nc", 64,
+flags.DEFINE_integer("nc", 100,
                      "Number of transverse voxels in the simulation volume")
 flags.DEFINE_integer("B", 1, "Scale resolution factor")
 
@@ -57,8 +57,9 @@ def pgd_loss(alpha, scales, state, target_pk, return_pk=False):
   pdgized_state = state[0] + tfpm.PGD_correction(
       state, pgdparams, nc=[FLAGS.nc] * 3, pm_nc_factor=FLAGS.B)
 
-  # Step II: Painting
+  # Step II: Painting and compensating for cic window
   field = cic_paint(tf.zeros([batch_size] + [FLAGS.nc] * 3), pdgized_state)
+  field = compensate_cic(field)
 
   # Step III: Compute power spectrum
   k, pk = flowpm.power_spectrum(
@@ -75,7 +76,7 @@ def pgd_loss(alpha, scales, state, target_pk, return_pk=False):
   else:
     weight = np.ones_like(k)
   weight = tf.convert_to_tensor(weight / weight.sum(), dtype=tf.float32)
-  rescale_factor = 1.0  # pk[0]/target_pk[0] # To account for variance on large scale
+  rescale_factor = pk[0]/target_pk[0] # To account for variance on large scale
   loss = tf.reduce_sum((weight * (1 - pk / target_pk / rescale_factor))**2)
   if return_pk:
     return loss, pk

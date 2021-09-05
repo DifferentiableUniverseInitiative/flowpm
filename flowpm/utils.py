@@ -3,9 +3,29 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import flowpm.kernels as fpk
 import numpy as np
 import tensorflow as tf
 
+def compensate_cic(field, name="CompensateCiC"):
+  """
+  Compensate for CiC painting
+
+  Args:
+    field: input 3D cic-painted field
+
+  Returns:
+    compensated_field
+  """
+  with tf.name_scope(name):
+    shape = field.get_shape()
+    batch_size, nc = shape[0], shape[1:]
+
+    kvec = fpk.fftk(nc, symmetric=False)
+
+    delta_k = r2c3d(field, norm=nc[0] * nc[1] * nc[2])
+    delta_k = tf.cast(fpk.cic_compensation(kvec), tf.complex64) * delta_k
+    return c2r3d(delta_k, norm=nc[0] * nc[1] * nc[2])
 
 def cic_paint(mesh, part, weight=None, name="CiCPaint"):
   """
