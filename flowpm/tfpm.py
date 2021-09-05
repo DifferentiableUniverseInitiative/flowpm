@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+from scripts.fit_pgd import pgd_loss
 
 import numpy as np
 import tensorflow as tf
@@ -185,6 +186,7 @@ def apply_longrange(x,
                     split=0,
                     factor=1,
                     kvec=None,
+                    pgdparams=None,
                     name="ApplyLongrange"):
   """ like long range, but x is a list of positions
   TODO: Better documentation, also better name?
@@ -204,7 +206,11 @@ def apply_longrange(x,
     norm = nc[0] * nc[1] * nc[2]
     lap = tf.cast(laplace_kernel(kvec), tf.complex64)
     fknlrange = longrange_kernel(kvec, split)
-    kweight = lap * fknlrange
+    kweight = lap * fknlrange 
+    if pgdparams is not None:
+      alpha, kl, ks = tf.split(pgdparams, 3)
+      pgd =  tf.cast(1. + alpha * PGD_kernel(kvec, kl, ks), tf.complex64)
+      kweight = kweight*pgd
     pot_k = tf.multiply(delta_k, kweight)
 
     f = []
@@ -216,57 +222,6 @@ def apply_longrange(x,
 
     f = tf.stack(f, axis=2)
     f = tf.multiply(f, factor)
-    return f
-
-
-def apply_PGD(x, delta_k, alpha, kl, ks, kvec=None, name="ApplyPGD"):
-  """
-  Estimate the short range force on the particles given a state.
-
-  Parameters:
-  -----------
-  x: tensor
-    Input state tensor of shape (3, batch_size, npart, 3) 
-    
-  delta_k:
-     Density in the Fourier space   
-    
-  alpha: float
-    Free parameter. Factor of proportionality between the displacement and the Particle-mesh force.
-
-  kl: float
-    Long range scale parameter
-    
-  ks: float
-    Short range scale parameter
-  """
-  with tf.name_scope(name):
-    x = tf.convert_to_tensor(x, name="pos")
-    delta_k = tf.convert_to_tensor(delta_k, name="delta_k")
-
-    shape = delta_k.get_shape()
-    nc = shape[1:]
-
-    if kvec is None:
-      kvec = fftk(nc, symmetric=False)
-
-    ndim = 3
-    norm = nc[0] * nc[1] * nc[2]
-
-    lap = tf.cast(laplace_kernel(kvec), tf.complex64)
-    PGD_range = tf.cast(PGD_kernel(kvec, kl, ks), tf.complex64)
-    kweight = lap * PGD_range
-    pot_k = tf.multiply(delta_k, kweight)
-
-    f = []
-    for d in range(ndim):
-      force_dc = tf.multiply(pot_k, gradient_kernel(kvec, d))
-      forced = c2r3d(force_dc, norm=norm)
-      force = cic_readout(forced, x)
-      f.append(force)
-
-    f = tf.stack(f, axis=2)
-    f = tf.multiply(f, alpha)
     return f
 
 
@@ -319,6 +274,7 @@ def force(cosmo,
           nc,
           pm_nc_factor=1,
           kvec=None,
+          pgdparams=None,
           dtype=tf.float32,
           name="Force",
           **kwargs):
@@ -352,7 +308,8 @@ def force(cosmo,
     delta_k = r2c3d(rho, norm=ncf[0] * ncf[1] * ncf[2])
     fac = tf.cast(1.5 * cosmo.Omega_m, dtype=dtype)
     update = apply_longrange(
-        tf.multiply(state[0], pm_nc_factor), delta_k, split=0, factor=fac)
+        tf.multiply(state[0], pm_nc_factor), delta_k, split=0, factor=fac, 
+          pgdparams=pgdparams)
 
     update = tf.expand_dims(update, axis=0) / pm_nc_factor
 
@@ -367,69 +324,12 @@ def force(cosmo,
     return state
 
 
-def PGD_correction(state,
-                   pgdparams,
-                   nc,
-                   pm_nc_factor=1,
-                   kvec=None,
-                   dtype=tf.float32,
-                   name="PGD",
-                   **kwargs):
-  """
-  Estimate the short range force on the particles given a state.
-
-  Parameters:
-  -----------
-  state: tensor
-    Input state tensor of shape (3, batch_size, npart, 3)
-    
-  nc: int, or list of ints
-    Number of cells
-
-  alpha: float
-    Free parameter. Factor of proportionality between the displacement and the Particle-mesh force.
-
-  kl: float
-    Long range scale parameter
-    
-  ks: float
-    Short range scale parameter
-
-  pm_nc_factor: int
-    Resolution factor. Ratio of the size per side of the mesh and the number of particles per side
-  """
-  with tf.name_scope(name):
-    state = tf.convert_to_tensor(state, name="state")
-    shape = state.get_shape()
-    batch_size = shape[1]
-    ncf = [n * pm_nc_factor for n in nc]
-
-    rho = tf.zeros([batch_size] + ncf)
-    wts = tf.ones((batch_size, nc[0] * nc[1] * nc[2]))
-    nbar = nc[0] * nc[1] * nc[2] / (ncf[0] * ncf[1] * ncf[2])
-
-    rho = cic_paint(rho, tf.multiply(state[0], pm_nc_factor), wts)
-    rho = tf.multiply(rho,
-                      1. / nbar)  # I am not sure why this is not needed here
-    delta_k = r2c3d(rho, norm=ncf[0] * ncf[1] * ncf[2])
-
-    alpha, kl, ks = tf.split(pgdparams, 3)
-    update = apply_PGD(
-        tf.multiply(state[0], pm_nc_factor),
-        delta_k,
-        alpha,
-        kl,
-        ks,
-    )
-    update = tf.expand_dims(update, axis=0) / pm_nc_factor
-    return update
-
-
 def nbody(cosmo,
           state,
           stages,
           nc,
           pm_nc_factor=1,
+          pgdparams=None,
           return_intermediate_states=False,
           name="NBody"):
   """
@@ -446,6 +346,8 @@ def nbody(cosmo,
     Number of cells
   pm_nc_factor: int
     Upsampling factor for computing
+  pgd_params: array
+    Array of pgd parameters (amplitude, kl, ks) for each time step of stages
   return_intermediate_states: boolean
     If true, the frunction will return each intermediate states,
     not only the last one.
@@ -467,7 +369,8 @@ def nbody(cosmo,
     ai = stages[0]
 
     # first force calculation for jump starting
-    state = force(cosmo, state, nc, pm_nc_factor=pm_nc_factor)
+    state = force(cosmo, state, nc, pm_nc_factor=pm_nc_factor,
+                  pgdparams=(pgdparams[0] if pgdparams is not None else None))
 
     x, p, f = ai, ai, ai
     intermediate_states = []
@@ -486,7 +389,8 @@ def nbody(cosmo,
       x = a1
 
       # Force
-      state = force(cosmo, state, nc, pm_nc_factor=pm_nc_factor)
+      state = force(cosmo, state, nc, pm_nc_factor=pm_nc_factor,
+                    pgdparams=(pgdparams[i+1] if pgdparams is not None else None))
       f = a1
 
       # Kick again
