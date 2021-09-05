@@ -70,12 +70,7 @@ def pgd_loss(pgdparams, state, target_pk, return_pk=False):
     return loss
 
 
-def fit_nbody(cosmo,
-          state,
-          stages,
-          nc,
-          pm_nc_factor=1,
-          name="NBody"):
+def fit_nbody(cosmo, state, stages, nc, pm_nc_factor=1, name="NBody"):
   """
   Integrate the evolution of the state across the givent stages
   Parameters:
@@ -123,7 +118,6 @@ def fit_nbody(cosmo,
         kmin=np.pi / FLAGS.box_size,
         dk=2 * np.pi / FLAGS.box_size)
 
-
     params = tf.Variable([FLAGS.alpha0, FLAGS.kl0, FLAGS.ks0], dtype=tf.float32)
     optimizer = tf.keras.optimizers.Adam(learning_rate=FLAGS.learning_rate)
 
@@ -147,8 +141,7 @@ def fit_nbody(cosmo,
       target_pk = HalofitPower(nbdykit_cosmo, 1. / a1 - 1.)(k).astype('float32')
 
       for j in range(FLAGS.niter if i == 0 else FLAGS.niter_refine):
-        optimizer.minimize(
-            partial(pgd_loss, params, state, target_pk), params)
+        optimizer.minimize(partial(pgd_loss, params, state, target_pk), params)
 
         if j % 10 == 0:
           loss, pk = pgd_loss(params, state, target_pk, return_pk=True)
@@ -157,7 +150,7 @@ def fit_nbody(cosmo,
           print("step %d, loss:" % j, loss)
       pgdparams.append(params.numpy())
       scale_factors.append(a1)
-      print("Sim step %d, fitted params (alpha, kl, ks)"%i, pgdparams[-1])
+      print("Sim step %d, fitted params (alpha, kl, ks)" % i, pgdparams[-1])
       plt.loglog(k, target_pk, "k")
       plt.loglog(k, pk0, ':', label='starting')
       plt.loglog(k, pk, '--', label='after n steps')
@@ -177,6 +170,7 @@ def fit_nbody(cosmo,
       p = a1
 
     return state, scale_factors, pgdparams
+
 
 def main(_):
   cosmology = flowpm.cosmology.Planck15()
