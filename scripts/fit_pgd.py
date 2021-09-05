@@ -18,7 +18,7 @@ import astropy.units as u
 
 flags.DEFINE_string("filename", "results_fit_PGD.pkl", "Output filename")
 flags.DEFINE_integer("niter", 51, "Number of iterations of the first PGD fit")
-flags.DEFINE_integer("niter_refine", 11,
+flags.DEFINE_integer("niter_refine", 21,
                      "Number of iterations of subsequent PGD fit")
 flags.DEFINE_float("learning_rate", 0.1, "ADAM learning rate for the PGD optim")
 flags.DEFINE_integer("batch_size", 5, "Number of random draws")
@@ -29,13 +29,9 @@ flags.DEFINE_float("ks0", 10, "Initial guess for ks at z=0")
 
 flags.DEFINE_boolean("fix_scales", False,
                      "Whether to fix the scales after the initial fit at z=0")
-flags.DEFINE_boolean(
-    "custom_weight", True,
-    "Whether to apply a custom scale weighting to the loss function, or no weighting."
-)
 
 flags.DEFINE_float("a_init", 0.1, "Initial scale factor")
-flags.DEFINE_integer("nsteps", 20, "Number of steps in the N-body simulation")
+flags.DEFINE_integer("nsteps", 10, "Number of steps in the N-body simulation")
 flags.DEFINE_float("box_size", 205.,
                    "Transverse comoving size of the simulation volume")
 flags.DEFINE_integer("nc", 100,
@@ -54,11 +50,11 @@ def pgd_loss(alpha, scales, state, target_pk, return_pk=False):
   pgdparams = tf.concat([alpha, scales], 0)
 
   # Step I: Apply PGD to the state vector
-  pdgized_state = state[0] + tfpm.PGD_correction(
+  pdgized_state = tfpm.pgd(
       state, pgdparams, nc=[FLAGS.nc] * 3, pm_nc_factor=FLAGS.B)
 
   # Step II: Painting and compensating for cic window
-  field = cic_paint(tf.zeros([batch_size] + [FLAGS.nc] * 3), pdgized_state)
+  field = cic_paint(tf.zeros([batch_size] + [FLAGS.nc] * 3), pdgized_state[0])
   field = compensate_cic(field)
 
   # Step III: Compute power spectrum
@@ -71,13 +67,7 @@ def pgd_loss(alpha, scales, state, target_pk, return_pk=False):
   pk = tf.reduce_mean(pk, axis=0)
 
   # Step IV: compute loss
-  if FLAGS.custom_weight:
-    weight = 1 - k / (np.pi * FLAGS.nc / FLAGS.box_size)
-  else:
-    weight = np.ones_like(k)
-  weight = tf.convert_to_tensor(weight / weight.sum(), dtype=tf.float32)
-  rescale_factor = pk[0]/target_pk[0] # To account for variance on large scale
-  loss = tf.reduce_sum((weight * (1 - pk / target_pk / rescale_factor))**2)
+  loss = tf.reduce_sum((1. - pk / target_pk)**2)
   if return_pk:
     return loss, pk
   else:
@@ -129,7 +119,6 @@ def main(_):
   # Initialize PGD params
   alpha = tf.Variable([FLAGS.alpha0], dtype=tf.float32)
   scales = tf.Variable([FLAGS.kl0, FLAGS.ks0], dtype=tf.float32)
-  pgdparams = tf.concat([alpha, scales], 0)
   optimizer = tf.keras.optimizers.Adam(learning_rate=FLAGS.learning_rate)
 
   params = []
@@ -137,7 +126,7 @@ def main(_):
   # We begin by fitting the last time step
   for j, (a, state) in enumerate(states[::-1]):
     # Let's compute the target power spectrum at that scale factor
-    target_pk = HalofitPower(nbdykit_cosmo, 1. / a - 1.)(k)
+    target_pk = HalofitPower(nbdykit_cosmo, 1. / a - 1.)(k).astype('float32')
 
     for i in range(FLAGS.niter if j == 0 else FLAGS.niter_refine):
       optimizer.minimize(

@@ -133,6 +133,7 @@ def PGD_kernel(kvec, kl, ks):
   v *= imask
   return v
 
+
 def cic_compensation(kvec):
   """
   Computes cic compensation kernel.
@@ -146,6 +147,6 @@ def cic_compensation(kvec):
   Returns:
     v: array of kernel
   """
-  kwts = [np.sinc(kvec[i]/(2*np.pi)) for i in range(3)]
-  wts = (kwts[0]*kwts[1]*kwts[2])**(-2)
+  kwts = [np.sinc(kvec[i] / (2 * np.pi)) for i in range(3)]
+  wts = (kwts[0] * kwts[1] * kwts[2])**(-2)
   return wts

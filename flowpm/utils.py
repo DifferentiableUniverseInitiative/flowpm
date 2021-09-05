@@ -7,6 +7,7 @@ import flowpm.kernels as fpk
 import numpy as np
 import tensorflow as tf
 
+
 def compensate_cic(field, name="CompensateCiC"):
   """
   Compensate for CiC painting
@@ -26,6 +27,7 @@ def compensate_cic(field, name="CompensateCiC"):
     delta_k = r2c3d(field, norm=nc[0] * nc[1] * nc[2])
     delta_k = tf.cast(fpk.cic_compensation(kvec), tf.complex64) * delta_k
     return c2r3d(delta_k, norm=nc[0] * nc[1] * nc[2])
+
 
 def cic_paint(mesh, part, weight=None, name="CiCPaint"):
   """
