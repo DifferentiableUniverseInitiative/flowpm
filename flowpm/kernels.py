@@ -132,3 +132,21 @@ def PGD_kernel(kvec, kl, ks):
   imask = (~(kk == 0)).astype(int)
   v *= imask
   return v
+
+
+def cic_compensation(kvec):
+  """
+  Computes cic compensation kernel.
+
+  Adapted from https://github.com/bccp/nbodykit/blob/a387cf429d8cb4a07bb19e3b4325ffdf279a131e/nbodykit/source/mesh/catalog.py#L499
+  Itself based on equation 18 (with p=2) of
+        `Jing et al 2005 <https://arxiv.org/abs/astro-ph/0409240>`_
+
+  Args:
+    kvec: array of k values in Fourier space  
+  Returns:
+    v: array of kernel
+  """
+  kwts = [np.sinc(kvec[i] / (2 * np.pi)) for i in range(3)]
+  wts = (kwts[0] * kwts[1] * kwts[2])**(-2)
+  return wts

@@ -219,7 +219,7 @@ def apply_longrange(x,
     return f
 
 
-def apply_PGD(x, delta_k, alpha, kl, ks, kvec=None, name="ApplyPGD"):
+def apply_pgd(x, delta_k, alpha, kl, ks, kvec=None, name="ApplyPGD"):
   """
   Estimate the short range force on the particles given a state.
 
@@ -318,7 +318,6 @@ def force(cosmo,
           state,
           nc,
           pm_nc_factor=1,
-          kvec=None,
           dtype=tf.float32,
           name="Force",
           **kwargs):
@@ -367,14 +366,7 @@ def force(cosmo,
     return state
 
 
-def PGD_correction(state,
-                   pgdparams,
-                   nc,
-                   pm_nc_factor=1,
-                   kvec=None,
-                   dtype=tf.float32,
-                   name="PGD",
-                   **kwargs):
+def pgd(state, pgdparams, nc, pm_nc_factor=1, name="PGD", **kwargs):
   """
   Estimate the short range force on the particles given a state.
 
@@ -414,7 +406,7 @@ def PGD_correction(state,
     delta_k = r2c3d(rho, norm=ncf[0] * ncf[1] * ncf[2])
 
     alpha, kl, ks = tf.split(pgdparams, 3)
-    update = apply_PGD(
+    update = apply_pgd(
         tf.multiply(state[0], pm_nc_factor),
         delta_k,
         alpha,
@@ -422,7 +414,12 @@ def PGD_correction(state,
         ks,
     )
     update = tf.expand_dims(update, axis=0) / pm_nc_factor
-    return update
+
+    indices = tf.constant([[0]])
+    shape = state.shape
+    update = tf.scatter_nd(indices, update, shape)
+    state = tf.add(state, update)
+    return state
 
 
 def nbody(cosmo,
@@ -431,6 +428,7 @@ def nbody(cosmo,
           nc,
           pm_nc_factor=1,
           return_intermediate_states=False,
+          pgdparams=None,
           name="NBody"):
   """
   Integrate the evolution of the state across the givent stages
@@ -449,6 +447,8 @@ def nbody(cosmo,
   return_intermediate_states: boolean
     If true, the frunction will return each intermediate states,
     not only the last one.
+  pgdparams: array
+    list of pgdparameters [alpha, kl, ks] of size len(stages) - 1
   Returns
   -------
   state: tensor (3, batch_size, npart, 3), or list of states
@@ -483,6 +483,9 @@ def nbody(cosmo,
 
       # Drift step
       state = drift(cosmo, state, x, p, a1)
+      # Optional PGD correction step
+      if pgdparams is not None:
+        state = pgd(state, pgdparams[i], nc, pm_nc_factor=pm_nc_factor)
       x = a1
 
       # Force
