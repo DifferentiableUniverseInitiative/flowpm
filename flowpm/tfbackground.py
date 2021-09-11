@@ -333,23 +333,15 @@ def _distance_computation_func(a, rtol=1e-3, **kwcosmo):
     cosmo = Cosmology(**kwcosmo)
     xa = tf.math.exp(x)
     return dchioverda(cosmo, xa) * xa
-
-  #solver = tfp.math.ode.BDF(rtol=rtol)
-  print("Using dormand prince")
-  solver = tfp.math.ode.DormandPrince(rtol=rtol)
-
-  #  # Run the ODE
-  chitab = solver.solve(dchioverdlna,
-                        tf.math.log(a)[0],
-                        0.0,
-                        tf.math.log(a),
-                        constants=kwcosmo)
-  chitab = chitab.states[-1] - chitab.states
+  
+  ## Run the ODE
+  chitab = rk4_integration(dchioverdlna, tf.math.log(a), 0.0, **kwcosmo) 
+  chitab = chitab[-1] - chitab
 
   return chitab
 
 
-def rad_comoving_distance(cosmo, a, log10_amin=-3, steps=256, rtol=1e-3):
+def rad_comoving_distance(cosmo, a, log10_amin=-3, steps=128, rtol=1e-3):
   r"""Radial comoving distance in [Mpc/h] for a given scale factor.
 
     Parameters
@@ -646,7 +638,7 @@ def odesolve_func(a, rtol=1e-4, **kwcosmo):
     }
 
 
-def maybe_compute_ODE(cosmo, log10_amin=-2, steps=64):
+def maybe_compute_ODE(cosmo, log10_amin=-2, steps=128):
   """
   Either computes or returns the cached ODE solution
   """
