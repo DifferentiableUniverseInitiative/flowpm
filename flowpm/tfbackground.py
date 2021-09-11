@@ -333,15 +333,15 @@ def _distance_computation_func(a, rtol=1e-3, **kwcosmo):
     cosmo = Cosmology(**kwcosmo)
     xa = tf.math.exp(x)
     return dchioverda(cosmo, xa) * xa
-  
+
   ## Run the ODE
-  chitab = rk4_integration(dchioverdlna, tf.math.log(a), 0.0, **kwcosmo) 
+  chitab = rk4_integration(dchioverdlna, tf.math.log(a), 0.0, **kwcosmo)
   chitab = chitab[-1] - chitab
 
   return chitab
 
 
-def rad_comoving_distance(cosmo, a, log10_amin=-3, steps=128, rtol=1e-3):
+def rad_comoving_distance(cosmo, a, log10_amin=-3, steps=256, rtol=1e-3):
   r"""Radial comoving distance in [Mpc/h] for a given scale factor.
 
     Parameters
@@ -377,8 +377,8 @@ def rad_comoving_distance(cosmo, a, log10_amin=-3, steps=128, rtol=1e-3):
         \chi(a) =  R_H \int_a^1 \frac{da^\prime}{{a^\prime}^2 E(a^\prime)}
     """
   if "background.radial_comoving_distance" not in cosmo._workspace.keys():
-    atab = tf.convert_to_tensor(np.logspace(log10_amin, 0.0, steps),
-                                dtype=tf.float32)
+    atab = tf.convert_to_tensor(
+        np.logspace(log10_amin, 0.0, steps), dtype=tf.float32)
 
     chitab = _distance_computation_func(atab, rtol=rtol, **cosmo.to_dict())
 
@@ -388,10 +388,10 @@ def rad_comoving_distance(cosmo, a, log10_amin=-3, steps=128, rtol=1e-3):
     cache = cosmo._workspace["background.radial_comoving_distance"]
   # Return the results as an interpolation of the table)
   lna = tf.math.log(a)
-  inter = tfp.math.interp_regular_1d_grid(tf.cast(lna, dtype=tf.float32),
-                                          tf.math.log(cache["a"])[0],
-                                          tf.math.log(cache["a"])[-1],
-                                          cache["chi"])
+  inter = tfp.math.interp_regular_1d_grid(
+      tf.cast(lna, dtype=tf.float32),
+      tf.math.log(cache["a"])[0],
+      tf.math.log(cache["a"])[-1], cache["chi"])
   return tf.clip_by_value(inter, 0.0, 1000000)
 
 
@@ -493,9 +493,6 @@ def angular_diameter_distance(cosmo, a):
   return a * transverse_comoving_distance(cosmo, a)
 
 
-
-
-
 @tf.function
 def rk4_integration(dydt, a, y0, **kwcosmo):
   """Runge-Kutta order 4 integration to solve ODE
@@ -512,25 +509,28 @@ def rk4_integration(dydt, a, y0, **kwcosmo):
     Initial value/conditions of the ODE
 
   """
-  da = a[1:] - a[:-1] 
+  da = a[1:] - a[:-1]
   steps = len(da)
-  y = tf.TensorArray(size=steps+1, dtype=tf.float32, dynamic_size=False)
+  y = tf.TensorArray(size=steps + 1, dtype=tf.float32, dynamic_size=False)
   y = y.write(0, y0)
+
   def body(i, yt, y):
     t = a[i]
     dt = da[i]
-    f1 = dydt ( t,            yt , **kwcosmo )
-    f2 = dydt ( t + dt / 2.0, yt + dt * f1 / 2.0 , **kwcosmo )
-    f3 = dydt ( t + dt / 2.0, yt + dt * f2 / 2.0 , **kwcosmo )
-    f4 = dydt ( t + dt,       yt + dt * f3 , **kwcosmo )
-    f =  yt + dt * ( f1 + 2.0 * f2 + 2.0 * f3 + f4 ) / 6.0
-    y = y.write(i+1, f)
-    return i+1, f, y
-        
+    f1 = dydt(t, yt, **kwcosmo)
+    f2 = dydt(t + dt / 2.0, yt + dt * f1 / 2.0, **kwcosmo)
+    f3 = dydt(t + dt / 2.0, yt + dt * f2 / 2.0, **kwcosmo)
+    f4 = dydt(t + dt, yt + dt * f3, **kwcosmo)
+    f = yt + dt * (f1 + 2.0 * f2 + 2.0 * f3 + f4) / 6.0
+    y = y.write(i + 1, f)
+    return i + 1, f, y
+
   def cond(i, yt, y):
     return tf.less(i, tf.constant(steps))
+
   i = 0
-  i, yl, y =  tf.while_loop(cond, body, [i, y0, y], swap_memory=False, maximum_iterations=steps)                     
+  i, yl, y = tf.while_loop(
+      cond, body, [i, y0, y], swap_memory=False, maximum_iterations=steps)
   return y.stack()
 
 
@@ -564,32 +564,28 @@ def growth_ode(a, y, **kwcosmo):
   (see :cite:`Florent Leclercq thesis` Eq. (1.96))
   """
   a = tf.convert_to_tensor(a, dtype=tf.float32)
-  # Instantiate a cosmology object 
+  # Instantiate a cosmology object
   cosmo = Cosmology(**kwcosmo)
 
-  # Extracting entries                                                                                                                           
+  # Extracting entries
   d1, d1_f, d2, d2_f = tf.split(y, 4, axis=1)
-  
+
   # ODE for d1
   dy1dt = d1_f, 1.5 * Omega_m_a(cosmo, a) * d1 / tf.pow(a, 2) - (d1_f / a) * (
-    Omega_de_a(cosmo, a) - 0.5 * Omega_m_a(cosmo, a) + 2)
-  # ODE for d2 
+      Omega_de_a(cosmo, a) - 0.5 * Omega_m_a(cosmo, a) + 2)
+  # ODE for d2
   dy2dt = d2_f, 1.5 * Omega_m_a(cosmo, a) * d2 / tf.pow(a, 2) - (
       d2_f / a) * (Omega_de_a(cosmo, a) - 0.5 * Omega_m_a(cosmo, a) +
                    2) - 1.5 * (Omega_m_a(cosmo, a) * d1**2) / tf.pow(a, 2)
 
-  # Concatenate output                                 
+  # Concatenate output
   dydt = [dy1dt[0], dy1dt[1], dy2dt[0], dy2dt[1]]
   return tf.concat(dydt, axis=1)
 
 
-
-
-
-
 @tf.function
 def odesolve_func(a, rtol=1e-4, **kwcosmo):
-    r""" Solves the growth ODE system for a given cosmology at the requested
+  r""" Solves the growth ODE system for a given cosmology at the requested
     scale factors.                                                                                
     Parameters
     ----------                                                                                                                                                  
@@ -606,28 +602,30 @@ def odesolve_func(a, rtol=1e-4, **kwcosmo):
     First and second order growth factors, and their derivatives, computed at
     the requested scale factors.                                                                                                                              
     """
-    a = tf.convert_to_tensor(a, dtype=tf.float32)
-    # Matter dominated initial condition.
-    # Row 1: Initial condition of first(column 1) and second order (column 2) growth factors
-    # Row 2: Initial condition of derivative of first (column 1) and second order (column 2) growth factors
-    y0 = [[a[0],  1.0, -3. / 7 * a[0]**2, -6. / 7 * a[0]]]
-    y0 = tf.stack(y0)
+  a = tf.convert_to_tensor(a, dtype=tf.float32)
+  # Matter dominated initial condition.
+  # Row 1: Initial condition of first(column 1) and second order (column 2) growth factors
+  # Row 2: Initial condition of derivative of first (column 1) and second order (column 2) growth factors
+  y0 = [[a[0], 1.0, -3. / 7 * a[0]**2, -6. / 7 * a[0]]]
+  y0 = tf.stack(y0)
 
-    results = rk4_integration(growth_ode, a, y0, **kwcosmo)[:,0] #retruned with an extra dimension due to stacking
-    
-    # While we are at it, compute second order derivatives growth
-    second_order_results = growth_ode(tf.expand_dims(a, 1), results, **kwcosmo)
+  results = rk4_integration(
+      growth_ode, a, y0,
+      **kwcosmo)[:, 0]  #retruned with an extra dimension due to stacking
 
-    # Normalize the ODE to present time
-    # For first order growth and its derivative
-    D1 = results[:, 0]/results[-1, 0]
-    D1f = results[:, 1]/results[-1, 0]
-    D2 = results[:, 2]/results[-1, 2]
-    D2f = results[:, 3]/results[-1, 2]
-    F1p = second_order_results[:, 1]/results[-1, 0]
-    F2p = second_order_results[:, 3]/results[-1, 2]
+  # While we are at it, compute second order derivatives growth
+  second_order_results = growth_ode(tf.expand_dims(a, 1), results, **kwcosmo)
 
-    return {
+  # Normalize the ODE to present time
+  # For first order growth and its derivative
+  D1 = results[:, 0] / results[-1, 0]
+  D1f = results[:, 1] / results[-1, 0]
+  D2 = results[:, 2] / results[-1, 2]
+  D2f = results[:, 3] / results[-1, 2]
+  F1p = second_order_results[:, 1] / results[-1, 0]
+  F2p = second_order_results[:, 3] / results[-1, 2]
+
+  return {
       'a': a,
       'D1': D1,
       'D1f': D1f,
@@ -635,10 +633,10 @@ def odesolve_func(a, rtol=1e-4, **kwcosmo):
       'D2': D2,
       'D2f': D2f,
       'F2p': F2p
-    }
+  }
 
 
-def maybe_compute_ODE(cosmo, log10_amin=-2, steps=128):
+def maybe_compute_ODE(cosmo, log10_amin=-2, steps=256):
   """
   Either computes or returns the cached ODE solution
   """
@@ -650,8 +648,8 @@ def maybe_compute_ODE(cosmo, log10_amin=-2, steps=128):
     assert len(cache['a']) == steps
   else:
     # Otherwise, we compute it now, and save the results for later
-    a = tf.convert_to_tensor(np.logspace(log10_amin, 0., steps),
-                             dtype=tf.float32)
+    a = tf.convert_to_tensor(
+        np.logspace(log10_amin, 0., steps), dtype=tf.float32)
     cache = odesolve_func(a, **cosmo.to_dict())
     cosmo._workspace['cache_ODE'] = cache
   return cache
