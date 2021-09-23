@@ -306,16 +306,13 @@ def dchioverda(cosmo, a):
 
 
 @tf.function
-def _distance_computation_func(a, rtol=1e-3, **kwcosmo):
+def _distance_computation_func(a, **kwcosmo):
   """ Computes integral required by radial comoving distance.
 
   Parameters
   ----------
   a: array_like
     Output scale factors
-
-  rtol: float, optional
-        Parameters determing the error control performed by the solver
 
   kwcosmo: keyword args
     Cosmological parameter values.
@@ -341,7 +338,7 @@ def _distance_computation_func(a, rtol=1e-3, **kwcosmo):
   return chitab
 
 
-def rad_comoving_distance(cosmo, a, log10_amin=-3, steps=256, rtol=1e-3):
+def rad_comoving_distance(cosmo, a, log10_amin=-3, steps=256):
   r"""Radial comoving distance in [Mpc/h] for a given scale factor.
 
     Parameters
@@ -357,9 +354,6 @@ def rad_comoving_distance(cosmo, a, log10_amin=-3, steps=256, rtol=1e-3):
 
     steps:integer, optional
         Number of samples to generate.
-
-    rtol: float, optional
-          Parameters determing the error control performed by the solver
 
     Returns
     -------
@@ -380,7 +374,7 @@ def rad_comoving_distance(cosmo, a, log10_amin=-3, steps=256, rtol=1e-3):
     atab = tf.convert_to_tensor(
         np.logspace(log10_amin, 0.0, steps), dtype=tf.float32)
 
-    chitab = _distance_computation_func(atab, rtol=rtol, **cosmo.to_dict())
+    chitab = _distance_computation_func(atab, **cosmo.to_dict())
 
     cache = {"a": atab[::-1], "chi": chitab[::-1]}
     cosmo._workspace["tfbackground.radial_comoving_distance"] = cache
@@ -584,15 +578,13 @@ def growth_ode(a, y, **kwcosmo):
 
 
 @tf.function
-def odesolve_func(a, rtol=1e-4, **kwcosmo):
+def odesolve_func(a,  **kwcosmo):
   r""" Solves the growth ODE system for a given cosmology at the requested
     scale factors.                                                                                
     Parameters
     ----------                                                                                                                                                  
     a: array_like
     Output scale factors, note that the ODE is initialized at a[0]
-    rtol: float, optional                                                                                              
-        Parameters determing the error control performed by the solver
     kwcosmo: keyword args                                                                                          
     Cosmological parameter values.
 
@@ -645,7 +637,7 @@ def maybe_compute_ODE(cosmo, log10_amin=-2, steps=256):
     # been computed
     cache = cosmo._workspace['cache_ODE']
     # Checking that the stored ODE results have the right lenght
-    assert len(cache['a']) == steps
+    # assert len(cache['a']) == steps
   else:
     # Otherwise, we compute it now, and save the results for later
     a = tf.convert_to_tensor(
