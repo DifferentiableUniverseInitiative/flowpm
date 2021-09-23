@@ -578,7 +578,7 @@ def growth_ode(a, y, **kwcosmo):
 
 
 @tf.function
-def odesolve_func(a,  **kwcosmo):
+def odesolve_func(a, **kwcosmo):
   r""" Solves the growth ODE system for a given cosmology at the requested
     scale factors.                                                                                
     Parameters
