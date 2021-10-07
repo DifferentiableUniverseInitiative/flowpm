@@ -3,7 +3,7 @@ import tensorflow as tf
 import numpy as np
 from numpy.testing import assert_allclose
 
-from flowpm.utils import cic_paint, cic_readout, r2c3d, c2r3d, r2c2d, c2r2d
+from flowpm.utils import cic_paint, cic_readout, r2c3d, c2r3d, r2c2d, c2r2d, white_noise
 from pmesh.pm import ParticleMesh
 
 np.random.seed(0)
@@ -72,3 +72,9 @@ def test_r2c2r_2D():
   rec = rfield.numpy()
 
   assert_allclose(base, rec, rtol=1e-09)
+
+
+def test_white_noise_seed():
+  a = white_noise(4, seed=12)
+  b = white_noise(4, seed=12)
+  assert np.all(a == b)

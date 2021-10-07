@@ -343,11 +343,11 @@ def white_noise(nc, batch_size=1, seed=None, type='complex', name="WhiteNoise"):
     if isinstance(nc, int):
       nc = [nc, nc, nc]
 
-    white = tf.random.normal(
+    white = tf.random.stateless_normal(
         shape=[batch_size] + nc,
         mean=0.,
         stddev=(nc[0] * nc[1] * nc[2])**0.5,
-        seed=seed)
+        seed=(seed, 873214))
     if type == 'real':
       return white
     elif type == 'complex':
