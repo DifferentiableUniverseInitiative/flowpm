@@ -8,7 +8,7 @@ from flowpm.fourier_smoothing import fourier_smoothing
 
 
 def Epsilon1(cosmology, a_source, tidal_field, Aia):
-    r""" Compute the real component of the intrinsic ellipticities
+  r""" Compute the real component of the intrinsic ellipticities
 
   Parameters
   ----------
@@ -30,14 +30,14 @@ def Epsilon1(cosmology, a_source, tidal_field, Aia):
     e1: 2-D Tensor.
         Real component of the intrinsic ellipticities.
   """
-    Omega_m=cosmology.Omega_c+cosmology.Omega_b
-    e1 = -Aia *constants.C_1* Omega_m * constants.rhocrit* (
-        tidal_field[0] - tidal_field[1]) /D1(cosmology, a_source)
-    return e1
+  Omega_m = cosmology.Omega_c + cosmology.Omega_b
+  e1 = -Aia * constants.C_1 * Omega_m * constants.rhocrit * (
+      tidal_field[0] - tidal_field[1]) / D1(cosmology, a_source)
+  return e1
 
 
 def Epsilon2(cosmology, a_source, tidal_field, Aia):
-    r""" Compute the imaginary component of the intrinsic ellipticities
+  r""" Compute the imaginary component of the intrinsic ellipticities
 
   Parameters
   ----------
@@ -59,14 +59,14 @@ def Epsilon2(cosmology, a_source, tidal_field, Aia):
     e2: 2-D Tensor.
         Imaginary component of the intrinsic ellipticities.
   """
-    Omega_m=cosmology.Omega_c+cosmology.Omega_b
-    e2 = -2 * Aia *constants.C_1* Omega_m * constants.rhocrit*  (
-        tidal_field[2]) /D1(cosmology, a_source)
-    return e2
+  Omega_m = cosmology.Omega_c + cosmology.Omega_b
+  e2 = -2 * Aia * constants.C_1 * Omega_m * constants.rhocrit * (
+      tidal_field[2]) / D1(cosmology, a_source)
+  return e2
 
 
 def tidal_field(plane_source, resolution, sigma):
-    r""" Compute the projected tidal shear
+  r""" Compute the projected tidal shear
 
   Parameters
   ----------
@@ -98,28 +98,27 @@ def tidal_field(plane_source, resolution, sigma):
 
   """
 
-    
-    k = np.fft.fftfreq(resolution)
-    kx, ky = np.meshgrid(k, k)
-    k2 = kx**2 + ky**2
-    k2[0, 0] = 1.
-    sxx =  np.pi * (kx * kx / k2 - 1. / 3)
-    sxx[0, 0] = 0.
-    syy =  np.pi * (ky * ky / k2 - 1. / 3)
-    syy[0, 0] = 0.
-    sxy =  np.pi * (kx * ky / k2 )
-    sxy[0, 0] = 0.
-    ss = tf.stack([sxx, syy, sxy], axis=0)
-    ss = tf.cast(ss, dtype=tf.complex64)
-    ftt_plane_source = flowpm.utils.r2c2d(plane_source)
-    ss_fac = ss * ftt_plane_source
-    ss_smooth = fourier_smoothing(ss_fac, sigma, resolution, source_plane=True)
-    tidal_planes = flowpm.utils.c2r2d((ss_smooth))
-    return tidal_planes
+  k = np.fft.fftfreq(resolution)
+  kx, ky = np.meshgrid(k, k)
+  k2 = kx**2 + ky**2
+  k2[0, 0] = 1.
+  sxx = np.pi * (kx * kx / k2 - 1. / 3)
+  sxx[0, 0] = 0.
+  syy = np.pi * (ky * ky / k2 - 1. / 3)
+  syy[0, 0] = 0.
+  sxy = np.pi * (kx * ky / k2)
+  sxy[0, 0] = 0.
+  ss = tf.stack([sxx, syy, sxy], axis=0)
+  ss = tf.cast(ss, dtype=tf.complex64)
+  ftt_plane_source = flowpm.utils.r2c2d(plane_source)
+  ss_fac = ss * ftt_plane_source
+  ss_smooth = fourier_smoothing(ss_fac, sigma, resolution, source_plane=True)
+  tidal_planes = flowpm.utils.c2r2d((ss_smooth))
+  return tidal_planes
 
 
 def interpolation(tidal_planes, dx, r_source, tidial_field_npix, coords):
-    r""" Compute the interpolation of the projected tidal shear of the source plane on the light-cones
+  r""" Compute the interpolation of the projected tidal shear of the source plane on the light-cones
    Parameters
    ----------
     tidal_planes: Tensor of shape [3, resolution, resolution] (corrisponding to (sx, sy, sz)).
@@ -142,22 +141,21 @@ def interpolation(tidal_planes, dx, r_source, tidial_field_npix, coords):
     im= Tensor of shape [3, tidial_field_npix, tidial_field_npix].
         Interpolated projected tidal shear of the source plane on the light-cones
     """
-    coords = tf.convert_to_tensor(coords, dtype=tf.float32)
-    c = coords * r_source / dx
+  coords = tf.convert_to_tensor(coords, dtype=tf.float32)
+  c = coords * r_source / dx
 
-    # Applying periodic conditions on sourceplane
-    shape = tf.shape(tidal_planes)
-    c = tf.math.mod(c, tf.cast(shape[1], tf.float32))
+  # Applying periodic conditions on sourceplane
+  shape = tf.shape(tidal_planes)
+  c = tf.math.mod(c, tf.cast(shape[1], tf.float32))
 
-    # Shifting pixel center convention
-    c = tf.expand_dims(c, axis=0) - 0.5
+  # Shifting pixel center convention
+  c = tf.expand_dims(c, axis=0) - 0.5
 
-    im = tfa.image.interpolate_bilinear(tf.expand_dims(tidal_planes, -1),
-                                        c,
-                                        indexing='xy')
-    imx, imy, imxy = tf.split(im,3)
-    imx = tf.reshape(imx, [tidial_field_npix, tidial_field_npix])
-    imy = tf.reshape(imy, [tidial_field_npix, tidial_field_npix])
-    imxy = tf.reshape(imxy, [tidial_field_npix, tidial_field_npix])
-    im = tf.stack([imx, imy, imxy], axis=0)
-    return im
+  im = tfa.image.interpolate_bilinear(
+      tf.expand_dims(tidal_planes, -1), c, indexing='xy')
+  imx, imy, imxy = tf.split(im, 3)
+  imx = tf.reshape(imx, [tidial_field_npix, tidial_field_npix])
+  imy = tf.reshape(imy, [tidial_field_npix, tidial_field_npix])
+  imxy = tf.reshape(imxy, [tidial_field_npix, tidial_field_npix])
+  im = tf.stack([imx, imy, imxy], axis=0)
+  return im
