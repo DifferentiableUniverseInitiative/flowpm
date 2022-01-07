@@ -108,6 +108,45 @@ def density_plane(state,
 
     return density_plane
 
+def interpolation(density_plane, dx, r_center, field_npix, coords):
+  r""" Compute the interpolation of the projected density plane on the light-cones
+   Parameters
+   ----------
+    density_plane: Tensor of shape: [1, resolution, resolution] (or [3, resolution, resolution] (corrisponding to (sx, sy, sz)) if tidal field).
+        Projected density plane to interpolate
+    
+    dx: float 
+        Transverse pixel resolution of the density planes [Mpc/h]
+
+    r_center: tf.Tensor 
+        Center of the densityplane [Mpc/h]
+    
+    field_npix: Int
+        Resolution of the final interpolated plane
+    
+    coords: 3-D array.
+        Angular coordinates in radians of N points with shape [batch, N, 2].
+
+    Returns
+    -------
+    im= Tensor of shape [1, field_npix,field_npix] (or [3, field_npix,field_npix] if the input plane is the tidal field)
+        Interpolated projected density plane on the light-cones
+    """
+  coords = tf.convert_to_tensor(coords, dtype=tf.float32)
+  c = coords * r_center / dx
+
+  # Applying periodic conditions on sourceplane
+  shape = tf.shape(density_plane)
+  c = tf.math.mod(c, tf.cast(shape[1], tf.float32))
+
+  # Shifting pixel center convention
+  c = tf.expand_dims(c, axis=0) - 0.5
+
+  im = tfa.image.interpolate_bilinear(
+      tf.expand_dims(density_plane, -1), c, indexing='xy')
+  im = tf.reshape(im, [shape[0], field_npix, field_npix])
+  return im
+
 
 def convergenceBorn(cosmo,
                     density_plane,
@@ -115,6 +154,7 @@ def convergenceBorn(cosmo,
                     dz,
                     coords,
                     z_source,
+                    field_npix,
                     name="convergenceBorn"):
   """
   Compute the Born–approximated convergence
@@ -142,19 +182,11 @@ def convergenceBorn(cosmo,
       density_normalization = dz * r / a
       p = (p - tf.reduce_mean(p, axis=[1, 2], keepdims=True)
           ) * constant_factor * density_normalization
-      c = coords * r / dx
-
-      # Applying periodic conditions on lensplane
-      shape = tf.shape(p)
-      c = tf.math.mod(c, tf.cast(shape[1], tf.float32))
-
-      # Shifting pixel center convention
-      c = tf.expand_dims(c, axis=0) - 0.5
-
-      im = tfa.image.interpolate_bilinear(
-          tf.expand_dims(p, -1), c, indexing='xy')
-
+      im=interpolation(p, dx, r, field_npix, coords)
       convergence += im * tf.reshape(
           tf.clip_by_value(1. - (r / r_s), 0, 1000), [1, 1, -1])
 
     return convergence
+
+
+
