@@ -110,7 +110,7 @@ def density_plane(state,
 
 
 def convergenceBorn(cosmo,
-                    lensplanes,
+                    density_plane,
                     dx,
                     dz,
                     coords,
@@ -118,16 +118,14 @@ def convergenceBorn(cosmo,
                     name="convergenceBorn"):
   """
   Compute the Born–approximated convergence
-
   Args:
     cosmo: `Cosmology`, cosmology object.
-    lensplanes: list of tuples (r, a, lens_plane), lens planes to use 
-    dx: float, transverse pixel resolution of the lensplanes [Mpc/h]
-    dz: float, width of the lensplanes [Mpc/h]
+    density_plane: list of tuples (r, a, density_plane), lens planes to use 
+    dx: float, transverse pixel resolution of the density planes [Mpc/h]
+    dz: float, width of the density planes [Mpc/h]
     coords: a 3-D array of angular coordinates in radians of N points with shape [batch, N, 2].
     z_source: 1-D `Tensor` of source redshifts with shape [Nz] .
     name: `string`, name of the operation.
-
   Returns:
     `Tensor` of shape [batch_size, N, Nz], of convergence values.
   """
@@ -140,7 +138,7 @@ def convergenceBorn(cosmo,
     r_s = flowpm.background.rad_comoving_distance(cosmo, 1 / (1 + z_source))
 
     convergence = 0
-    for r, a, p in lensplanes:
+    for r, a, p in density_plane:
       density_normalization = dz * r / a
       p = (p - tf.reduce_mean(p, axis=[1, 2], keepdims=True)
           ) * constant_factor * density_normalization

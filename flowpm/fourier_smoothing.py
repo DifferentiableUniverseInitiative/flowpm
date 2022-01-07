@@ -1,6 +1,5 @@
 from scipy.stats import norm
 import numpy as np
-import tensorflow_addons as tfa
 import tensorflow as tf
 import flowpm
 
@@ -26,13 +25,13 @@ def make_power_map(power_spectrum, size, kps=None):
   return ps_map
 
 
-def fourier_smoothing(im, sigma, resolution, source_plane=None):
+def fourier_smoothing(im, sigma, resolution, complex_plane=None):
   r""" Multidimensional Gaussian fourier filter.
     
     Parameters
     ----------
     
-    im: tf.Tensor of complex values
+    im: tf.Tensor of real values if complex_plane=None, complex values if complex_plane=True
     The input array.
 
     sigma: float 
@@ -40,6 +39,11 @@ def fourier_smoothing(im, sigma, resolution, source_plane=None):
 
     resolution:Int
          Pixel resolution of the input image 
+         
+    complex_plane: boolean
+    If false, the frunction will compute the Fourier transform of the input array
+    before the convolution with the Gaussian filter,
+    if true, the input array is already the Fourier transform of a real array.
          
     Returns
     -------
