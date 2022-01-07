@@ -119,7 +119,7 @@ def tidal_field(density_plane, resolution, sigma):
   ss = tf.cast(ss, dtype=tf.complex64)
   ftt_density_plane = flowpm.utils.r2c2d(density_plane)
   ss_fac = ss * ftt_density_plane
-  ss_smooth = fourier_smoothing(ss_fac, sigma, resolution, source_plane=True)
+  ss_smooth = fourier_smoothing(ss_fac, sigma, resolution, complex_plane=True)
   tidal_planes = flowpm.utils.c2r2d((ss_smooth))
   return tidal_planes
 

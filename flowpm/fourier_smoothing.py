@@ -50,7 +50,7 @@ def fourier_smoothing(im, sigma, resolution, complex_plane=None):
     im: tf.Tensor
      The filtered input.
     """
-  if source_plane is not None:
+  if complex_plane is not None:
     im = im
   else:
     im = tf.signal.fft2d(tf.cast(im, tf.complex64))
@@ -59,7 +59,7 @@ def fourier_smoothing(im, sigma, resolution, complex_plane=None):
   m = make_power_map(filter, resolution, kps=kps)
   m /= m[0, 0]
   im = tf.cast(tf.reshape(m, [1, resolution, resolution]), tf.complex64) * im
-  if source_plane is not None:
+  if complex_plane is not None:
     return im
   else:
     return tf.cast(tf.signal.ifft2d(im), tf.float32)
