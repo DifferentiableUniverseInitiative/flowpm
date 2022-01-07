@@ -108,6 +108,7 @@ def density_plane(state,
 
     return density_plane
 
+
 def interpolation(density_plane, dx, r_center, field_npix, coords):
   r""" Compute the interpolation of the projected density plane on the light-cones
    Parameters
@@ -182,11 +183,8 @@ def convergenceBorn(cosmo,
       density_normalization = dz * r / a
       p = (p - tf.reduce_mean(p, axis=[1, 2], keepdims=True)
           ) * constant_factor * density_normalization
-      im=interpolation(p, dx, r, field_npix, coords)
+      im = interpolation(p, dx, r, field_npix, coords)
       convergence += im * tf.reshape(
           tf.clip_by_value(1. - (r / r_s), 0, 1000), [1, 1, -1])
 
     return convergence
-
-
-

@@ -122,5 +122,3 @@ def tidal_field(density_plane, resolution, sigma):
   ss_smooth = fourier_smoothing(ss_fac, sigma, resolution, complex_plane=True)
   tidal_planes = flowpm.utils.c2r2d((ss_smooth))
   return tidal_planes
-
-
