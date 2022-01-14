@@ -41,7 +41,7 @@ def smail_nz(z,a,b,z0):
     return tf.stack(smail_nz, axis=0)
     
 def systematic_shift(z,bias):
-    """Defines a smail distribution with these arguments
+    """Implements a systematic shift in a redshift distribution
     
     Parameters:
     -----------
