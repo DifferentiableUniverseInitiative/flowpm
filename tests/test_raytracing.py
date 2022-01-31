@@ -304,7 +304,13 @@ def test_convergence_Born(return_results=False):
 
   # Compute convergemce map with flowpm
   fpm_map = flowpm.raytracing.convergenceBorn(
-      cosmo, lensplanes, bs / nc, bs, c.to(u.rad), z_source=tf.ones([1]))
+      cosmo,
+      lensplanes,
+      bs / nc,
+      bs,
+      c.to(u.rad),
+      z_source=tf.ones([1]),
+      field_npix=npix)
 
   # Comparing the final maps
   assert_allclose(
