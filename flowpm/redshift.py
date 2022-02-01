@@ -1,8 +1,9 @@
 import tensorflow as tf
 from flowpm.scipy.integrate import simps
 
-def smail_nz(z,a,b,z0):
-    """Defines a smail distribution with these arguments
+
+def smail_nz(z, a, b, z0):
+  """Defines a smail distribution with these arguments
     
     Parameters:
     -----------
@@ -30,18 +31,23 @@ def smail_nz(z,a,b,z0):
       \n(z)=z^{a}\exp{-(z/z_0)^b}
     """
 
-    smail_nz=[]
-    zmax=10.0
-    def smail(z,a,b,z0):
-        return (z) ** a * tf.math.exp(-(((z) / z0) ** b))
-    for i in range(len(z0)):
-        norm = simps(lambda t: smail(t,a,b,z0[i]), 0.0, 10, 256)
-        norm_smail=tf.cast(smail(z,a,b,z0[i]),dtype=tf.float32)/tf.cast(norm,dtype=tf.float32)
-        smail_nz.append(norm_smail)
-    return tf.stack(smail_nz, axis=0)
-    
-def systematic_shift(z,bias):
-    """Implements a systematic shift in a redshift distribution
+  smail_nz = []
+  zmax = 10.0
+
+  def smail(z, a, b, z0):
+    return (z)**a * tf.math.exp(-(((z) / z0)**b))
+
+  for i in range(len(z0)):
+    norm = simps(lambda t: smail(t, a, b, z0[i]), 0.0, 10, 256)
+    norm_smail = tf.cast(
+        smail(z, a, b, z0[i]), dtype=tf.float32) / tf.cast(
+            norm, dtype=tf.float32)
+    smail_nz.append(norm_smail)
+  return tf.stack(smail_nz, axis=0)
+
+
+def systematic_shift(z, bias):
+  """Implements a systematic shift in a redshift distribution
     
     Parameters:
     -----------
@@ -54,5 +60,5 @@ def systematic_shift(z,bias):
         Nuisance parameters defining the uncertainty of the redshift distributions
     
     """
-    z = tf.convert_to_tensor(z, dtype=tf.float32)
-    return (tf.clip_by_value(z - bias, 0,50))
+  z = tf.convert_to_tensor(z, dtype=tf.float32)
+  return (tf.clip_by_value(z - bias, 0, 50))
