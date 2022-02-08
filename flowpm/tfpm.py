@@ -270,7 +270,7 @@ def apply_pgd(x, delta_k, alpha, kl, ks, kvec=None, name="ApplyPGD"):
     return f
 
 
-def kick(cosmo, state, ai, ac, af, dtype=tf.float32, name="Kick", **kwargs):
+def kick(cosmo, state, ai, ac, af, return_factor=False, dtype=tf.float32, name="Kick", **kwargs):
   """Kick the particles given the state
   Parameters
   ----------
@@ -289,10 +289,11 @@ def kick(cosmo, state, ai, ac, af, dtype=tf.float32, name="Kick", **kwargs):
     shape = state.shape
     update = tf.scatter_nd(indices, update, shape)
     state = tf.add(state, update)
-    return state
+    if return_factor: return state, fac
+    else: return state
 
 
-def drift(cosmo, state, ai, ac, af, dtype=tf.float32, name="Drift", **kwargs):
+def drift(cosmo, state, ai, ac, af, return_factor=False, dtype=tf.float32, name="Drift", **kwargs):
   """Drift the particles given the state
   Parameters
   ----------
@@ -311,9 +312,39 @@ def drift(cosmo, state, ai, ac, af, dtype=tf.float32, name="Drift", **kwargs):
     shape = state.shape
     update = tf.scatter_nd(indices, update, shape)
     state = tf.add(state, update)
-    return state
+    if  return_factor: return state, fac
+    else:return state
 
+    
+def forcex(cosmo, x,
+           nc,
+           pm_nc_factor=1,
+           dtype=tf.float32,
+           name="Forcex",
+           **kwargs):
+  with tf.name_scope(name):
 
+    shape = x.get_shape()
+    batch_size = shape[1]
+    ncf = [n * pm_nc_factor for n in nc]
+
+    rho = tf.zeros([batch_size] + ncf)
+    wts = tf.ones((batch_size, nc[0] * nc[1] * nc[2]))
+    nbar = nc[0] * nc[1] * nc[2] / (ncf[0] * ncf[1] * ncf[2])
+
+    rho = cic_paint(rho, tf.multiply(x[0], pm_nc_factor), wts)
+    rho = tf.multiply(rho,
+                      1. / nbar)  # I am not sure why this is not needed here
+    delta_k = r2c3d(rho, norm=ncf[0] * ncf[1] * ncf[2])
+    fac = tf.cast(1.5 * cosmo.Omega_m, dtype=dtype)
+    update = apply_longrange(
+        tf.multiply(x[0], pm_nc_factor), delta_k, split=0, factor=fac)
+
+    update = update / pm_nc_factor
+    update = tf.expand_dims(update, axis=0)
+    return update
+
+  
 def force(cosmo,
           state,
           nc,
@@ -336,25 +367,8 @@ def force(cosmo,
   """
   with tf.name_scope(name):
     state = tf.convert_to_tensor(state, name="state")
-
-    shape = state.get_shape()
-    batch_size = shape[1]
-    ncf = [n * pm_nc_factor for n in nc]
-
-    rho = tf.zeros([batch_size] + ncf)
-    wts = tf.ones((batch_size, nc[0] * nc[1] * nc[2]))
-    nbar = nc[0] * nc[1] * nc[2] / (ncf[0] * ncf[1] * ncf[2])
-
-    rho = cic_paint(rho, tf.multiply(state[0], pm_nc_factor), wts)
-    rho = tf.multiply(rho,
-                      1. / nbar)  # I am not sure why this is not needed here
-    delta_k = r2c3d(rho, norm=ncf[0] * ncf[1] * ncf[2])
-    fac = tf.cast(1.5 * cosmo.Omega_m, dtype=dtype)
-    update = apply_longrange(
-        tf.multiply(state[0], pm_nc_factor), delta_k, split=0, factor=fac)
-
-    update = tf.expand_dims(update, axis=0) / pm_nc_factor
-
+    
+    update = forcex(cosmo, state[0:1], nc, pm_nc_factor)
     indices = tf.constant([[2]])
     shape = state.shape
     update = tf.scatter_nd(indices, update, shape)
