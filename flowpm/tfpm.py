@@ -515,3 +515,51 @@ def nbody(cosmo,
       return intermediate_states
     else:
       return state
+
+
+def _gradforcev(cosmo, x, t, nc):
+    if isinstance(nc, int):
+      nc = [nc, nc, nc]
+    with tf.GradientTape() as tape:
+        tape.watch(x)        
+        f = forcex(cosmo, x, nc)
+    gradstate = tape.gradient(f, x, output_gradients=t)
+    return gradstate
+    
+
+#@tf.function
+def adjoint(cosmo, state, adjx, adjv, stages, nc):
+    ai = stages[0]
+    if isinstance(nc, int):
+      nc = [nc, nc, nc]
+    x, p, f = ai, ai, ai
+    intermediate_states = []
+    for i in range(len(stages) - 1):
+        a0 = stages[i]
+        a1 = stages[i + 1]
+        ah = (a0 * a1)**0.5
+        
+        # Kick
+        state, facv = kick(cosmo, state, p, f, ah, return_factor=True)
+        p = ah
+        #Update adjoint
+        d_adjv = tf.stop_gradient(_gradforcev(cosmo, state[0:1], adjx, nc) * facv * -1.)
+        adjv = tf.stop_gradient(adjv + d_adjv)
+        # Drift step
+        state, facx = drift(cosmo, state, x, p, a1, return_factor=True)
+        x = a1
+        #Update adjoint
+        d_adjx = tf.stop_gradient(adjv * facx * -1.)
+        adjx = tf.stop_gradient(adjx + d_adjx )
+        # Force  
+        state = tf.stop_gradient(force(cosmo, state, nc))
+        f = a1
+        # Kick step
+        state, facv = kick(cosmo, state, p, f, a1, return_factor=True)
+        p = a1
+        #Update adjoint
+        d_adjv = tf.stop_gradient(_gradforcev(cosmo, state[0:1], adjx, nc) * facv * -1.)
+        adjv = tf.stop_gradient(adjv + d_adjv )
+
+    return tf.concat([state, adjx, adjv], 0)
+
