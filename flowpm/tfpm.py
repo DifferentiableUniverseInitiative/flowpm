@@ -519,7 +519,7 @@ def nbody(cosmo,
 
 
 
-def _gradforcev(cosmo, x, adj, nc):
+def _gradforcev(cosmo, x, adjx, nc):
   """
     Internal function to combine backprop gradient of force with adjoint gradient
     Parameters:
@@ -528,22 +528,22 @@ def _gradforcev(cosmo, x, adj, nc):
       Cosmological parameter object
     x: tensor (1, batch_size, npart, 3)
       Current position of the particles
-    adj: tensor (1, batch_size, npart, 3)
+    adjx: tensor (1, batch_size, npart, 3)
       Current adjoint gradient with respect to position
     Returns
     nc: int, or list of ints
       Number of cells
     -------
-    grad: tensor (1, batch_size, npart, 3)
-      Adjoint grdient updated with force gradient
+    d_adjv: tensor (1, batch_size, npart, 3)
+      Update to adjoint grdient of velocity
     """
   if isinstance(nc, int):
     nc = [nc, nc, nc]
   with tf.GradientTape() as tape:
     tape.watch(x)
     f = forcex(cosmo, x, nc)
-  gradstate = tape.gradient(f, x, output_gradients=t)
-  return gradstate
+  d_adjv = tape.gradient(f, x, output_gradients=adjx)
+  return d_adjv
 
 
 def adjoint_lptinit(cosmo, ic, adjx, adjv, a0, order=2):
