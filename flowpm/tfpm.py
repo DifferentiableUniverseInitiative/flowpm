@@ -270,7 +270,15 @@ def apply_pgd(x, delta_k, alpha, kl, ks, kvec=None, name="ApplyPGD"):
     return f
 
 
-def kick(cosmo, state, ai, ac, af, return_factor=False, dtype=tf.float32, name="Kick", **kwargs):
+def kick(cosmo,
+         state,
+         ai,
+         ac,
+         af,
+         return_factor=False,
+         dtype=tf.float32,
+         name="Kick",
+         **kwargs):
   """Kick the particles given the state
   Parameters
   ----------
@@ -289,11 +297,21 @@ def kick(cosmo, state, ai, ac, af, return_factor=False, dtype=tf.float32, name="
     shape = state.shape
     update = tf.scatter_nd(indices, update, shape)
     state = tf.add(state, update)
-    if return_factor: return state, fac
-    else: return state
+    if return_factor:
+      return state, fac
+    else:
+      return state
 
 
-def drift(cosmo, state, ai, ac, af, return_factor=False, dtype=tf.float32, name="Drift", **kwargs):
+def drift(cosmo,
+          state,
+          ai,
+          ac,
+          af,
+          return_factor=False,
+          dtype=tf.float32,
+          name="Drift",
+          **kwargs):
   """Drift the particles given the state
   Parameters
   ----------
@@ -312,11 +330,14 @@ def drift(cosmo, state, ai, ac, af, return_factor=False, dtype=tf.float32, name=
     shape = state.shape
     update = tf.scatter_nd(indices, update, shape)
     state = tf.add(state, update)
-    if  return_factor: return state, fac
-    else:return state
+    if return_factor:
+      return state, fac
+    else:
+      return state
 
-    
-def forcex(cosmo, x,
+
+def forcex(cosmo,
+           x,
            nc,
            pm_nc_factor=1,
            dtype=tf.float32,
@@ -344,7 +365,7 @@ def forcex(cosmo, x,
     update = tf.expand_dims(update, axis=0)
     return update
 
-  
+
 def force(cosmo,
           state,
           nc,
@@ -367,7 +388,7 @@ def force(cosmo,
   """
   with tf.name_scope(name):
     state = tf.convert_to_tensor(state, name="state")
-    
+
     update = forcex(cosmo, state[0:1], nc, pm_nc_factor)
     indices = tf.constant([[2]])
     shape = state.shape
@@ -517,9 +538,7 @@ def nbody(cosmo,
       return state
 
 
-
-
-def _gradforcev(cosmo, x, adjx, nc):
+def gradforcev(cosmo, x, adjx, nc):
   """
     Internal function to combine backprop gradient of force with adjoint gradient
     Parameters:
@@ -601,7 +620,7 @@ def adjoint(cosmo, state, adjx, adjv, stages, nc, pm_nc_factor=1):
     state_and_adjoint: tensor (5, batch_size, npart, 3), or list of states
       Integrated state to initial conditions concatenated with adjx and ajdv
     """
-  if pm_nc_factor !=1:
+  if pm_nc_factor != 1:
     raise NotImplementedError
   ai = stages[0]
   if isinstance(nc, int):
@@ -618,7 +637,7 @@ def adjoint(cosmo, state, adjx, adjv, stages, nc, pm_nc_factor=1):
     p = ah
     # Update adjoint
     d_adjv = tf.stop_gradient(
-        _gradforcev(cosmo, state[0:1], adjx, nc) * facv * -1.0)
+        gradforcev(cosmo, state[0:1], adjx, nc) * facv * -1.0)
     adjv = tf.stop_gradient(adjv + d_adjv)
     # Drift step
     state, facx = drift(cosmo, state, x, p, a1, return_factor=True)
@@ -634,8 +653,7 @@ def adjoint(cosmo, state, adjx, adjv, stages, nc, pm_nc_factor=1):
     p = a1
     # Update adjoint
     d_adjv = tf.stop_gradient(
-        _gradforcev(cosmo, state[0:1], adjx, nc) * facv * -1.0)
+        gradforcev(cosmo, state[0:1], adjx, nc) * facv * -1.0)
     adjv = tf.stop_gradient(adjv + d_adjv)
 
   return tf.concat([state, adjx, adjv], 0)
-    

@@ -57,7 +57,6 @@ def pmsim(initial_conditions):
     print("gen pm graph")
     initial_state = flowpm.lpt_init(cosmology, initial_conditions, 0.1)
     state = flowpm.nbody(cosmology, initial_state, stages, [nc, nc, nc], pm_nc_factor=B)
-    print("Fiducial Simulation done")
     return state
 
 
