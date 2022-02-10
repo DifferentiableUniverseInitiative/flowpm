@@ -517,49 +517,125 @@ def nbody(cosmo,
       return state
 
 
-def _gradforcev(cosmo, x, t, nc):
-    if isinstance(nc, int):
-      nc = [nc, nc, nc]
-    with tf.GradientTape() as tape:
-        tape.watch(x)        
-        f = forcex(cosmo, x, nc)
-    gradstate = tape.gradient(f, x, output_gradients=t)
-    return gradstate
+
+
+def _gradforcev(cosmo, x, adj, nc):
+  """
+    Internal function to combine backprop gradient of force with adjoint gradient
+    Parameters:
+    -----------
+    cosmo: cosmology
+      Cosmological parameter object
+    x: tensor (1, batch_size, npart, 3)
+      Current position of the particles
+    adj: tensor (1, batch_size, npart, 3)
+      Current adjoint gradient with respect to position
+    Returns
+    nc: int, or list of ints
+      Number of cells
+    -------
+    grad: tensor (1, batch_size, npart, 3)
+      Adjoint grdient updated with force gradient
+    """
+  if isinstance(nc, int):
+    nc = [nc, nc, nc]
+  with tf.GradientTape() as tape:
+    tape.watch(x)
+    f = forcex(cosmo, x, nc)
+  gradstate = tape.gradient(f, x, output_gradients=t)
+  return gradstate
+
+
+def adjoint_lptinit(cosmo, ic, adjx, adjv, a0, order=2):
+  """
+    Integrate the adjoint equation for evolution backwards starting from final state
+    Parameters:
+    -----------
+    cosmo: cosmology
+      Cosmological parameter object
+    ic: tensor (batch_size, nc, nc, nc)
+      Initial density field 
+    adjx: tensor (1, batch_size, npart, 3)
+      Adjoint gradient of objective with respect to initial position
+    adjv: tensor (1, batch_size, npart, 3)
+      Adjoint gradient of objective with respect to initial velocity
+    a0: float
+      scale factor at which initial lpt conditionds are generated
+    order: int, 1 or 2
+      order for perturbative expansion for LPT initial conditions
+    Returns
+    -------
+    grad: tensor (batch_size, nc, nc, nc)
+      Gradient with respect to the initial conditions
+    """
+  with tf.GradientTape(persistent=True) as tape:
+    tape.watch(ic)
+    state = lpt_init(cosmo, ic, a0, order=order)
+    x, v, f = tf.split(state, 3, 0)
+  gradx = tape.gradient(x, ic, output_gradients=adjv)
+  gradv = tape.gradient(v, ic, output_gradients=adjx)
+  return gradx + gradv
+
+
+def adjoint(cosmo, state, adjx, adjv, stages, nc, pm_nc_factor=1):
+  """
+    Integrate the adjoint equation for evolution backwards starting from final state
+    Parameters:
+    -----------
+    cosmo: cosmology
+      Cosmological parameter object
+    state: tensor (3, batch_size, npart, 3)
+      Final state after nbody simulation
+    adjx: tensor (1, batch_size, npart, 3)
+      Adjoint gradient of objective with respect to position
+    adjv: tensor (1, batch_size, npart, 3)
+      Adjoint gradient of objective with respect to velocity
+    stages: array
+      Array of scale factors in the reverse direction 1->0
+    nc: int, or list of ints
+      Number of cells
+    pm_nc_factor: int
+      Upsampling factor for computing
+    Returns
+    -------
+    state_and_adjoint: tensor (5, batch_size, npart, 3), or list of states
+      Integrated state to initial conditions concatenated with adjx and ajdv
+    """
+  if pm_nc_factor !=1:
+    raise NotImplementedError
+  ai = stages[0]
+  if isinstance(nc, int):
+    nc = [nc, nc, nc]
+  x, p, f = ai, ai, ai
+  intermediate_states = []
+  for i in range(len(stages) - 1):
+    a0 = stages[i]
+    a1 = stages[i + 1]
+    ah = (a0 * a1)**0.5
+
+    # Kick
+    state, facv = kick(cosmo, state, p, f, ah, return_factor=True)
+    p = ah
+    # Update adjoint
+    d_adjv = tf.stop_gradient(
+        _gradforcev(cosmo, state[0:1], adjx, nc) * facv * -1.0)
+    adjv = tf.stop_gradient(adjv + d_adjv)
+    # Drift step
+    state, facx = drift(cosmo, state, x, p, a1, return_factor=True)
+    x = a1
+    # Update adjoint
+    d_adjx = tf.stop_gradient(adjv * facx * -1.0)
+    adjx = tf.stop_gradient(adjx + d_adjx)
+    # Force
+    state = tf.stop_gradient(force(cosmo, state, nc))
+    f = a1
+    # Kick step
+    state, facv = kick(cosmo, state, p, f, a1, return_factor=True)
+    p = a1
+    # Update adjoint
+    d_adjv = tf.stop_gradient(
+        _gradforcev(cosmo, state[0:1], adjx, nc) * facv * -1.0)
+    adjv = tf.stop_gradient(adjv + d_adjv)
+
+  return tf.concat([state, adjx, adjv], 0)
     
-
-#@tf.function
-def adjoint(cosmo, state, adjx, adjv, stages, nc):
-    ai = stages[0]
-    if isinstance(nc, int):
-      nc = [nc, nc, nc]
-    x, p, f = ai, ai, ai
-    intermediate_states = []
-    for i in range(len(stages) - 1):
-        a0 = stages[i]
-        a1 = stages[i + 1]
-        ah = (a0 * a1)**0.5
-        
-        # Kick
-        state, facv = kick(cosmo, state, p, f, ah, return_factor=True)
-        p = ah
-        #Update adjoint
-        d_adjv = tf.stop_gradient(_gradforcev(cosmo, state[0:1], adjx, nc) * facv * -1.)
-        adjv = tf.stop_gradient(adjv + d_adjv)
-        # Drift step
-        state, facx = drift(cosmo, state, x, p, a1, return_factor=True)
-        x = a1
-        #Update adjoint
-        d_adjx = tf.stop_gradient(adjv * facx * -1.)
-        adjx = tf.stop_gradient(adjx + d_adjx )
-        # Force  
-        state = tf.stop_gradient(force(cosmo, state, nc))
-        f = a1
-        # Kick step
-        state, facv = kick(cosmo, state, p, f, a1, return_factor=True)
-        p = a1
-        #Update adjoint
-        d_adjv = tf.stop_gradient(_gradforcev(cosmo, state[0:1], adjx, nc) * facv * -1.)
-        adjv = tf.stop_gradient(adjv + d_adjv )
-
-    return tf.concat([state, adjx, adjv], 0)
-
