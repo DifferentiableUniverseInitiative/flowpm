@@ -12,10 +12,12 @@ def LSST_Y1_tomog(cosmology,
                   lensplanes,
                   box_size,
                   z_source,
+                  z,
+                  nz,
                   field_npix,
                   field_size,
                   nbin,
-                  batch_size,
+                  batch_size=1,
                   use_A_ia=False,
                   Aia=None):
   """This function takes as input a list of lensplanes and redshift distribution and returns a stacked convergence maps for each tomographic bin) 
@@ -34,6 +36,12 @@ def LSST_Y1_tomog(cosmology,
 
     z_source: array_like or tf.TensorArray
        Redshift of the source plane
+       
+    z: array_like or tf.TensorArray
+       Redshift-coordinates where the n(z) is evaluated
+    
+    nz: array_like or tf.TensorArray of shape ([nbin, z])
+        User-defined n(z) distribution.
     
     field_npix: Int
         Resolution of the final interpolated plane
@@ -68,46 +76,39 @@ def LSST_Y1_tomog(cosmology,
                   endpoint=False))  # range of Y coordinates
   coords = np.stack([xgrid, ygrid], axis=0) * u.deg
   c = coords.reshape([2, -1]).T.to(u.rad)
-  hdul = fits.open('/global/homes/d/dlan/flowpm/notebooks/lsst_y1.fits')
-  data = hdul[1].data
-  norm = integrate.simps(lambda t: (t**2) * np.exp(-((t / 0.26)**0.94)),
-                         min(data['Z']), max(data['Z']))
-  tom_kappa = []
   if use_A_ia is not False:
-    for i in range(nbin):
-      nz_source = interpolate.interp_tf(
-          z_source, data['Z'],
-          tf.cast(data["BIN_%s " % (i)] * norm, dtype=tf.float32))
-      sum_kappa = 0
-      for j in range(len(z_source)):
-        im_IA = flowpm.raytracing.interpolation(
-            lensplanes[j][-1],
-            dx=box_size / 2048,
-            r_center=lensplanes[j][0],
-            field_npix=field_npix,
-            coords=c)
-        k_ia = k_IA(cosmology, lensplanes[j][1], im_IA, Aia)
-        sum_kappa = sum_kappa + (nz_source[j] * k_ia[0])
-      tom_kappa.append(sum_kappa)
+    sum_kappa = []
+    for j in range(len(z_source)):
+      im_IA = flowpm.raytracing.interpolation(
+          lensplanes[j][-1],
+          dx=box_size / 2048,
+          r_center=lensplanes[j][0],
+          field_npix=field_npix,
+          coords=c)
+      k_ia = k_IA(cosmology, lensplanes[j][1], im_IA, Aia)
+      sum_kappa.append(k_ia[0])
+    tom_kappa = [
+        integrate.trapz(
+            tf.reshape(
+                interpolate.interp_tf(z_source, z,
+                                      tf.cast(nz[i], dtype=tf.float32)),
+                [-1, 1, 1]) * sum_kappa, z_source) for i in range(nbin)
+    ]
   else:
-    for i in range(nbin):
-      nz_source = interpolate.interp_tf(
-          z_source, data['Z'],
-          tf.cast(data["BIN_%s " % (i)] * norm, dtype=tf.float32))
-      sum_kappa = 0
-      for j in range(len(z_source)):
-        m = flowpm.raytracing.convergenceBorn(
-            cosmology,
-            lensplanes,
-            dx=box_size / 2048,
-            dz=box_size,
-            coords=c,
-            z_source=z_source[j],
-            field_npix=field_npix)
-        m = tf.reshape(m, [batch_size, field_npix, field_npix])
-        sum_kappa = sum_kappa + (nz_source[j] * m[0])
-      tom_kappa.append(sum_kappa)
-  return tf.stack(tom_kappa, axis=0)
+    m = flowpm.raytracing.convergenceBorn(
+        cosmology,
+        lensplanes,
+        dx=box_size / 2048,
+        dz=box_size,
+        coords=c,
+        z_source=z_source,
+        field_npix=field_npix)
+    tom_kappa = [
+        integrate.trapz(
+            tf.reshape(interpolate.interp_tf(z_source, z, nz[i]), [-1, 1, 1]) *
+            m, z_source) for i in range(nbin)
+    ]
+  return tom_kappa
 
 
 def systematic_shift(z, bias):

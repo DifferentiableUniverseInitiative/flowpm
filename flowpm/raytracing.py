@@ -185,6 +185,6 @@ def convergenceBorn(cosmo,
           ) * constant_factor * density_normalization
       im = interpolation(p, dx, r, field_npix, coords)
       convergence += im * tf.reshape(
-          tf.clip_by_value(1. - (r / r_s), 0, 1000), [1, 1, -1])
+          tf.clip_by_value(1. - (r / r_s), 0, 1000), [-1, 1, 1])
 
     return convergence
