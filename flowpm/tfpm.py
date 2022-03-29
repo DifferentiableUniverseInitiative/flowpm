@@ -5,11 +5,13 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
+import flowpm
+from flowpm.cosmology import Planck15
 from flowpm.tfbackground import f1, E, f2, Gf, gf, gf2, D1, D2, D1f
 from flowpm.utils import white_noise, c2r3d, r2c3d, cic_paint, cic_readout
 from flowpm.kernels import fftk, laplace_kernel, gradient_kernel, longrange_kernel, PGD_kernel
 
-__all__ = ['linear_field', 'lpt_init', 'nbody']
+__all__ = ['linear_field', 'lpt_init', 'nbody', 'make_ode_fn']
 
 
 def linear_field(nc,
@@ -501,3 +503,105 @@ def nbody(cosmo,
       return intermediate_states
     else:
       return state
+
+
+def force_ode(cosmo,
+              state,
+              nc,
+              pm_nc_factor=1,
+              dtype=tf.float32,
+              name="Force",
+              **kwargs):
+  """
+  Estimate force on the particles given a state.
+
+  Parameters:
+  -----------
+  cosmo: Cosmology
+      Cosmological parameters structure
+
+  state: tensor
+    Input state tensor of shape (3, batch_size, npart, 3)
+
+  nc: int, or list of ints
+    Number of cells
+
+  pm_nc_factor: int
+    Resolution factor. Ratio of the size per side of the mesh and the number of particles per side
+    
+  Returns
+  -------
+  updated : tensor (batch_size, npart, 3)
+    Updated force
+    
+  """
+  with tf.name_scope(name):
+    state = tf.convert_to_tensor(state, name="state")
+
+    shape = state.get_shape()
+    batch_size = shape[1]
+    ncf = [n * pm_nc_factor for n in nc]
+
+    rho = tf.zeros([batch_size] + ncf)
+    wts = tf.ones((batch_size, nc[0] * nc[1] * nc[2]))
+    nbar = nc[0] * nc[1] * nc[2] / (ncf[0] * ncf[1] * ncf[2])
+
+    rho = cic_paint(rho, tf.multiply(state[0], pm_nc_factor), wts)
+    rho = tf.multiply(rho,
+                      1. / nbar)  # I am not sure why this is not needed here
+    delta_k = r2c3d(rho, norm=ncf[0] * ncf[1] * ncf[2])
+    fac = tf.cast(1.5 * cosmo.Omega_m, dtype=dtype)
+    update = apply_longrange(
+        tf.multiply(state[0], pm_nc_factor), delta_k, split=0, factor=fac)
+
+    update = update / pm_nc_factor
+    return update
+
+
+def make_ode_fn(nc):
+
+  def nbody_ode(a, state, Omega_c, sigma8):
+    """
+      Estimate force on the particles given a state.
+
+      Parameters:
+      -----------
+      nc: int, or list of ints
+        Number of cells
+        
+      a : array_like or tf.TensorArray
+        Scale factor
+
+      state: tensor
+        Input state tensor of shape (3, batch_size, npart, 3)
+
+      Omega_c : Scalar float Tensor
+        Non-relativistic cold dark matter density
+
+      sigma8 : Scalar float Tensor
+        Amplitude of the linear matter fluctuations
+
+      Returns
+      -------
+      dpos: tensor (batch_size, npart, 3)
+        Updated position at a given state
+      dvel: tensor (batch_size, npart, 3)
+        Updated velocity at a given state
+      """
+    pos = state[0]
+    vel = state[1]
+
+    cosmo = Planck15(Omega_c=Omega_c, sigma8=sigma8)
+
+    # Compute forces
+    forces = force_ode(cosmo, state, nc)
+
+    # Computes the update of position (drift)
+    dpos = 1. / (a**3 * flowpm.tfbackground.E(cosmo, a)) * vel
+
+    # Computes the update of velocity (kick)
+    dvel = 1. / (a**2 * flowpm.tfbackground.E(cosmo, a)) * forces
+
+    return tf.stack([dpos, dvel], axis=0)
+
+  return nbody_ode
