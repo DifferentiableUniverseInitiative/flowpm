@@ -562,7 +562,7 @@ def make_ode_fn(nc):
 
   def nbody_ode(a, state, Omega_c, sigma8):
     """
-      Estimate force on the particles given a state.
+      Estimate updated positions and velocites of the particles given a state.
 
       Parameters:
       -----------
@@ -573,7 +573,7 @@ def make_ode_fn(nc):
         Scale factor
 
       state: tensor
-        Input state tensor of shape (3, batch_size, npart, 3)
+        Input state tensor of shape (2, batch_size, npart, 3)
 
       Omega_c : Scalar float Tensor
         Non-relativistic cold dark matter density
