@@ -560,7 +560,7 @@ def force_ode(cosmo,
 
 def make_ode_fn(nc):
 
-  def nbody_ode(a, state, Omega_c, sigma8):
+  def nbody_ode(a, state, Omega_c, sigma8, Omega_b, n_s, h, w0):
     """
       Estimate updated positions and velocites of the particles given a state.
 
@@ -575,11 +575,9 @@ def make_ode_fn(nc):
       state: tensor
         Input state tensor of shape (2, batch_size, npart, 3)
 
-      Omega_c : Scalar float Tensor
-        Non-relativistic cold dark matter density
+      Omega_c, sigma8, Omega_b, n_s,h, w0 : Scalar float Tensor
+        Cosmological parameters
 
-      sigma8 : Scalar float Tensor
-        Amplitude of the linear matter fluctuations
 
       Returns
       -------
@@ -591,7 +589,7 @@ def make_ode_fn(nc):
     pos = state[0]
     vel = state[1]
 
-    cosmo = Planck15(Omega_c=Omega_c, sigma8=sigma8)
+    cosmo = Planck15(Omega_c=Omega_c, sigma8=sigma8, Omega_b=Omega_b, n_s=n_s, h=h, w0=w0)
 
     # Compute forces
     forces = force_ode(cosmo, state, nc)
