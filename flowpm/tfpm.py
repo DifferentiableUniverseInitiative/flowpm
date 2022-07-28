@@ -589,7 +589,8 @@ def make_ode_fn(nc):
     pos = state[0]
     vel = state[1]
 
-    cosmo = Planck15(Omega_c=Omega_c, sigma8=sigma8, Omega_b=Omega_b, n_s=n_s, h=h, w0=w0)
+    cosmo = Planck15(
+        Omega_c=Omega_c, sigma8=sigma8, Omega_b=Omega_b, n_s=n_s, h=h, w0=w0)
 
     # Compute forces
     forces = force_ode(cosmo, state, nc)
