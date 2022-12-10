@@ -5,11 +5,11 @@ from flowpm.kernels import fftk, longrange_kernel, gradient_kernel, laplace_kern
 from flowpm.utils import cic_readout, compensate_cic, c2r3d, r2c3d
 from flowpm.cosmology import Planck15
 
+loaded = tf.saved_model.load("/local/home/dl264294/flowpm/saved_model")
 
-loaded=tf.saved_model.load("/local/home/dl264294/flowpm/saved_model")
 
+def make_neural_ode_fn(nc, batch_size):
 
-def make_neural_ode_fn(nc, batch_size, params_filename):
   def neural_nbody_ode(a, state, Omega_c, sigma8, Omega_b, n_s, h, w0):
     """
       Estimate force on the particles given a state.
