@@ -1,59 +1,18 @@
 import tensorflow as tf
-import jax
 import numpy as np
-import jax.numpy as jnp
-from jax.experimental import jax2tf
-import haiku as hk
-import sonnet as snt
-import tree
 import flowpm
-import pickle
 from flowpm.kernels import fftk, longrange_kernel, gradient_kernel, laplace_kernel
 from flowpm.utils import cic_readout, compensate_cic, c2r3d, r2c3d
-from flowpm.nn import NeuralSplineFourierFilter
 from flowpm.cosmology import Planck15
 
 
-def fun(x, a):
-  network = NeuralSplineFourierFilter(n_knots=16, latent_size=32)
-  return network(x, a)
-
-
-fun = hk.without_apply_rng(hk.transform(fun))
-
-
-def create_variable(path, value):
-  name = '/'.join(map(str, path)).replace('~', '_')
-  return tf.Variable(value, name=name)
-
-
-class JaxNSFF(snt.Module):
-
-  def __init__(self, params_filename, apply_fn, name=None):
-    super().__init__(name=name)
-    params = pickle.load(open(params_filename, "rb"))
-    self._params = tree.map_structure_with_path(create_variable, params)
-    self._apply = jax2tf.convert(lambda p, x, a: apply_fn(p, x, a))
-    self._apply = tf.autograph.experimental.do_not_convert(self._apply)
-
-  def __call__(self, input1, input2):
-    return self._apply(self._params, input1, input2)
+loaded=tf.saved_model.load("/local/home/dl264294/flowpm/saved_model")
 
 
 def make_neural_ode_fn(nc, batch_size, params_filename):
-  net = JaxNSFF(params_filename, fun.apply)
-
-  @tf.function(jit_compile=True)
-  def apply_model(
-      k,
-      a,
-  ):
-    return net(k, a)
-
   def neural_nbody_ode(a, state, Omega_c, sigma8, Omega_b, n_s, h, w0):
     """
       Estimate force on the particles given a state.
-
       Parameters:
       -----------
       nc: int
@@ -70,10 +29,8 @@ def make_neural_ode_fn(nc, batch_size, params_filename):
         
       state: tensor
         Input state tensor of shape (2, batch_size, npart, 3)
-
       Omega_c, sigma8, Omega_b, n_s,h, w0 : Scalar float Tensor
         Cosmological parameters
-
       Returns
       -------
       dpos: tensor (batch_size, npart, 3)
@@ -99,7 +56,7 @@ def make_neural_ode_fn(nc, batch_size, params_filename):
     # Apply a correction filter
     kk = tf.math.sqrt(sum((ki / np.pi)**2 for ki in kvec))
     pot_k = pot_k * tf.cast(
-        (1. + apply_model(kk, tf.convert_to_tensor(a, tf.float32))),
+        (1. + loaded.forward(tf.cast(kk, tf.float32), tf.cast(a, tf.float32))),
         tf.complex64)
 
     # Computes gravitational forces
