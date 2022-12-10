@@ -34,3 +34,27 @@ def simps(f, a, b, N=128):
   y = f(x)
   S = dx / 3 * tf.reduce_sum(y[0:-1:2] + 4 * y[1::2] + y[2::2], axis=0)
   return S
+
+
+def trapz(y, x):
+  """ Unequal space trapezoidal rule.
+    Approximate the integral of y with respect to x based on the trapezoidal rule.
+    x and y must be to the same length. 
+    Trapezoidal rule's rule approximates the integral \int_a^b f(x) dx by the sum:
+    (\sum_{k=1}^{N} (x_{i-1}-x_{i}))(f(x_{i-1}) + f(x_{i}))/2
+    Parameters
+    ----------
+    y : array_like or tf.TensorArray
+        vector of dependent variables
+
+    x : array_like or tf.TensorArray
+        vector of independent variables
+    Returns
+    -------
+    float or array_like or tf.TensorArray
+        Approximation of the integral of y with respect to x using
+        trapezoidal's rule with subintervals of unequal length.
+    """
+  T = tf.reduce_sum(
+      (tf.reshape(x[1:] - x[:-1], [-1, 1, 1])) * (y[1:] + y[:-1]) / 2, axis=0)
+  return T
